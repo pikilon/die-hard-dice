@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>dies everywhere</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <script type="importmap">
+      {
+        "imports": {
+          "lodash.shuffle": "https://cdn.jsdelivr.net/npm/lodash.shuffle@latest/index.js",
+          "lit": "https://cdn.jsdelivr.net/npm/lit@latest/+esm",
+          "lit/": "https://cdn.jsdelivr.net/npm/lit@latest/"
+        }
+      }
+    </script>
+  </head>
+  <body></body>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("/service-worker.js");
+      });
+    }
+  </script>
+</html>
