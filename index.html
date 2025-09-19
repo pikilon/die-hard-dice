@@ -15,12 +15,26 @@
       }
     </script>
   </head>
-  <body></body>
-  <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", function () {
-        navigator.serviceWorker.register("/service-worker.js");
+  <body>
+    <die-dice id="d6" sides='["1","2","3","4","5","6"]'></die-dice>
+    <button id="roll-d6">Roll D6</button>
+    <script type="module">
+      import "./web-components/dice.js";
+      const d6 = document.getElementById('d6');
+      d6.sides = ['a', 'b', 'c', 'd', 'e', 'f'];
+
+      document.getElementById('roll-d6').addEventListener('click', () => {
+        const result = d6.roll();
+        console.log('Rolled:', result);
       });
-    }
+    </script>
+  </body>
+  <script>
+    // if ("serviceWorker" in navigator) {
+    //   window.addEventListener("load", function () {
+    //     navigator.serviceWorker.register("/service-worker.js");
+    //   });
+    // }
   </script>
+</html>
 </html>
