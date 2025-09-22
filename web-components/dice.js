@@ -35,7 +35,7 @@ export class DieDice extends LitElement {
   updated(changedProps) {
     const propsHasChanged = changedProps.has("sides");
 
-    if (changedProps.has("sides")) {
+    if (propsHasChanged) {
       this._current = this.sides[0];
     }
   }

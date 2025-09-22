@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Die hard Dice</title>
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- <link rel="manifest" href="/manifest.webmanifest" /> -->
     <script type="importmap">
       {
         "imports": {
@@ -14,19 +14,53 @@
         }
       }
     </script>
+    <!-- Removed old d6 and abcDice variable declarations to avoid redeclaration -->
   </head>
   <body>
-    <die-dice id="d6" sides='["1","2","3","4","5","6"]'></die-dice>
-    <button id="roll-d6">Roll D6</button>
+    <div id="stage"></div>
+    <button id="roll">Roll All dices</button>
     <script type="module">
       import "./web-components/dice.js";
-      const d6 = document.getElementById('d6');
-      d6.sides = ['a', 'b', 'c', 'd', 'e', 'f'];
+      import { subscribe, setTitle, addDice, deleteDice, updateDice, getGameState } from './state/game-state.js';
+      import { initStateFromUrl } from './state/url-state.js';
 
-      document.getElementById('roll-d6').addEventListener('click', () => {
-        const result = d6.roll();
+      // Initialize state from URL
+      initStateFromUrl();
+
+      // Example: subscribe to state changes
+      subscribe(state => {
+        // You can update UI here if needed
+        // For demo, log state
+        console.log('Game state changed:', state);
+      });
+      if (false) {
+      // http://localhost:5500/?game=%7B%22title%22%3A%22testing+url+state%22%2C%22dice%22%3A%5B%7B%22id%22%3A%22d6%22%2C%22sides%22%3A%221%7C2%7C3%7C4%7C5%7C6%22%7D%2C%7B%22id%22%3A%22abc%22%2C%22sides%22%3A%22A%7CB%7CC%22%7D%2C%7B%22id%22%3A%22d6%22%2C%22sides%22%3A%221%7C2%7C3%7C4%7C5%7C6%22%7D%2C%7B%22id%22%3A%22abc%22%2C%22sides%22%3A%22A%7CB%7CC%22%7D%5D%7D
+      setTitle("testing url state");
+      addDice({ id: 'd6', sides: '1|2|3|4|5|6' });
+      addDice({ id: 'abc', sides: 'A|B|C' });
+    }
+      if (true) {
+
+      const gameState = getGameState();
+      const stageElement = document.getElementById('stage');
+      const allDicesRollActions = [];
+      // add a dice per existing dice in state
+      for (const dice of gameState.dice) {
+        const diceElement = document.createElement('die-dice');
+        const sides = dice.sides.split('|');
+
+        diceElement.setAttribute('sides', JSON.stringify(sides));
+        stageElement.appendChild(diceElement);
+        allDicesRollActions.push(() => diceElement.roll());
+      }
+
+
+
+      document.getElementById('roll').addEventListener('click', () => {
+        const result = allDicesRollActions.map(rollAction => rollAction());
         console.log('Rolled:', result);
       });
+    }
     </script>
   </body>
   <script>
