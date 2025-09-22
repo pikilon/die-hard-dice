@@ -58,14 +58,31 @@ export class DieDice extends LitElement {
   }
 
   static styles = css`
-    .side {
-      font-size: 2rem;
-      margin-bottom: 1rem;
+    :host {
+      display: inline-block;
     }
-    button {
-      font-size: 1rem;
-      padding: 0.5rem 1rem;
-      cursor: pointer;
+    .side {
+      width: 80px;
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      border-radius: 16px;
+      border: 3px solid #e0e0e0;
+      box-shadow:
+        0 2px 8px 0 rgba(0,0,0,0.18),
+        0 0.5px 1.5px 0 rgba(0,0,0,0.10) inset;
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #222;
+      user-select: none;
+      margin: 0 auto;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .side:active {
+      box-shadow: 0 1px 4px 0 rgba(0,0,0,0.12);
+      border-color: #bdbdbd;
     }
   `;
 }
