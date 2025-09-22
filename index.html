@@ -17,11 +17,10 @@
     <!-- Removed old d6 and abcDice variable declarations to avoid redeclaration -->
   </head>
   <body>
-    <div id="stage"></div>
-    <button id="roll">Roll All dices</button>
+    <die-board></die-board>
     <script type="module">
-      import "./web-components/dice.js";
-      import { subscribe, setGame, addDice, deleteDice, updateDice, getGameState } from './state/game-state.js';
+      import "./web-components/board.js";
+      import { subscribe, setGame, addDice, deleteDice, updateDice } from './state/game-state.js';
       import { initStateFromUrl } from './state/url-state.js';
 
       // Initialize state from URL
@@ -29,43 +28,12 @@
 
       // Example: subscribe to state changes
       subscribe(state => {
-        // You can update UI here if needed
-        // For demo, log state
-        document.title = state.title || "Die hard Dice";
+        const title = state.title || "Die hard Dice";
+
+        document.title = `🎲 ${title}`;
       });
-      if (false) {
-      
-      // http://localhost:5500/?game=%7B%22title%22%3A%22testing+url+state%22%2C%22dice%22%3A%5B%7B%22id%22%3A%22d6%22%2C%22sides%22%3A%221%7C2%7C3%7C4%7C5%7C6%22%7D%2C%7B%22id%22%3A%22abc%22%2C%22sides%22%3A%22A%7CB%7CC%22%7D%5D%2C%22diceOrder%22%3A%5B1%2C0%2C0%2C1%5D%7D
-      setGame({ 
-        title: "testing url state", 
-        dice: [ { id: "d6", sides: "1|2|3|4|5|6" }, { id: "abc", sides: "A|B|C" },],
-        diceOrder: [1,0,0,1] });
-
-    }
-      if (true) {
-
-      const gameState = getGameState();
-      const stageElement = document.getElementById('stage');
-      const allDicesRollActions = [];
-      // add a dice per existing dice in state
-      for (const diceIndex of gameState.diceOrder) {
-        const dice = gameState.dice[diceIndex];
-        if (!dice) continue; // Safety check
-        const diceElement = document.createElement('die-dice');
-        const sides = dice.sides.split('|');
-
-        diceElement.setAttribute('sides', JSON.stringify(sides));
-        stageElement.appendChild(diceElement);
-        allDicesRollActions.push(() => diceElement.roll());
-      }
-
-
-
-      document.getElementById('roll').addEventListener('click', () => {
-        const result = allDicesRollActions.map(rollAction => rollAction());
-        console.log('Rolled:', result);
-      });
-    }
+      // Optionally, you can expose setGame, addDice, etc. to window for debugging
+      // window.setGame = setGame;
     </script>
   </body>
   <script>
