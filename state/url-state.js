@@ -1,7 +1,7 @@
 // url-state.js
 // Handles reflecting game state in the URL and initializing from it
 
-import { setTitle, addDice, setGame } from "./game-state.js";
+import { setGame } from "./game-state.js";
 
 // Encode state to URL search params
 export function updateUrlFromState(gameSet) {
