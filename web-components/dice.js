@@ -52,6 +52,13 @@ export class DieDice extends LitElement {
     this._current = sides[idx];
     return this._current;
   }
+  /**
+   * Gets the current value of the die.
+   * @returns {string}
+   */
+  getCurrentValue() {
+    return this._current;
+  }
 
   render() {
     return html`<div class="side">${this._current}</div>`;
@@ -70,9 +77,8 @@ export class DieDice extends LitElement {
       background: #fff;
       border-radius: 16px;
       border: 3px solid #e0e0e0;
-      box-shadow:
-        0 2px 8px 0 rgba(0,0,0,0.18),
-        0 0.5px 1.5px 0 rgba(0,0,0,0.10) inset;
+      box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.18),
+        0 0.5px 1.5px 0 rgba(0, 0, 0, 0.1) inset;
       font-size: 2.5rem;
       font-weight: bold;
       color: #222;
@@ -81,7 +87,7 @@ export class DieDice extends LitElement {
       transition: box-shadow 0.2s, border-color 0.2s;
     }
     .side:active {
-      box-shadow: 0 1px 4px 0 rgba(0,0,0,0.12);
+      box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.12);
       border-color: #bdbdbd;
     }
   `;

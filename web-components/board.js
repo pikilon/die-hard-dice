@@ -1,8 +1,13 @@
 import { LitElement, html, css } from "lit";
 import "../web-components/dice.js";
-import { getGameState } from "../state/game-state.js";
+import { subscribe } from "../state/game-state.js";
 
 export class BoardComponent extends LitElement {
+  static properties = {
+    dice: { type: Array },
+    diceOrder: { type: Array },
+  };
+
   static styles = css`
     :host {
       display: block;
@@ -13,51 +18,50 @@ export class BoardComponent extends LitElement {
       gap: 1rem;
       grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     }
-    button {
-      margin-top: 1rem;
-    }
   `;
 
   constructor() {
     super();
-    this.diceElements = [];
+    this.dice = [];
+    this.diceOrder = [];
+    this._unsubscribe = null;
   }
 
-  firstUpdated() {
-    this._setupDices();
+  connectedCallback() {
+    super.connectedCallback();
+    // Subscribe to game state changes
+    this._unsubscribe = subscribe((state) => {
+      this.dice = state.dice;
+      this.diceOrder = state.diceOrder;
+    });
   }
 
-  _setupDices() {
-    // Get game state and render dice
-    const gameState = getGameState();
-    this.diceElements = [];
-    this.diceData = (gameState.diceOrder || []).map((diceIndex) => {
-      const dice = gameState.dice[diceIndex];
-      if (!dice) return null;
-      return {
-        sides: dice.sides.split("|")
-      };
-    }).filter(Boolean);
-    this.requestUpdate();
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    // Unsubscribe when component is removed
+    if (this._unsubscribe) {
+      this._unsubscribe();
+    }
   }
 
-  _rollAll() {
-    // Roll all dice and log results
-    const results = this.shadowRoot.querySelectorAll('die-dice');
-    const rolled = Array.from(results).map(die => die.roll());
-    console.log('Rolled:', rolled);
-  }
+  _getDiceComponents = () => this.shadowRoot.querySelectorAll("die-dice");
+
+  getCurrentValues = () =>
+    Array.from(this._getDiceComponents()).map((dice) => dice.getCurrentValue());
+
+  rollAllDice = () => this._getDiceComponents().map((dice) => dice.roll());
 
   render() {
     return html`
       <div class="stage">
-        ${this.diceData?.map(
-          dice => html`<die-dice .sides=${dice.sides}></die-dice>`
-        )}
+        ${this.diceOrder.map((diceIndex) => {
+          const dice = this.dice[diceIndex];
+          if (!dice) return null;
+          return html`<die-dice .sides=${dice.sides}></die-dice>`;
+        })}
       </div>
-      <button @click=${this._rollAll}>Roll All dices</button>
     `;
   }
 }
 
-customElements.define('die-board', BoardComponent);
+customElements.define("die-board", BoardComponent);
