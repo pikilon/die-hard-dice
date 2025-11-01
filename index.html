@@ -17,9 +17,11 @@
     <!-- Removed old d6 and abcDice variable declarations to avoid redeclaration -->
   </head>
   <body>
+    <game-title></game-title>
     <die-board></die-board>
     <script type="module">
       import "./web-components/board.js";
+      import "./web-components/game-title.js";
       import { subscribe, setGame, addDice, deleteDice, updateDice } from './state/game-state.js';
       import { initStateFromUrl } from './state/url-state.js';
 
