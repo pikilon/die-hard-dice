@@ -1,25 +1,19 @@
+// @ts-check
 import { LitElement, html, css } from "lit";
 
-/**
- * @typedef {Object} DieDiceProps
- * @property {string[]} sides - The sides of the die.
- * @property {string} _current - The currently displayed side.
- */
+/** @typedef {import('../types/game.d.ts').Dice} Dice */
 
 /**
  * A web component representing a die with customizable sides.
  * @element die-dice
  */
 export class DieDice extends LitElement {
-  /**
-   * @type {typeof DieDiceProps}
-   */
-  static properties = {
-    /** @type {string[]} */
-    sides: { type: Array },
-    /** @type {string} */
-    _current: { state: true },
-  };
+  static get properties() {
+    return {
+      sides: { type: Array },
+      _current: { state: true },
+    };
+  }
 
   /**
    * @constructor
@@ -32,6 +26,9 @@ export class DieDice extends LitElement {
     this._current = "";
   }
 
+  /**
+   * @param {Map<string, any>} changedProps
+   */
   updated(changedProps) {
     const propsHasChanged = changedProps.has("sides");
 

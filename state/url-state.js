@@ -1,9 +1,15 @@
+// @ts-check
 // url-state.js
 // Handles reflecting game state in the URL and initializing from it
 
 import { setGame } from "./game-state.js";
 
-// Encode state to URL search params
+/** @typedef {import('../types/game.d.ts').GameState} GameState */
+
+/**
+ * Encode state to URL search params
+ * @param {GameState} gameSet
+ */
 export function updateUrlFromState(gameSet) {
   const params = new URLSearchParams();
   params.set("game", JSON.stringify(gameSet));

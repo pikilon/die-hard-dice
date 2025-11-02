@@ -1,6 +1,11 @@
+// @ts-check
 import { LitElement, html, css } from "lit";
 import "../web-components/dice.js";
 import { subscribe } from "../state/game-state.js";
+
+/** @typedef {import('../types/game.d.ts').Dice} Dice */
+/** @typedef {import('../types/game.d.ts').GameState} GameState */
+/** @typedef {import('../types/game.d.ts').UnsubscribeFunction} UnsubscribeFunction */
 
 export class BoardComponent extends LitElement {
   static properties = {
@@ -22,8 +27,11 @@ export class BoardComponent extends LitElement {
 
   constructor() {
     super();
+    /** @type {Dice[]} */
     this.dice = [];
+    /** @type {number[]} */
     this.diceOrder = [];
+    /** @type {UnsubscribeFunction | null} */
     this._unsubscribe = null;
   }
 
@@ -44,11 +52,23 @@ export class BoardComponent extends LitElement {
     }
   }
 
+  /**
+   * Gets all dice components in the shadow DOM
+   * @returns {any[]} Array of die-dice elements
+   */
   _getDiceComponents = () => Array.from(this.shadowRoot.querySelectorAll("die-dice"));
 
+  /**
+   * Gets current values from all dice
+   * @returns {string[]}
+   */
   getCurrentValues = () =>
     this._getDiceComponents().map((dice) => dice.getCurrentValue());
 
+  /**
+   * Rolls all dice on the board
+   * @returns {string[]}
+   */
   rollAllDice = () => {
     return this._getDiceComponents().map((dice) => dice.roll());
   }

@@ -1,5 +1,8 @@
+// @ts-check
 import { LitElement, html, css } from "lit";
 import { subscribe, setTitle } from "../state/game-state.js";
+
+/** @typedef {import('../types/game.d.ts').UnsubscribeFunction} UnsubscribeFunction */
 
 export class GameTitleComponent extends LitElement {
   static properties = {
@@ -62,8 +65,11 @@ export class GameTitleComponent extends LitElement {
 
   constructor() {
     super();
+    /** @type {string} */
     this.title = "";
+    /** @type {boolean} */
     this.isFocused = false;
+    /** @type {UnsubscribeFunction | null} */
     this._unsubscribe = null;
   }
 
@@ -82,8 +88,13 @@ export class GameTitleComponent extends LitElement {
     }
   }
 
+  /**
+   * Handle input changes
+   * @param {Event} e
+   */
   _handleInput(e) {
-    const newTitle = e.target.value;
+    const target = /** @type {HTMLInputElement} */ (e.target);
+    const newTitle = target.value;
     setTitle(newTitle);
   }
 

@@ -1,4 +1,9 @@
+// @ts-check
+
+/** @type {string} */
 const CACHE_NAME = 'die-hard-dice-cache-v1';
+
+/** @type {string[]} */
 const urlsToCache = [
   '/',
   '/index.html',
@@ -9,21 +14,31 @@ const urlsToCache = [
   // Add more assets here if needed
 ];
 
+/**
+ * Install event handler
+ * @param {Event} event
+ */
 self.addEventListener('install', event => {
-  event.waitUntil(
+  const extEvent = /** @type {ExtendableEvent} */ (event);
+  extEvent.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
   );
 });
 
+/**
+ * Fetch event handler
+ * @param {Event} event
+ */
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
+  const fetchEvent = /** @type {FetchEvent} */ (event);
+  fetchEvent.respondWith(
+    caches.match(fetchEvent.request)
       .then(response => {
         if (response) {
           return response; // Cache first
         }
-        return fetch(event.request).then(networkResponse => {
+        return fetch(fetchEvent.request).then(networkResponse => {
           // Optionally cache new requests here
           return networkResponse;
         });
@@ -31,8 +46,13 @@ self.addEventListener('fetch', event => {
   );
 });
 
+/**
+ * Activate event handler
+ * @param {Event} event
+ */
 self.addEventListener('activate', event => {
-  event.waitUntil(
+  const extEvent = /** @type {ExtendableEvent} */ (event);
+  extEvent.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.filter(name => name !== CACHE_NAME).map(name => caches.delete(name))

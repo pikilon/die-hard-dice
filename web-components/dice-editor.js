@@ -1,5 +1,10 @@
+// @ts-check
 import { LitElement, html, css } from "lit";
 import { subscribe, addDice, updateDice, closeEditingDice } from "../state/game-state.js";
+
+/** @typedef {import('../types/game.d.ts').GameState} GameState */
+/** @typedef {import('../types/game.d.ts').Dice} Dice */
+/** @typedef {import('../types/game.d.ts').UnsubscribeFunction} UnsubscribeFunction */
 
 /**
  * A modal web component for editing or adding a new dice.
@@ -13,11 +18,11 @@ export class DiceEditor extends LitElement {
 
   constructor() {
     super();
-    /** @type {import("../state/game-state.js").GameState | null} */
+    /** @type {GameState | null} */
     this._gameState = null;
     /** @type {string[]} */
     this._diceSides = ["", ""];
-    /** @type {(() => boolean) | null} */
+    /** @type {UnsubscribeFunction | null} */
     this._unsubscribe = null;
   }
 
@@ -64,10 +69,15 @@ export class DiceEditor extends LitElement {
     }
   }
 
+  /**
+   * Handle form submission
+   * @param {Event} e
+   */
   _handleSubmit(e) {
     e.preventDefault();
     
-    const formData = new FormData(e.target);
+    const form = /** @type {HTMLFormElement} */ (e.target);
+    const formData = new FormData(form);
     const name = formData.get("name")?.toString().trim() || "";
     
     if (!name) {
@@ -102,10 +112,17 @@ export class DiceEditor extends LitElement {
     closeEditingDice();
   }
 
+  /**
+   * Add a new side to the dice
+   */
   _addSide() {
     this._diceSides = [...this._diceSides, ""];
   }
 
+  /**
+   * Remove a side from the dice
+   * @param {number} index
+   */
   _removeSide(index) {
     if (this._diceSides.length > 2) {
       this._diceSides = this._diceSides.filter((_, i) => i !== index);

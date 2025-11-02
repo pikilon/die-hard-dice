@@ -1,23 +1,13 @@
+// @ts-check
 // Pub/Sub Game State Management
 import { updateUrlFromState } from "./url-state.js";
 
-/**
- * @typedef {Object} Dice
- * @property {string} name - The name of the dice
- * @property {string[]} sides - The sides of the dice
- */
+/** @typedef {import('../types/game.d.ts').Dice} Dice */
+/** @typedef {import('../types/game.d.ts').GameState} GameState */
+/** @typedef {import('../types/game.d.ts').GameStateCallback} GameStateCallback */
+/** @typedef {import('../types/game.d.ts').UnsubscribeFunction} UnsubscribeFunction */
 
-/**
- * @typedef {Object} GameState
- * @property {string} title - The title of the game
- * @property {Dice[]} dice - Array of dice objects
- * @property {number[]} diceOrder - Array of indices representing the order of dice
- * @property {number | undefined} editingDiceIndex
- *     - undefined: Not editing any dice
- *     - -1: Creating a new dice
- *     - 0,1,2...: Index of the dice in gameState.dice array being edited
- */
-
+/** @type {GameState} */
 const gameState = {
   title: "the game title",
   dice: [],
@@ -45,8 +35,8 @@ function notify() {
 
 /**
  * Subscribes a callback function to game state changes
- * @param {function(GameState): void} callback - Function to call when state changes
- * @returns {function(): boolean} Unsubscribe function
+ * @param {GameStateCallback} callback - Function to call when state changes
+ * @returns {UnsubscribeFunction} Unsubscribe function
  */
 export function subscribe(callback) {
   subscribers.add(callback);
