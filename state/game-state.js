@@ -4,8 +4,7 @@ import { updateUrlFromState } from "./url-state.js";
 /**
  * @typedef {Object} Dice
  * @property {string} name - The name of the dice
- * @property {number} sides - The number of sides on the dice
- * @property {number} count - The count of dice
+ * @property {string[]} sides - The sides of the dice
  */
 
 /**
@@ -23,6 +22,7 @@ const gameState = {
   title: "the game title",
   dice: [],
   diceOrder: [],
+  editingDiceIndex: undefined,
 };
 
 const subscribers = new Set();
@@ -85,7 +85,8 @@ export function setTitle(title) {
  */
 export function addDice(dice) {
   gameState.dice.push(dice);
-  gameState.diceOrder.push(gameState.dice.length - 1);
+  const newDiceIndex = gameState.dice.length - 1;
+  gameState.diceOrder.push(newDiceIndex);
   notify();
 }
 
@@ -131,24 +132,19 @@ export function updateDiceOrder(newDiceOrder) {
   }
 }
 
-export function editDice(diceIndex = undefined) {
-  uiState.diceEditingIndex = diceIndex;
-  notify();
-}
-
 /**
  * Sets the index of the dice to edit
  * @param {number} [diceIndex] - Index of the dice in gameState.dice array, or undefined to clear
  */
 export function editDice(diceIndex = undefined) {
-  uiState.diceEditingIndex = diceIndex;
+  gameState.editingDiceIndex = diceIndex;
   notify();
 }
 
 /**
  * Sets the UI state to create a new dice
  */
-export function addNewDice() {
+export function createDice() {
   return editDice(-1);
 }
 
