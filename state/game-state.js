@@ -8,7 +8,7 @@ import { updateUrlFromState } from "./url-state.js";
 /** @typedef {import('../types/game.d.ts').UnsubscribeFunction} UnsubscribeFunction */
 
 /** @type {GameState} */
-const gameState = {
+const DEFAULT_EMPTY_GAME_STATE = {
   title: "the game title",
   dice: [],
   diceOrder: [],
@@ -23,9 +23,9 @@ const subscribers = new Set();
  */
 function notify() {
   const newState = {
-    ...gameState,
-    dice: [...gameState.dice],
-    diceOrder: [...gameState.diceOrder],
+    ...DEFAULT_EMPTY_GAME_STATE,
+    dice: [...DEFAULT_EMPTY_GAME_STATE.dice],
+    diceOrder: [...DEFAULT_EMPTY_GAME_STATE.diceOrder],
   };
   for (const cb of subscribers) {
     cb(newState);
@@ -42,9 +42,9 @@ export function subscribe(callback) {
   subscribers.add(callback);
   // Immediately call with current state
   callback({
-    ...gameState,
-    dice: [...gameState.dice],
-    diceOrder: [...gameState.diceOrder],
+    ...DEFAULT_EMPTY_GAME_STATE,
+    dice: [...DEFAULT_EMPTY_GAME_STATE.dice],
+    diceOrder: [...DEFAULT_EMPTY_GAME_STATE.diceOrder],
   });
   return () => subscribers.delete(callback);
 }
@@ -54,9 +54,9 @@ export function subscribe(callback) {
  * @param {Partial<GameState>} newState - New state object to set
  */
 export function setGame(newState) {
-  gameState.title = newState?.title || "";
-  gameState.dice = newState?.dice || [];
-  gameState.diceOrder = newState?.diceOrder || [];
+  DEFAULT_EMPTY_GAME_STATE.title = newState?.title || "";
+  DEFAULT_EMPTY_GAME_STATE.dice = newState?.dice || [];
+  DEFAULT_EMPTY_GAME_STATE.diceOrder = newState?.diceOrder || [];
   notify();
 }
 
@@ -65,7 +65,7 @@ export function setGame(newState) {
  * @param {string} title - New title for the game
  */
 export function setTitle(title) {
-  gameState.title = title;
+  DEFAULT_EMPTY_GAME_STATE.title = title;
   notify();
 }
 
@@ -74,9 +74,9 @@ export function setTitle(title) {
  * @param {Dice} dice - Dice object to add
  */
 export function addDice(dice) {
-  gameState.dice.push(dice);
-  const newDiceIndex = gameState.dice.length - 1;
-  gameState.diceOrder.push(newDiceIndex);
+  DEFAULT_EMPTY_GAME_STATE.dice.push(dice);
+  const newDiceIndex = DEFAULT_EMPTY_GAME_STATE.dice.length - 1;
+  DEFAULT_EMPTY_GAME_STATE.diceOrder.push(newDiceIndex);
   notify();
 }
 
@@ -85,12 +85,12 @@ export function addDice(dice) {
  * @param {number} index - Index of the dice to delete
  */
 export function deleteDice(index) {
-  if (index >= 0 && index < gameState.dice.length) {
-    gameState.dice.splice(index, 1);
-    gameState.diceOrder.splice(index, 1);
+  if (index >= 0 && index < DEFAULT_EMPTY_GAME_STATE.dice.length) {
+    DEFAULT_EMPTY_GAME_STATE.dice.splice(index, 1);
+    DEFAULT_EMPTY_GAME_STATE.diceOrder.splice(index, 1);
     // Update diceOrder indices after deletion
-    gameState.diceOrder = gameState.diceOrder.map((orderIndex) =>
-      orderIndex > index ? orderIndex - 1 : orderIndex
+    DEFAULT_EMPTY_GAME_STATE.diceOrder = DEFAULT_EMPTY_GAME_STATE.diceOrder.map(
+      (orderIndex) => (orderIndex > index ? orderIndex - 1 : orderIndex)
     );
     notify();
   }
@@ -102,8 +102,8 @@ export function deleteDice(index) {
  * @param {Dice} newDice - New dice object
  */
 export function updateDice(index, newDice) {
-  if (index >= 0 && index < gameState.dice.length) {
-    gameState.dice[index] = newDice;
+  if (index >= 0 && index < DEFAULT_EMPTY_GAME_STATE.dice.length) {
+    DEFAULT_EMPTY_GAME_STATE.dice[index] = newDice;
     notify();
   }
 }
@@ -115,9 +115,9 @@ export function updateDice(index, newDice) {
 export function updateDiceOrder(newDiceOrder) {
   if (
     Array.isArray(newDiceOrder) &&
-    newDiceOrder.length === gameState.dice.length
+    newDiceOrder.length === DEFAULT_EMPTY_GAME_STATE.dice.length
   ) {
-    gameState.diceOrder = [...newDiceOrder];
+    DEFAULT_EMPTY_GAME_STATE.diceOrder = [...newDiceOrder];
     notify();
   }
 }
@@ -127,7 +127,7 @@ export function updateDiceOrder(newDiceOrder) {
  * @param {number} [diceIndex] - Index of the dice in gameState.dice array, or undefined to clear
  */
 export function editDice(diceIndex = undefined) {
-  gameState.editingDiceIndex = diceIndex;
+  DEFAULT_EMPTY_GAME_STATE.editingDiceIndex = diceIndex;
   notify();
 }
 
@@ -151,8 +151,8 @@ export function closeEditingDice() {
  */
 export function getGameState() {
   return {
-    ...gameState,
-    dice: [...gameState.dice],
-    diceOrder: [...gameState.diceOrder],
+    ...DEFAULT_EMPTY_GAME_STATE,
+    dice: [...DEFAULT_EMPTY_GAME_STATE.dice],
+    diceOrder: [...DEFAULT_EMPTY_GAME_STATE.diceOrder],
   };
 }
