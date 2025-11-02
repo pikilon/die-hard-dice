@@ -1,18 +1,42 @@
-import { LitElement, html, css } from "lit";
+import { LitElement, html } from "lit";
 import { createDice } from "../state/game-state.js";
+import { ELEMENTS } from "../html-selectors.js";
+import { subscribe } from "../state/game-state.js";
 
 class GameActions extends LitElement {
   constructor() {
     super();
+    this.dice = [];
+  }
+
+  // subscribe to game state to get dice
+  connectedCallback() {
+    super.connectedCallback();
+    this._unsubscribe = subscribe((state) => {
+      this.dice = state.dice;
+    });
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    if (this._unsubscribe) {
+      this._unsubscribe();
+    }
   }
 
   render() {
+    
     return html`
       <div>
         <button @click=${createDice}>Add Die</button>
+        <roll-all-dice-button></roll-all-dice-button>
+        ${this.dice.length
+          ? html`<button @click=${ELEMENTS.BOARD.rollAllDice}>
+              Roll All Dice
+            </button>`
+          : ""}
       </div>
     `;
   }
 }
-
 customElements.define("game-actions", GameActions);

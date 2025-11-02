@@ -44,12 +44,14 @@ export class BoardComponent extends LitElement {
     }
   }
 
-  _getDiceComponents = () => this.shadowRoot.querySelectorAll("die-dice");
+  _getDiceComponents = () => Array.from(this.shadowRoot.querySelectorAll("die-dice"));
 
   getCurrentValues = () =>
-    Array.from(this._getDiceComponents()).map((dice) => dice.getCurrentValue());
+    this._getDiceComponents().map((dice) => dice.getCurrentValue());
 
-  rollAllDice = () => this._getDiceComponents().map((dice) => dice.roll());
+  rollAllDice = () => {
+    return this._getDiceComponents().map((dice) => dice.roll());
+  }
 
   render() {
     return html`
