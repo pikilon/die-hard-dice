@@ -1,11 +1,5 @@
-// @ts-check
 // Pub/Sub Game State Management
 import { updateUrlFromState } from "./url-state.js";
-
-/** @typedef {import('../types/game.d.ts').Dice} Dice */
-/** @typedef {import('../types/game.d.ts').GameState} GameState */
-/** @typedef {import('../types/game.d.ts').GameStateCallback} GameStateCallback */
-/** @typedef {import('../types/game.d.ts').UnsubscribeFunction} UnsubscribeFunction */
 
 /** @type {GameState} */
 const DEFAULT_EMPTY_GAME_STATE = {

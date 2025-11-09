@@ -1,11 +1,7 @@
-// @ts-check
 import { LitElement, html, css } from "lit";
 import "../web-components/dice.js";
 import { subscribe } from "../state/game-state.js";
 
-/** @typedef {import('../types/game.d.ts').Dice} Dice */
-/** @typedef {import('../types/game.d.ts').GameState} GameState */
-/** @typedef {import('../types/game.d.ts').UnsubscribeFunction} UnsubscribeFunction */
 
 export class BoardComponent extends LitElement {
   static properties = {

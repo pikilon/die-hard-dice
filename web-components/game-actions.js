@@ -1,11 +1,7 @@
-// @ts-check
 import { LitElement, html } from "lit";
 import { createDice } from "../state/game-state.js";
 import { ELEMENTS } from "../html-selectors.js";
 import { subscribe } from "../state/game-state.js";
-
-/** @typedef {import('../types/game.d.ts').Dice} Dice */
-/** @typedef {import('../types/game.d.ts').UnsubscribeFunction} UnsubscribeFunction */
 
 class GameActions extends LitElement {
   constructor() {

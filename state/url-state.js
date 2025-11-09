@@ -1,10 +1,6 @@
-// @ts-check
-// url-state.js
 // Handles reflecting game state in the URL and initializing from it
 
 import { setGame } from "./game-state.js";
-
-/** @typedef {import('../types/game.d.ts').GameState} GameState */
 
 /**
  * Encode state to URL search params

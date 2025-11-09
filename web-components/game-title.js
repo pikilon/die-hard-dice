@@ -1,13 +1,10 @@
-// @ts-check
 import { LitElement, html, css } from "lit";
 import { subscribe, setTitle } from "../state/game-state.js";
-
-/** @typedef {import('../types/game.d.ts').UnsubscribeFunction} UnsubscribeFunction */
 
 export class GameTitleComponent extends LitElement {
   static properties = {
     title: { type: String, state: true },
-    isFocused: { type: Boolean, state: true }
+    isFocused: { type: Boolean, state: true },
   };
 
   static styles = css`
@@ -108,7 +105,7 @@ export class GameTitleComponent extends LitElement {
 
   _handleLabelClick() {
     // Focus the input when label is clicked
-    const input = this.shadowRoot.querySelector('input');
+    const input = this.shadowRoot.querySelector("input");
     if (input) {
       input.focus();
     }
@@ -124,12 +121,11 @@ export class GameTitleComponent extends LitElement {
           @focus=${this._handleFocus}
           @blur=${this._handleBlur}
           placeholder="Set the game title"
-          aria-label="Game title"
-        />
+          aria-label="Game title" />
         <span class="pencil">✏️</span>
       </label>
     `;
   }
 }
 
-customElements.define('game-title', GameTitleComponent);
+customElements.define("game-title", GameTitleComponent);

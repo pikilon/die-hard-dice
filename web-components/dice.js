@@ -1,7 +1,4 @@
-// @ts-check
 import { LitElement, html, css } from "lit";
-
-/** @typedef {import('../types/game.d.ts').Dice} Dice */
 
 /**
  * A web component representing a die with customizable sides.

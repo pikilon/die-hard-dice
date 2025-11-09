@@ -1,10 +1,5 @@
-// @ts-check
 import { LitElement, html, css } from "lit";
 import { subscribe, addDice, updateDice, closeEditingDice } from "../state/game-state.js";
-
-/** @typedef {import('../types/game.d.ts').GameState} GameState */
-/** @typedef {import('../types/game.d.ts').Dice} Dice */
-/** @typedef {import('../types/game.d.ts').UnsubscribeFunction} UnsubscribeFunction */
 
 /**
  * A modal web component for editing or adding a new dice.

@@ -1,4 +1,3 @@
-// @ts-check
 
 /** @type {string} */
 const CACHE_NAME = 'die-hard-dice-cache-v1';

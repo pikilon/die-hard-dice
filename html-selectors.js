@@ -1,4 +1,3 @@
-// @ts-check
 
 /**
  * Global references to DOM elements
