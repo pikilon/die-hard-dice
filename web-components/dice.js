@@ -8,6 +8,7 @@ export class DieDice extends LitElement {
   static get properties() {
     return {
       sides: { type: Array },
+      color: { type: String },
       _current: { state: true },
     };
   }
@@ -19,6 +20,8 @@ export class DieDice extends LitElement {
     super();
     /** @type {string[]} */
     this.sides = [];
+    /** @type {string} */
+    this.color = "#000000";
     /** @type {string} */
     this._current = "";
   }
@@ -55,7 +58,11 @@ export class DieDice extends LitElement {
   }
 
   render() {
-    return html`<div class="side">${this._current}</div>`;
+    return html`
+      <div class="side" style="background-color: ${this.color}">
+        <span style="color: white; mix-blend-mode: difference;">${this._current}</span>
+      </div>
+    `;
   }
 
   static styles = css`

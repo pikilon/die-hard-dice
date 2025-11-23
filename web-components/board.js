@@ -75,7 +75,7 @@ export class BoardComponent extends LitElement {
         ${this.diceOrder.map((diceIndex) => {
           const dice = this.dice[diceIndex];
           if (!dice) return null;
-          return html`<die-dice .sides=${dice.sides}></die-dice>`;
+          return html`<die-dice .sides=${dice.sides} .color=${dice.color}></die-dice>`;
         })}
       </div>
     `;

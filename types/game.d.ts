@@ -5,6 +5,8 @@ declare global {
   interface Dice {
     /** The name of the dice */
     name: string;
+    /** The color of the dice */
+    color: string;
     /** The sides of the dice */
     sides: string[];
   }

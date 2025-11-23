@@ -9,6 +9,7 @@ export class DiceEditor extends LitElement {
   static properties = {
     _gameState: { state: true },
     _diceSides: { state: true },
+    _diceColor: { state: true },
   };
 
   constructor() {
@@ -17,6 +18,8 @@ export class DiceEditor extends LitElement {
     this._gameState = null;
     /** @type {string[]} */
     this._diceSides = ["", ""];
+    /** @type {string} */
+    this._diceColor = "#000000";
     /** @type {UnsubscribeFunction | null} */
     this._unsubscribe = null;
   }
@@ -34,14 +37,17 @@ export class DiceEditor extends LitElement {
         if (editingIndex === undefined) {
           // Close modal - reset sides
           this._diceSides = ["", ""];
+          this._diceColor = "#000000";
         } else if (editingIndex === -1) {
           // Create new dice - empty sides
           this._diceSides = ["", ""];
+          this._diceColor = "#000000";
         } else if (editingIndex >= 0) {
           // Edit existing dice
           if (editingIndex < state.dice.length) {
             const dice = state.dice[editingIndex];
             this._diceSides = [...dice.sides];
+            this._diceColor = dice.color || "#000000";
             // Ensure at least 2 sides
             if (this._diceSides.length < 2) {
               this._diceSides = ["", ""];
@@ -74,6 +80,7 @@ export class DiceEditor extends LitElement {
     const form = /** @type {HTMLFormElement} */ (e.target);
     const formData = new FormData(form);
     const name = formData.get("name")?.toString().trim() || "";
+    const color = formData.get("color")?.toString().trim() || "#000000";
     
     if (!name) {
       return; // Form validation will handle this
@@ -93,7 +100,7 @@ export class DiceEditor extends LitElement {
       return;
     }
 
-    const dice = { name, sides };
+    const dice = { name, sides, color };
     const editingIndex = this._gameState?.editingDiceIndex;
 
     if (editingIndex === -1) {
@@ -149,6 +156,17 @@ export class DiceEditor extends LitElement {
                 value="${diceName}"
                 required
                 placeholder="Enter dice name"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="dice-color">Color</label>
+              <input
+                type="color"
+                id="dice-color"
+                name="color"
+                value="${this._diceColor}"
+                style="width: 100%; height: 40px; padding: 2px;"
               />
             </div>
 
