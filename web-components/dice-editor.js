@@ -1,5 +1,5 @@
 import { LitElement, html, css } from "lit";
-import { subscribe, addDice, updateDice, closeEditingDice } from "../state/game-state.js";
+import { subscribe, addDice, updateDice, closeEditingDice, addNewDiceAndReplace } from "../state/game-state.js";
 
 /**
  * A modal web component for editing or adding a new dice.
@@ -10,6 +10,7 @@ export class DiceEditor extends LitElement {
     _gameState: { state: true },
     _diceSides: { state: true },
     _diceColor: { state: true },
+    _hasChanges: { state: true },
   };
 
   constructor() {
@@ -22,6 +23,8 @@ export class DiceEditor extends LitElement {
     this._diceColor = "#000000";
     /** @type {UnsubscribeFunction | null} */
     this._unsubscribe = null;
+    /** @type {boolean} */
+    this._hasChanges = false;
   }
 
   connectedCallback() {
@@ -34,6 +37,7 @@ export class DiceEditor extends LitElement {
       
       // Check if editing index has changed
       if (previousState?.editingDiceIndex !== editingIndex) {
+        this._hasChanges = false;
         if (editingIndex === undefined) {
           // Close modal - reset sides
           this._diceSides = ["", ""];
@@ -70,14 +74,53 @@ export class DiceEditor extends LitElement {
     }
   }
 
+  _checkChanges() {
+    const editingIndex = this._gameState?.editingDiceIndex;
+    if (editingIndex === undefined || editingIndex === -1) {
+      this._hasChanges = false;
+      return;
+    }
+
+    const originalDice = this._gameState?.dice[editingIndex];
+    if (!originalDice) return;
+
+    // Check name (from input value, but we need to access it or store it in state)
+    // For simplicity, let's assume name change is handled by input event
+    const nameInput = this.shadowRoot?.querySelector('#dice-name');
+    const currentName = nameInput ? /** @type {HTMLInputElement} */ (nameInput).value : originalDice.name;
+
+    const nameChanged = currentName !== originalDice.name;
+    const colorChanged = this._diceColor !== originalDice.color;
+    
+    // Check sides
+    const sidesChanged = JSON.stringify(this._diceSides) !== JSON.stringify(originalDice.sides);
+
+    this._hasChanges = nameChanged || colorChanged || sidesChanged;
+  }
+
+  _handleInput(e) {
+    // Trigger change check on any input
+    // We need to wait for the value to update if it's bound
+    requestAnimationFrame(() => this._checkChanges());
+  }
+
   /**
    * Handle form submission
    * @param {Event} e
    */
   _handleSubmit(e) {
     e.preventDefault();
-    
-    const form = /** @type {HTMLFormElement} */ (e.target);
+    this._saveDice(false);
+  }
+
+  _handleCreateNew() {
+    this._saveDice(true);
+  }
+
+  _saveDice(asNew) {
+    const form = this.shadowRoot?.querySelector('form');
+    if (!form) return;
+
     const formData = new FormData(form);
     const name = formData.get("name")?.toString().trim() || "";
     const color = formData.get("color")?.toString().trim() || "#000000";
@@ -102,13 +145,18 @@ export class DiceEditor extends LitElement {
 
     const dice = { name, sides, color };
     const editingIndex = this._gameState?.editingDiceIndex;
+    const editingOrderIndex = this._gameState?.editingOrderIndex;
 
-    if (editingIndex === -1) {
-      // Add new dice
-      addDice(dice);
-    } else if (editingIndex !== undefined && editingIndex >= 0) {
-      // Update existing dice
-      updateDice(editingIndex, dice);
+    if (asNew) {
+       addNewDiceAndReplace(dice, editingOrderIndex);
+    } else {
+      if (editingIndex === -1) {
+        // Add new dice
+        addDice(dice);
+      } else if (editingIndex !== undefined && editingIndex >= 0) {
+        // Update existing dice
+        updateDice(editingIndex, dice);
+      }
     }
 
     closeEditingDice();
@@ -119,6 +167,7 @@ export class DiceEditor extends LitElement {
    */
   _addSide() {
     this._diceSides = [...this._diceSides, ""];
+    this._checkChanges();
   }
 
   /**
@@ -128,6 +177,7 @@ export class DiceEditor extends LitElement {
   _removeSide(index) {
     if (this._diceSides.length > 2) {
       this._diceSides = this._diceSides.filter((_, i) => i !== index);
+      this._checkChanges();
     }
   }
 
@@ -156,6 +206,7 @@ export class DiceEditor extends LitElement {
                 value="${diceName}"
                 required
                 placeholder="Enter dice name"
+                @input=${this._handleInput}
               />
             </div>
 
@@ -167,6 +218,7 @@ export class DiceEditor extends LitElement {
                 name="color"
                 value="${this._diceColor}"
                 style="width: 100%; height: 40px; padding: 2px;"
+                @input=${(e) => { this._diceColor = e.target.value; this._handleInput(e); }}
               />
             </div>
 
@@ -181,6 +233,12 @@ export class DiceEditor extends LitElement {
                       value="${side}"
                       placeholder="Side ${index + 1}"
                       required
+                      @input=${(e) => { 
+                        const newSides = [...this._diceSides];
+                        newSides[index] = e.target.value;
+                        this._diceSides = newSides;
+                        this._handleInput(e);
+                      }}
                     />
                     <button
                       type="button"
@@ -203,6 +261,11 @@ export class DiceEditor extends LitElement {
               <button type="button" class="btn-cancel" @click=${closeEditingDice}>
                 Cancel
               </button>
+              ${!isNewDice && this._hasChanges ? html`
+                <button type="button" class="btn-create-new" @click=${this._handleCreateNew}>
+                  Create New Dice
+                </button>
+              ` : ''}
               <button type="submit" class="btn-submit">
                 ${isNewDice ? "Add Dice" : "Update Dice"}
               </button>
@@ -398,6 +461,22 @@ export class DiceEditor extends LitElement {
 
     button[type="submit"]:active {
       transform: scale(0.98);
+    }
+
+    .btn-create-new {
+      padding: 10px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #34a853;
+      color: white;
+    }
+
+    .btn-create-new:hover {
+      background: #2d8e47;
     }
   `;
 }

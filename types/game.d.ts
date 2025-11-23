@@ -28,6 +28,10 @@ declare global {
      * - 0,1,2...: Index of the dice in gameState.dice array being edited
      */
     editingDiceIndex?: number;
+    /**
+     * Index of the dice instance in diceOrder being edited
+     */
+    editingOrderIndex?: number;
   }
 
   /**

@@ -79,7 +79,7 @@ export class BoardComponent extends LitElement {
             <die-dice 
               .sides=${dice.sides} 
               .color=${dice.color}
-              @dice-edit=${() => editDice(diceIndex)}
+              @dice-edit=${() => editDice(diceIndex, orderIndex)}
               @dice-clone=${() => addDiceInstance(diceIndex)}
               @dice-delete=${() => removeDiceInstance(orderIndex)}
             ></die-dice>`;

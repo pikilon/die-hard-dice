@@ -7,6 +7,7 @@ const DEFAULT_EMPTY_GAME_STATE = {
   dice: [],
   diceOrder: [],
   editingDiceIndex: undefined,
+  editingOrderIndex: undefined,
 };
 
 const subscribers = new Set();
@@ -160,9 +161,32 @@ export function updateDiceOrder(newDiceOrder) {
 /**
  * Sets the index of the dice to edit
  * @param {number} [diceIndex] - Index of the dice in gameState.dice array, or undefined to clear
+ * @param {number} [orderIndex] - Index of the dice in gameState.diceOrder array
  */
-export function editDice(diceIndex = undefined) {
+export function editDice(diceIndex = undefined, orderIndex = undefined) {
   DEFAULT_EMPTY_GAME_STATE.editingDiceIndex = diceIndex;
+  DEFAULT_EMPTY_GAME_STATE.editingOrderIndex = orderIndex;
+  notify();
+}
+
+/**
+ * Adds a new dice and replaces the instance at orderIndex with the new dice
+ * @param {Dice} dice - New dice object
+ * @param {number} orderIndex - Index in diceOrder to replace
+ */
+export function addNewDiceAndReplace(dice, orderIndex) {
+  // Add new dice
+  DEFAULT_EMPTY_GAME_STATE.dice.push(dice);
+  const newDiceIndex = DEFAULT_EMPTY_GAME_STATE.dice.length - 1;
+  
+  // Replace in order
+  if (orderIndex !== undefined && orderIndex >= 0 && orderIndex < DEFAULT_EMPTY_GAME_STATE.diceOrder.length) {
+    DEFAULT_EMPTY_GAME_STATE.diceOrder[orderIndex] = newDiceIndex;
+  } else {
+    // Fallback if no order index (shouldn't happen in this flow but good for safety)
+    DEFAULT_EMPTY_GAME_STATE.diceOrder.push(newDiceIndex);
+  }
+  
   notify();
 }
 
