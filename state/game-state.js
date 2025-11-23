@@ -75,6 +75,47 @@ export function addDice(dice) {
 }
 
 /**
+ * Adds an instance of an existing dice to the order
+ * @param {number} diceIndex - Index of the dice in the dice array
+ */
+export function addDiceInstance(diceIndex) {
+  if (diceIndex >= 0 && diceIndex < DEFAULT_EMPTY_GAME_STATE.dice.length) {
+    DEFAULT_EMPTY_GAME_STATE.diceOrder.push(diceIndex);
+    notify();
+  }
+}
+
+/**
+ * Removes an instance of a dice from the order.
+ * If it's the last instance of that dice type, removes the dice definition as well.
+ * @param {number} orderIndex - Index in the diceOrder array to remove
+ */
+export function removeDiceInstance(orderIndex) {
+  if (orderIndex < 0 || orderIndex >= DEFAULT_EMPTY_GAME_STATE.diceOrder.length) return;
+
+  const diceIndex = DEFAULT_EMPTY_GAME_STATE.diceOrder[orderIndex];
+  
+  // Remove from order
+  DEFAULT_EMPTY_GAME_STATE.diceOrder.splice(orderIndex, 1);
+
+  // Check if this dice definition is still used
+  const isUsed = DEFAULT_EMPTY_GAME_STATE.diceOrder.includes(diceIndex);
+
+  if (!isUsed) {
+    // Remove from dice definitions
+    DEFAULT_EMPTY_GAME_STATE.dice.splice(diceIndex, 1);
+    
+    // Shift indices in diceOrder
+    DEFAULT_EMPTY_GAME_STATE.diceOrder = DEFAULT_EMPTY_GAME_STATE.diceOrder.map(idx => {
+      if (idx > diceIndex) return idx - 1;
+      return idx;
+    });
+  }
+  
+  notify();
+}
+
+/**
  * Deletes a dice at the specified index
  * @param {number} index - Index of the dice to delete
  */

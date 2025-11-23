@@ -1,6 +1,6 @@
 import { LitElement, html, css } from "lit";
 import "../web-components/dice.js";
-import { subscribe } from "../state/game-state.js";
+import { subscribe, editDice, addDiceInstance, removeDiceInstance } from "../state/game-state.js";
 
 
 export class BoardComponent extends LitElement {
@@ -72,10 +72,17 @@ export class BoardComponent extends LitElement {
   render() {
     return html`
       <div class="stage">
-        ${this.diceOrder.map((diceIndex) => {
+        ${this.diceOrder.map((diceIndex, orderIndex) => {
           const dice = this.dice[diceIndex];
           if (!dice) return null;
-          return html`<die-dice .sides=${dice.sides} .color=${dice.color}></die-dice>`;
+          return html`
+            <die-dice 
+              .sides=${dice.sides} 
+              .color=${dice.color}
+              @dice-edit=${() => editDice(diceIndex)}
+              @dice-clone=${() => addDiceInstance(diceIndex)}
+              @dice-delete=${() => removeDiceInstance(orderIndex)}
+            ></die-dice>`;
         })}
       </div>
     `;

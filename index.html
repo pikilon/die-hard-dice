@@ -14,7 +14,10 @@
         }
       }
     </script>
-    <!-- Removed old d6 and abcDice variable declarations to avoid redeclaration -->
+<!-- 
+    example catán
+    http://localhost:5500/?game=%7B%22title%22%3A%22Cat%C3%A1n%22%2C%22dice%22%3A%5B%7B%22name%22%3A%22d6%22%2C%22sides%22%3A%5B%221%22%2C%222%22%2C%223%22%2C%224%22%2C%225%22%2C%226%22%5D%2C%22color%22%3A%22%23f00000%22%7D%5D%2C%22diceOrder%22%3A%5B0%2C0%5D%7D
+    Removed old d6 and abcDice variable declarations to avoid redeclaration -->
   </head>
   <body>
     <game-title></game-title>
@@ -35,6 +38,7 @@
       // Example: subscribe to state changes
       subscribe(state => {
         const title = state.title || "Die hard Dice";
+        console.log('current State', state);
 
         document.title = `🎲 ${title}`;
       });
