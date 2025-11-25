@@ -3,7 +3,7 @@ import { updateUrlFromState } from "./url-state.js";
 
 /** @type {GameState} */
 const DEFAULT_EMPTY_GAME_STATE = {
-  title: "the game title",
+  title: "",
   dice: [],
   diceOrder: [],
   editingDiceIndex: undefined,
