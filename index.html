@@ -71,6 +71,12 @@
           "demo_d20": { type: "d20", color: "#0000aa", quantity: 1, faces: [] }
         };
       }
+      console.log('mat', mat);
+
+      mat.addEventListener('dice-settled', (e) => {
+      console.log('Results:', e.detail.results);
+        });
+
 
     </script>
 
