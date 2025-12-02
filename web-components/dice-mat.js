@@ -76,10 +76,17 @@ export class DiceMat extends LitElement {
     this.dice = {};
     this.diceMeshes = [];
     this.diceBodies = [];
-    this.isPressed = false;
-    this.launchPower = 0;
+    this.isDragging = false;
     this.mousePos = new THREE.Vector2();
-    this.launchDirection = new THREE.Vector3(0, 1, -1); // Default forward
+    this.raycaster = new THREE.Raycaster();
+    this.dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -10); // Plane at y=10
+    this.lastMousePos3D = new THREE.Vector3();
+    this.mouseVelocity = new THREE.Vector3();
+    this.lastTime = 0;
+
+    this._onWindowResize = this.onWindowResize.bind(this);
+    this._onMouseMove = this.onMouseMove.bind(this);
+    this._onMouseUp = this.releaseThrow.bind(this);
   }
 
   firstUpdated() {
@@ -87,8 +94,9 @@ export class DiceMat extends LitElement {
     this.initCannon();
     this.gameLoop();
     
-    window.addEventListener('resize', this.onWindowResize.bind(this));
-    window.addEventListener('mousemove', this.onMouseMove.bind(this));
+    window.addEventListener('resize', this._onWindowResize);
+    window.addEventListener('mousemove', this._onMouseMove);
+    window.addEventListener('mouseup', this._onMouseUp);
     
     // Initial spawn if dice are present
     if (this.dice) {
@@ -105,8 +113,9 @@ export class DiceMat extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     cancelAnimationFrame(this.animationId);
-    window.removeEventListener('resize', this.onWindowResize.bind(this));
-    window.removeEventListener('mousemove', this.onMouseMove.bind(this));
+    window.removeEventListener('resize', this._onWindowResize);
+    window.removeEventListener('mousemove', this._onMouseMove);
+    window.removeEventListener('mouseup', this._onMouseUp);
   }
 
   initThree() {
@@ -170,7 +179,7 @@ export class DiceMat extends LitElement {
     this.world = new CANNON.World();
     this.world.gravity.set(0, -9.82 * 2, 0); // Higher gravity for snappier feel
     this.world.broadphase = new CANNON.NaiveBroadphase();
-    this.world.solver.iterations = 10;
+    this.world.solver.iterations = 20; // Increased iterations for stability
 
     // Physics Materials
     const groundMat = new CANNON.Material();
@@ -198,18 +207,24 @@ export class DiceMat extends LitElement {
     this.world.addBody(floorBody);
 
     // Walls Bodies (Invisible Dome/Container)
-    // Made walls much higher (20 units) to prevent dice from flying out
-    this.addWall(0, 10, -10.5, 20, 20, 1, groundMat); // Back
-    this.addWall(0, 10, 10.5, 20, 20, 1, groundMat); // Front
-    this.addWall(-10.5, 10, 0, 1, 20, 20, groundMat); // Left
-    this.addWall(10.5, 10, 0, 1, 20, 20, groundMat); // Right
+    // Made walls much thicker (100 units) to prevent tunneling
+    // Floor is -10 to 10.
+    // Wall inner face at 10. Center at 10 + 50 = 60.
+    const thickness = 100;
+    const height = 100;
+    const offset = 10 + thickness / 2;
+    
+    this.addWall(0, height/2, -offset, 200, height, thickness, groundMat); // Back
+    this.addWall(0, height/2, offset, 200, height, thickness, groundMat); // Front
+    this.addWall(-offset, height/2, 0, thickness, height, 200, groundMat); // Left
+    this.addWall(offset, height/2, 0, thickness, height, 200, groundMat); // Right
 
     // Ceiling (Invisible)
     const ceilingShape = new CANNON.Plane();
     const ceilingBody = new CANNON.Body({ mass: 0, material: groundMat });
     ceilingBody.addShape(ceilingShape);
     ceilingBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 2);
-    ceilingBody.position.set(0, 20, 0);
+    ceilingBody.position.set(0, 40, 0); // Higher ceiling
     this.world.addBody(ceilingBody);
   }
 
@@ -432,68 +447,96 @@ export class DiceMat extends LitElement {
   }
 
   onMouseMove(e) {
-    // Calculate mouse position in normalized device coordinates (-1 to +1)
-    // But for "throw direction", we just want relative movement or position relative to center.
     const rect = this.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-    
-    this.mousePos.set(x, y);
+    // Normalized device coordinates
+    this.mousePos.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mousePos.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
-    if (this.isPressed) {
-      // Update launch direction based on mouse pos relative to center bottom?
-      // Let's say mouse X controls left/right angle.
-      // Mouse Y controls up/down angle?
-      this.launchDirection.set(x, 0.5, -1).normalize();
+    if (this.isDragging) {
+      this.raycaster.setFromCamera(this.mousePos, this.camera);
+      const target = new THREE.Vector3();
+      this.raycaster.ray.intersectPlane(this.dragPlane, target);
+      
+      if (target) {
+        // Limit target within bounds roughly
+        target.x = Math.max(-9, Math.min(9, target.x));
+        target.z = Math.max(-9, Math.min(9, target.z));
+
+        const now = performance.now();
+        const dt = (now - this.lastTime) / 1000;
+        if (dt > 0) {
+          this.mouseVelocity.copy(target).sub(this.lastMousePos3D).divideScalar(dt);
+        }
+        this.lastMousePos3D.copy(target);
+        this.lastTime = now;
+      }
     }
   }
 
   startThrow() {
-    this.isPressed = true;
-    this.launchPower = 0;
-    const bar = this.shadowRoot.getElementById('power-bar');
-    const fill = this.shadowRoot.getElementById('power-fill');
-    bar.style.display = 'block';
+    this.isDragging = true;
+    this.lastTime = performance.now();
     
-    // Reset dice positions to "hand" position (e.g. near camera)
-    this.diceBodies.forEach((body, i) => {
-      body.position.set((Math.random()-0.5)*2, 10, 8 + (Math.random()-0.5));
-      body.velocity.set(0,0,0);
-      body.angularVelocity.set(0,0,0);
-      // Wake up
-      body.wakeUp();
-    });
+    // Calculate initial mouse 3D pos
+    this.raycaster.setFromCamera(this.mousePos, this.camera);
+    this.raycaster.ray.intersectPlane(this.dragPlane, this.lastMousePos3D);
 
-    this.chargeInterval = setInterval(() => {
-      this.launchPower = Math.min(this.launchPower + 1, 100);
-      fill.style.width = `${this.launchPower}%`;
-    }, 20);
+    // Wake up and lift dice
+    this.diceBodies.forEach((body, i) => {
+      body.wakeUp();
+      // Randomize initial lift slightly to avoid stacking perfectly
+      const offset = new CANNON.Vec3((Math.random()-0.5)*2, (Math.random()-0.5)*2, (Math.random()-0.5)*2);
+      // We don't set position here, we let the gameLoop move them towards the mouse
+      // But we can give them a little upward bump
+      body.velocity.set(0, 5, 0);
+      body.angularVelocity.set(Math.random(), Math.random(), Math.random());
+    });
   }
 
   releaseThrow() {
-    if (!this.isPressed) return;
-    this.isPressed = false;
-    clearInterval(this.chargeInterval);
-    
-    const bar = this.shadowRoot.getElementById('power-bar');
-    bar.style.display = 'none';
+    if (!this.isDragging) return;
+    this.isDragging = false;
 
-    const force = 10 + (this.launchPower / 100) * 40; // Base force + variable
+    // Apply release velocity
+    // Clamp velocity to avoid crazy speeds
+    const maxSpeed = 50;
+    if (this.mouseVelocity.length() > maxSpeed) {
+      this.mouseVelocity.normalize().multiplyScalar(maxSpeed);
+    }
+
+    // Cannon effect: Add impulse in the direction of movement
+    const direction = new THREE.Vector3().copy(this.mouseVelocity).normalize();
+    const impulseStrength = 50; // Strong impulse for cannon effect
 
     this.diceBodies.forEach(body => {
-      // Add some randomness to direction
-      const dir = this.launchDirection.clone();
-      dir.x += (Math.random() - 0.5) * 0.2;
-      dir.z += (Math.random() - 0.5) * 0.2;
-      dir.normalize();
+      // Apply the mouse velocity to the body
+      const vel = new CANNON.Vec3(
+        this.mouseVelocity.x, 
+        this.mouseVelocity.y, 
+        this.mouseVelocity.z
+      );
+      body.velocity.copy(vel);
+
+      // Apply extra impulse (Cannon) if moving
+      if (this.mouseVelocity.length() > 0.1) {
+          const impulse = new CANNON.Vec3(
+            direction.x * impulseStrength,
+            direction.y * impulseStrength,
+            direction.z * impulseStrength
+          );
+          body.applyImpulse(impulse, new CANNON.Vec3(0,0,0));
+      }
       
-      const impulse = new CANNON.Vec3(dir.x * force, dir.y * force, dir.z * force);
-      // Apply impulse to center
-      body.applyImpulse(impulse, new CANNON.Vec3(0,0,0));
+      // Add randomness and spin
+      body.velocity.x += (Math.random()-0.5)*5;
+      body.velocity.y += (Math.random()-0.5)*5;
+      body.velocity.z += (Math.random()-0.5)*5;
       
-      // Add random rotation
-      const rot = new CANNON.Vec3(Math.random(), Math.random(), Math.random()).scale(10);
-      body.angularVelocity.set(rot.x, rot.y, rot.z);
+      body.angularVelocity.set(
+        Math.random() * 20,
+        Math.random() * 20,
+        Math.random() * 20
+      );
     });
   }
 
@@ -501,6 +544,37 @@ export class DiceMat extends LitElement {
     this.animationId = requestAnimationFrame(this.gameLoop.bind(this));
     
     if (this.world) {
+      // If dragging, move dice towards mouse target
+      if (this.isDragging) {
+        const k = 15; // Increased Spring stiffness / attraction force (was 5)
+        const damping = 0.5; // Reduced damping for snappier response (was 0.8)
+        
+        this.diceBodies.forEach((body, i) => {
+          // Target position is lastMousePos3D + some offset for each die so they don't overlap perfectly
+          // We can use their index to spread them out or just let them collide
+          // Let's try to pull them towards the center but let physics handle collisions
+          
+          const target = new CANNON.Vec3(this.lastMousePos3D.x, this.lastMousePos3D.y, this.lastMousePos3D.z);
+          
+          // Simple P-controller for velocity
+          // v_new = (target_pos - current_pos) * k
+          const diff = target.vsub(body.position);
+          const desiredVel = diff.scale(k);
+          
+          // Apply to velocity directly (kinematic-like control) or apply force?
+          // Applying force is more physically correct but harder to control.
+          // Setting velocity directly is easier for "grabbing".
+          
+          // Let's blend current velocity with desired velocity
+          body.velocity.x = body.velocity.x * damping + desiredVel.x * (1 - damping);
+          body.velocity.y = body.velocity.y * damping + desiredVel.y * (1 - damping);
+          body.velocity.z = body.velocity.z * damping + desiredVel.z * (1 - damping);
+          
+          // Keep them awake
+          body.wakeUp();
+        });
+      }
+
       this.world.step(1 / 60);
       
       // Sync meshes with bodies
@@ -525,15 +599,12 @@ export class DiceMat extends LitElement {
         Dice Mat 3D
       </div>
       <div id="controls">
-        <div id="power-bar"><div id="power-fill"></div></div>
         <button 
           @mousedown=${this.startThrow} 
-          @mouseup=${this.releaseThrow}
-          @mouseleave=${this.releaseThrow}
           @touchstart=${(e) => { e.preventDefault(); this.startThrow(); }}
           @touchend=${(e) => { e.preventDefault(); this.releaseThrow(); }}
         >
-          HOLD TO THROW
+          HOLD TO GRAB & THROW
         </button>
       </div>
     `;
