@@ -11,7 +11,10 @@
           "lodash.shuffle": "https://cdn.jsdelivr.net/npm/lodash.shuffle@latest/index.js",
           "lit": "https://cdn.jsdelivr.net/npm/lit@latest/+esm",
           "lit/": "https://cdn.jsdelivr.net/npm/lit@latest/",
-          "jsurl": "https://cdn.jsdelivr.net/npm/jsurl@0.1.5/+esm"
+          "jsurl": "https://cdn.jsdelivr.net/npm/jsurl@0.1.5/+esm",
+          "three": "https://cdn.jsdelivr.net/npm/three@latest/build/three.module.js",
+          "three/": "https://cdn.jsdelivr.net/npm/three@latest/",
+          "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
         }
       }
     </script>
@@ -25,11 +28,13 @@
     <die-board></die-board>
     <dice-editor></dice-editor>
     <game-actions></game-actions>
+    <dice-mat id="demo-mat"></dice-mat>
     <script type="module">
       import "./web-components/board.js";
       import "./web-components/game-title.js";
       import "./web-components/dice-editor.js";
       import "./web-components/game-actions.js";
+      import "./web-components/dice-mat.js";
       import { subscribe } from './state/game-state.js';
       import { initStateFromUrl } from './state/url-state.js';
 
@@ -42,7 +47,30 @@
         console.log('current State', state);
 
         document.title = `🎲 ${title}`;
+        
+        // Update dice mat with state dice if available, or use demo
+        const mat = document.getElementById('demo-mat');
+        if (mat && state.dice) {
+           // Convert array to dictionary if needed, or just pass if structure matches
+           // The current state.dice is likely an array of objects.
+           // The user requested a dictionary. I'll adapt or just use the array if I change the component to accept array.
+           // But I implemented it as Object.values(this.dice).
+           // So if I pass an array (which is an object with indices as keys), Object.values works!
+           // So passing the array directly might work.
+           mat.dice = state.dice;
+        }
       });
+      
+      // Set initial demo dice if state is empty
+      const mat = document.getElementById('demo-mat');
+      if (mat) {
+        mat.dice = {
+          "demo_d6": { type: "d6", color: "#e74c3c", quantity: 2, faces: ["1", "2", "3", "4", "5", "6"] },
+          "demo_d6_2": { type: "d6", color: "#2ecc71", quantity: 2, faces: ["1", "2", "3", "4", "5", "6"] },
+          "demo_coin": { type: "coin", color: "#000000", quantity: 2, faces: ["👑", "⚔️"] },
+          "demo_d20": { type: "d20", color: "#3498db", quantity: 1, faces: [] }
+        };
+      }
 
     </script>
 
