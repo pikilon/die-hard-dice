@@ -372,19 +372,49 @@ export class DiceMat extends LitElement {
     canvas.height = 128;
     const ctx = canvas.getContext('2d');
     
+    const bgColor = color || '#ffffff';
+
     // Background
-    ctx.fillStyle = color || '#ffffff';
+    ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, 128, 128);
     
+    // Calculate contrast color
+    const getContrastColor = (hexColor) => {
+      // Convert hex to RGB
+      let r = 0, g = 0, b = 0;
+      if (hexColor.startsWith('#')) {
+        const hex = hexColor.substring(1);
+        if (hex.length === 3) {
+          r = parseInt(hex[0] + hex[0], 16);
+          g = parseInt(hex[1] + hex[1], 16);
+          b = parseInt(hex[2] + hex[2], 16);
+        } else if (hex.length === 6) {
+          r = parseInt(hex.substring(0, 2), 16);
+          g = parseInt(hex.substring(2, 4), 16);
+          b = parseInt(hex.substring(4, 6), 16);
+        }
+      } else if (typeof hexColor === 'number') {
+         r = (hexColor >> 16) & 255;
+         g = (hexColor >> 8) & 255;
+         b = hexColor & 255;
+      }
+      
+      // Calculate luminance
+      const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+      return (yiq >= 128) ? '#000000' : '#ffffff';
+    };
+
+    const textColor = getContrastColor(bgColor);
+
     // Text
-    ctx.fillStyle = '#000000'; // Assume black text for now, or contrast
+    ctx.fillStyle = textColor;
     ctx.font = 'bold 60px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, 64, 64);
     
     // Border
-    ctx.strokeStyle = '#000000';
+    ctx.strokeStyle = textColor;
     ctx.lineWidth = 5;
     ctx.strokeRect(0, 0, 128, 128);
 
