@@ -74,6 +74,7 @@ export class DiceMat extends LitElement {
   constructor() {
     super();
     this.dice = {};
+    this.diceInstances = [];
     this.diceMeshes = [];
     this.diceBodies = [];
     this.isDragging = false;
@@ -102,13 +103,13 @@ export class DiceMat extends LitElement {
 
     // Initial spawn if dice are present
     if (this.dice) {
-      this.spawnDice();
+      this.syncDice();
     }
   }
 
   updated(changedProperties) {
     if (changedProperties.has("dice")) {
-      this.spawnDice();
+      this.syncDice();
     }
   }
 
@@ -253,73 +254,137 @@ export class DiceMat extends LitElement {
     this.world.addBody(body);
   }
 
-  spawnDice() {
-    // Clear existing dice
-    this.diceMeshes.forEach((m) => this.scene.remove(m));
-    this.diceBodies.forEach((b) => this.world.removeBody(b));
-    this.diceMeshes = [];
-    this.diceBodies = [];
+  syncDice() {
+    if (!this.world || !this.scene) return;
 
-    if (!this.dice) return;
+    const newList = this.flattenDiceConfig(this.dice);
 
-    let offset = 0;
-    Object.values(this.dice).forEach((dieDef) => {
-      for (let i = 0; i < (dieDef.quantity || 1); i++) {
-        this.createDie(dieDef, offset);
-        offset += 1.5;
+    const existingById = new Map(
+      this.diceInstances.map((inst) => [inst.id, inst])
+    );
+
+    const nextInstances = [];
+
+    newList.forEach(({ id, def }) => {
+      const existing = existingById.get(id);
+      if (existing && this.isSameDef(existing.def, def)) {
+        nextInstances.push(existing);
+        existingById.delete(id);
+      } else {
+        if (existing) {
+          this.removeInstance(existing);
+        }
+        const inst = this.createDie(def);
+        nextInstances.push({ id, def, ...inst });
       }
     });
 
-    // Reset settled state so we detect when they land
+    existingById.forEach((inst) => this.removeInstance(inst));
+
+    this.diceInstances = nextInstances;
+    this.diceMeshes = nextInstances.map((inst) => inst.mesh);
+    this.diceBodies = nextInstances.map((inst) => inst.body);
     this.isSettled = false;
     this.settledTime = 0;
   }
 
-  createDie(dieDef, offset) {
+  flattenDiceConfig(diceConfig) {
+    if (!diceConfig) return [];
+    const entries = Array.isArray(diceConfig)
+      ? diceConfig.map((val, idx) => [idx, val])
+      : Object.entries(diceConfig);
+
+    const list = [];
+    entries.forEach(([key, def]) => {
+      if (!def) return;
+      const quantity = def?.quantity || 1;
+      for (let i = 0; i < quantity; i++) {
+        list.push({ id: `${key}:${i}`, def });
+      }
+    });
+    return list;
+  }
+
+  isSameDef(a, b) {
+    if (!a || !b) return false;
+    return (
+      a.type === b.type &&
+      a.color === b.color &&
+      JSON.stringify(a.faces || []) === JSON.stringify(b.faces || [])
+    );
+  }
+
+  removeInstance(inst) {
+    if (inst.mesh) this.scene.remove(inst.mesh);
+    if (inst.body) this.world.removeBody(inst.body);
+  }
+
+  createDie(dieDef) {
     let geometry, shape;
     const size = 1;
 
-    // Basic geometry selection
-    switch (dieDef.type) {
-      case "coin":
-        geometry = new THREE.CylinderGeometry(size, size, 0.2, 32);
-        // Use Box for physics stability to prevent vertical embedding
-        // Cylinder is radius 'size', height 0.2
-        // Box halfExtents: x=size, y=0.1, z=size
-        shape = new CANNON.Box(new CANNON.Vec3(size, 0.1, size));
-        break;
-      case "d4":
-        geometry = new THREE.TetrahedronGeometry(size);
-        // Cannon doesn't have Tetrahedron, use ConvexPolyhedron or approximate.
-        // For simplicity in this demo, we'll use a Box or Sphere approximation if Convex is too complex to build manually here.
-        // But we can build a ConvexPolyhedron from the Three geometry vertices.
-        shape = this.createConvexPolyhedron(geometry);
-        break;
-      case "d6":
-        geometry = new THREE.BoxGeometry(size, size, size);
-        shape = new CANNON.Box(new CANNON.Vec3(size / 2, size / 2, size / 2));
-        break;
-      case "d8":
-        geometry = new THREE.OctahedronGeometry(size);
-        shape = this.createConvexPolyhedron(geometry);
-        break;
-      case "d10":
-        // Approximation using Icosahedron or similar
-        geometry = new THREE.IcosahedronGeometry(size);
-        shape = this.createConvexPolyhedron(geometry);
-        break;
-      case "d12":
-        geometry = new THREE.DodecahedronGeometry(size);
-        shape = this.createConvexPolyhedron(geometry);
-        break;
-      case "d20":
-        geometry = new THREE.IcosahedronGeometry(size);
-        shape = this.createConvexPolyhedron(geometry);
-        break;
-      default:
-        geometry = new THREE.BoxGeometry(size, size, size);
-        shape = new CANNON.Box(new CANNON.Vec3(size / 2, size / 2, size / 2));
-    }
+    const DICE_TYPES = {
+      coin: {
+        getShapeGeometry: (diceSize) => {
+          const height = 0.2;
+          const geometry = new THREE.CylinderGeometry(
+            diceSize,
+            diceSize,
+            height,
+            32
+          );
+          const shape = new CANNON.Box(
+            new CANNON.Vec3(diceSize, height / 2, diceSize)
+          );
+          return { geometry, shape };
+        },
+      },
+      d4: {
+        getShapeGeometry: (diceSize) => {
+          const geometry = new THREE.TetrahedronGeometry(diceSize);
+          return { geometry, shape: this.createConvexPolyhedron(geometry) };
+        },
+      },
+      d6: {
+        getShapeGeometry: (diceSize) => {
+          const geometry = new THREE.BoxGeometry(diceSize, diceSize, diceSize);
+          const shape = new CANNON.Box(
+            new CANNON.Vec3(diceSize / 2, diceSize / 2, diceSize / 2)
+          );
+          return { geometry, shape };
+        },
+      },
+      d8: {
+        getShapeGeometry: (diceSize) => {
+          const geometry = new THREE.OctahedronGeometry(diceSize);
+          return { geometry, shape: this.createConvexPolyhedron(geometry) };
+        },
+      },
+      d10: {
+        getShapeGeometry: (diceSize) => {
+          const geometry = this.createD10Geometry(diceSize);
+          return { geometry, shape: this.createConvexPolyhedron(geometry) };
+        },
+      },
+      d12: {
+        getShapeGeometry: (diceSize) => {
+          const geometry = new THREE.DodecahedronGeometry(diceSize);
+          return { geometry, shape: this.createConvexPolyhedron(geometry) };
+        },
+      },
+      d20: {
+        getShapeGeometry: (diceSize) => {
+          const geometry = new THREE.IcosahedronGeometry(diceSize);
+          return { geometry, shape: this.createConvexPolyhedron(geometry) };
+        },
+      },
+    };
+
+    const { geometry: selectedGeometry, shape: selectedShape } = (
+      DICE_TYPES[dieDef.type] || DICE_TYPES.d6
+    ).getShapeGeometry(size);
+    geometry = selectedGeometry;
+    shape = selectedShape;
 
     // Material with color
     let material;
@@ -339,6 +404,34 @@ export class DiceMat extends LitElement {
       const face1 = this.createTextMaterial(dieDef.faces[0], dieDef.color);
       const face2 = this.createTextMaterial(dieDef.faces[1], dieDef.color);
       material = [sideMat, face1, face2];
+    } else if (dieDef.type === "d10") {
+      const faces =
+        dieDef.faces && dieDef.faces.length === 10
+          ? dieDef.faces
+          : ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
+      geometry = geometry.toNonIndexed();
+      geometry.clearGroups();
+
+      const uvs = geometry.attributes.uv;
+
+      // d10 has 10 kite-shaped faces, each made of 2 triangles = 20 triangles total
+      for (let i = 0; i < 10; i++) {
+        // Each kite face uses 2 triangles (6 vertices)
+        geometry.addGroup(i * 6, 6, i);
+
+        // Set UVs for both triangles of the kite
+        for (let j = 0; j < 2; j++) {
+          const baseIdx = i * 6 + j * 3;
+          uvs.setXY(baseIdx, 0.5, 1);
+          uvs.setXY(baseIdx + 1, 0, 0);
+          uvs.setXY(baseIdx + 2, 1, 0);
+        }
+      }
+
+      material = faces.map((text) =>
+        this.createTextMaterial(text, dieDef.color)
+      );
     } else if (dieDef.type === "d20") {
       const faces =
         dieDef.faces && dieDef.faces.length === 20
@@ -374,7 +467,6 @@ export class DiceMat extends LitElement {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = true;
     this.scene.add(mesh);
-    this.diceMeshes.push(mesh);
 
     // Create Body
     const body = new CANNON.Body({
@@ -399,7 +491,7 @@ export class DiceMat extends LitElement {
     // }
 
     this.world.addBody(body);
-    this.diceBodies.push(body);
+    return { mesh, body };
   }
 
   createTextMaterial(text, color) {
@@ -458,6 +550,92 @@ export class DiceMat extends LitElement {
 
     const texture = new THREE.CanvasTexture(canvas);
     return new THREE.MeshStandardMaterial({ map: texture });
+  }
+
+  /**
+   * Creates a pentagonal trapezohedron geometry for d10
+   * A d10 has 10 kite-shaped faces arranged around a central axis
+   */
+  createD10Geometry(size) {
+    const geometry = new THREE.BufferGeometry();
+
+    // Pentagonal trapezohedron vertices
+    // Top and bottom vertices on the axis
+    const topHeight = size * 0.9;
+    const bottomHeight = -size * 0.9;
+
+    // Middle ring vertices (two rings, offset by 36 degrees)
+    const upperRingHeight = size * 0.3;
+    const lowerRingHeight = -size * 0.3;
+    const ringRadius = size * 0.95;
+
+    const vertices = [];
+    const indices = [];
+
+    // Vertex 0: top point
+    vertices.push(0, topHeight, 0);
+    // Vertex 1: bottom point
+    vertices.push(0, bottomHeight, 0);
+
+    // Upper ring vertices (2-6)
+    for (let i = 0; i < 5; i++) {
+      const angle = (i * 2 * Math.PI) / 5;
+      vertices.push(
+        Math.cos(angle) * ringRadius,
+        upperRingHeight,
+        Math.sin(angle) * ringRadius
+      );
+    }
+
+    // Lower ring vertices (7-11), offset by 36 degrees
+    for (let i = 0; i < 5; i++) {
+      const angle = (i * 2 * Math.PI) / 5 + Math.PI / 5;
+      vertices.push(
+        Math.cos(angle) * ringRadius,
+        lowerRingHeight,
+        Math.sin(angle) * ringRadius
+      );
+    }
+
+    // Create 10 kite-shaped faces (each as 2 triangles)
+    // 5 upper kites (top point to upper ring to lower ring)
+    for (let i = 0; i < 5; i++) {
+      const upperCurr = 2 + i;
+      const upperNext = 2 + ((i + 1) % 5);
+      const lowerCurr = 7 + i;
+
+      // Upper kite: top -> upperCurr -> lowerCurr -> upperNext
+      // Triangle 1: top, upperCurr, lowerCurr
+      indices.push(0, upperCurr, lowerCurr);
+      // Triangle 2: top, lowerCurr, upperNext
+      indices.push(0, lowerCurr, upperNext);
+    }
+
+    // 5 lower kites (bottom point to lower ring to upper ring)
+    for (let i = 0; i < 5; i++) {
+      const lowerCurr = 7 + i;
+      const lowerNext = 7 + ((i + 1) % 5);
+      const upperNext = 2 + ((i + 1) % 5);
+
+      // Lower kite: bottom -> lowerNext -> upperNext -> lowerCurr
+      // Triangle 1: bottom, lowerNext, upperNext
+      indices.push(1, lowerNext, upperNext);
+      // Triangle 2: bottom, upperNext, lowerCurr
+      indices.push(1, upperNext, lowerCurr);
+    }
+
+    geometry.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(vertices, 3)
+    );
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+
+    // Add UV attribute for texturing
+    const uvs = new Float32Array(vertices.length / 3 * 2);
+    geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+
+    return geometry;
   }
 
   createConvexPolyhedron(geometry) {
@@ -561,18 +739,10 @@ export class DiceMat extends LitElement {
 
   calculateResults() {
     const results = [];
-    const diceDefs = [];
 
-    // Flatten dice definitions to match bodies array
-    Object.values(this.dice).forEach((dieDef) => {
-      for (let i = 0; i < (dieDef.quantity || 1); i++) {
-        diceDefs.push(dieDef);
-      }
-    });
-
-    this.diceBodies.forEach((body, index) => {
-      const dieDef = diceDefs[index];
-      const mesh = this.diceMeshes[index];
+    this.diceInstances.forEach((inst) => {
+      const dieDef = inst.def;
+      const mesh = inst.mesh;
       let value;
 
       if (dieDef.type === "d6") {

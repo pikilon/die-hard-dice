@@ -63,15 +63,25 @@
       
       // Set initial demo dice if state is empty
       const mat = document.getElementById('demo-mat');
-      if (mat) {
-        mat.dice = {
-          "demo_d6": { type: "d6", color: "#e74c3c", quantity: 2, faces: ["1", "2", "3", "4", "5", "6"] },
+      const matDice = {
+          "demo_d6": { type: "d6", color: "red", quantity: 2, faces: ["1", "2", "3", "4", "5", "6"] },
           "demo_d6_2": { type: "d6", color: "#2ecc71", quantity: 2, faces: ["1", "2", "3", "4", "5", "6"] },
-          "demo_coin": { type: "coin", color: "#000000", quantity: 2, faces: ["👑", "⚔️"] },
-          "demo_d20": { type: "d20", color: "#0000aa", quantity: 1, faces: [] }
+          "demo_coin": { type: "coin", color: "black", quantity: 2, faces: ["👑", "⚔️"] },
+          "demo_d20": { type: "d20", color: "#0000aa", quantity: 1, faces: [] },
+          "demo_d10": { type: "d10", color: "green", quantity: 1, faces: ["1","2","3","4","5","6","7","8","9","10"] },
+          "demo_d4": { type: "d4", color: "#e67e22", quantity: 1, faces: ["1","2","3","4"] },
+          "demo_d8": { type: "d8", color: "#16a085", quantity: 1, faces: ["1","2","3","4","5","6","7","8"] }
         };
+      if (mat) { 
+        mat.dice = matDice;
+        // setTimeout(function changeDice() {
+        //   mat.dice = {
+        //     ...matDice,
+        //     "demo_d10": { ...matDice["demo_d10"], color: "#8e44ad" },
+        //     "demo_d4": { ...matDice["demo_d4"], color: "#d35400" }
+        //   }
+        // }, 5000);
       }
-      console.log('mat', mat);
 
       mat.addEventListener('dice-settled', (e) => {
       console.log('Results:', e.detail.results);
