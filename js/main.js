@@ -1,7 +1,9 @@
-import * as dice from "./dice.js";
-
-// Initialize global tealDice object for backward compatibility
-window.tealDice = { dice };
+import {
+  DiceBox,
+  parse_notation,
+  stringify_notation,
+  setUseTrueRandom,
+} from "./dice.js";
 
 function dice_initialize(container = document.body) {
   document.getElementById("loading_text")?.remove();
@@ -15,7 +17,7 @@ function dice_initialize(container = document.body) {
   var info_div = document.getElementById("info_div");
   on_set_change();
 
-  dice.setUseTrueRandom(false);
+  setUseTrueRandom(false);
 
   function on_set_change(ev) {
     set.style.width = set.value.length + 3 + "ex";
@@ -57,7 +59,7 @@ function dice_initialize(container = document.body) {
     // Note: dice_color/label_color would need setter functions
   }
 
-  var box = new dice.DiceBox(canvas, { w: 500, h: 300 });
+  var box = new DiceBox(canvas, { w: 500, h: 300 });
   box.animate_selector = false;
 
   window.addEventListener("resize", function () {
@@ -82,7 +84,7 @@ function dice_initialize(container = document.body) {
   }
 
   function notation_getter() {
-    return dice.parse_notation(set.value);
+    return parse_notation(set.value);
   }
 
   function after_roll(notation, result) {
@@ -121,9 +123,9 @@ function dice_initialize(container = document.body) {
       }
       var name = box.search_dice_by_mouse(ev);
       if (name != undefined) {
-        var notation = dice.parse_notation(set.value);
+        var notation = parse_notation(set.value);
         notation.set.push(name);
-        set.value = dice.stringify_notation(notation);
+        set.value = stringify_notation(notation);
         on_set_change();
       }
     });

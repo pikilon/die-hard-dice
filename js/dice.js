@@ -1,5 +1,48 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.124.0/build/three.module.js';
-import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js';
+import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
+
+// ============================================================================
+// DICE MODULE IMPORTS
+// ============================================================================
+import {
+  // Common utilities
+  materialOptions,
+  calcTextureSize,
+  labelColor as commonLabelColor,
+  diceColor as commonDiceColor,
+  // Dice modules
+  createD4Geometry,
+  createD4Materials,
+  d4Labels,
+  createD6Geometry,
+  createD8Geometry,
+  createD10Geometry,
+  getD10Geometry,
+  createD12Geometry,
+  createD20Geometry,
+  // Configuration
+  knownTypes,
+  diceFaceRange,
+  diceMass,
+  diceInertia,
+} from './dice/index.js';
+
+// Create local aliases and re-export for backward compatibility
+const known_types = knownTypes;
+const dice_face_range = diceFaceRange;
+const dice_mass = diceMass;
+const dice_inertia = diceInertia;
+
+export { known_types, dice_face_range, dice_mass, dice_inertia };
+export { d4Labels as d4_labels };
+
+// Re-export geometry functions for backward compatibility
+export { createD4Geometry as create_d4_geometry };
+export { createD6Geometry as create_d6_geometry };
+export { createD8Geometry as create_d8_geometry };
+export { createD10Geometry as create_d10_geometry };
+export { createD12Geometry as create_d12_geometry };
+export { createD20Geometry as create_d20_geometry };
 
 // ============================================================================
 // MODULE VARIABLES
@@ -66,180 +109,6 @@ function rnd() {
   return random_storage.length ? random_storage.pop() : Math.random();
 }
 
-/**
- * Creates a Cannon.js convex polyhedron shape for physics simulation.
- * @param {Array} vertices - Array of THREE.Vector3 vertices.
- * @param {Array} faces - Array of face index arrays.
- * @param {number} radius - Scale factor for the shape.
- * @returns {CANNON.ConvexPolyhedron} The physics shape.
- */
-function create_shape(vertices, faces, radius) {
-  const cv = new Array(vertices.length);
-  const cf = new Array(faces.length);
-  for (let i = 0; i < vertices.length; ++i) {
-    const v = vertices[i];
-    cv[i] = new CANNON.Vec3(v.x * radius, v.y * radius, v.z * radius);
-  }
-  for (let i = 0; i < faces.length; ++i) {
-    cf[i] = faces[i].slice(0, faces[i].length - 1);
-  }
-  return new CANNON.ConvexPolyhedron({ vertices: cv, faces: cf });
-}
-
-/**
- * Creates a Three.js geometry from vertices and faces.
- * @param {Array} vertices - Array of THREE.Vector3 vertices.
- * @param {Array} faces - Array of face index arrays.
- * @param {number} radius - Scale factor for the geometry.
- * @param {number} tab - UV mapping tab offset.
- * @param {number} af - UV mapping angle offset.
- * @returns {THREE.Geometry} The constructed geometry.
- */
-function make_geom(vertices, faces, radius, tab, af) {
-  const geom = new THREE.Geometry();
-  for (let i = 0; i < vertices.length; ++i) {
-    const vertex = vertices[i].multiplyScalar(radius);
-    vertex.index = geom.vertices.push(vertex) - 1;
-  }
-  for (let i = 0; i < faces.length; ++i) {
-    const ii = faces[i];
-    const fl = ii.length - 1;
-    const aa = (Math.PI * 2) / fl;
-    for (let j = 0; j < fl - 2; ++j) {
-      geom.faces.push(
-        new THREE.Face3(
-          ii[0],
-          ii[j + 1],
-          ii[j + 2],
-          [
-            geom.vertices[ii[0]],
-            geom.vertices[ii[j + 1]],
-            geom.vertices[ii[j + 2]],
-          ],
-          0,
-          ii[fl] + 1
-        )
-      );
-      geom.faceVertexUvs[0].push([
-        new THREE.Vector2(
-          (Math.cos(af) + 1 + tab) / 2 / (1 + tab),
-          (Math.sin(af) + 1 + tab) / 2 / (1 + tab)
-        ),
-        new THREE.Vector2(
-          (Math.cos(aa * (j + 1) + af) + 1 + tab) / 2 / (1 + tab),
-          (Math.sin(aa * (j + 1) + af) + 1 + tab) / 2 / (1 + tab)
-        ),
-        new THREE.Vector2(
-          (Math.cos(aa * (j + 2) + af) + 1 + tab) / 2 / (1 + tab),
-          (Math.sin(aa * (j + 2) + af) + 1 + tab) / 2 / (1 + tab)
-        ),
-      ]);
-    }
-  }
-  geom.computeFaceNormals();
-  geom.boundingSphere = new THREE.Sphere(new THREE.Vector3(), radius);
-  return geom;
-}
-
-/**
- * Applies chamfering to geometry vertices and generates edge faces.
- * @param {Array} vectors - Array of THREE.Vector3 vertices.
- * @param {Array} faces - Array of face index arrays.
- * @param {number} chamfer - Chamfer amount (0-1).
- * @returns {Object} Object with chamfered vectors and faces arrays.
- */
-function chamfer_geom(vectors, faces, chamfer) {
-  const chamfer_vectors = [];
-  const chamfer_faces = [];
-  const corner_faces = new Array(vectors.length);
-  for (let i = 0; i < vectors.length; ++i) corner_faces[i] = [];
-  for (let i = 0; i < faces.length; ++i) {
-    const ii = faces[i];
-    const fl = ii.length - 1;
-    const center_point = new THREE.Vector3();
-    const face = new Array(fl);
-    for (let j = 0; j < fl; ++j) {
-      const vv = vectors[ii[j]].clone();
-      center_point.add(vv);
-      corner_faces[ii[j]].push((face[j] = chamfer_vectors.push(vv) - 1));
-    }
-    center_point.divideScalar(fl);
-    for (let j = 0; j < fl; ++j) {
-      const vv = chamfer_vectors[face[j]];
-      vv.subVectors(vv, center_point)
-        .multiplyScalar(chamfer)
-        .addVectors(vv, center_point);
-    }
-    face.push(ii[fl]);
-    chamfer_faces.push(face);
-  }
-  for (let i = 0; i < faces.length - 1; ++i) {
-    for (let j = i + 1; j < faces.length; ++j) {
-      const pairs = [];
-      let lastm = -1;
-      for (let m = 0; m < faces[i].length - 1; ++m) {
-        const n = faces[j].indexOf(faces[i][m]);
-        if (n >= 0 && n < faces[j].length - 1) {
-          if (lastm >= 0 && m != lastm + 1) pairs.unshift([i, m], [j, n]);
-          else pairs.push([i, m], [j, n]);
-          lastm = m;
-        }
-      }
-      if (pairs.length != 4) continue;
-      chamfer_faces.push([
-        chamfer_faces[pairs[0][0]][pairs[0][1]],
-        chamfer_faces[pairs[1][0]][pairs[1][1]],
-        chamfer_faces[pairs[3][0]][pairs[3][1]],
-        chamfer_faces[pairs[2][0]][pairs[2][1]],
-        -1,
-      ]);
-    }
-  }
-  for (let i = 0; i < corner_faces.length; ++i) {
-    const cf = corner_faces[i];
-    const face = [cf[0]];
-    let count = cf.length - 1;
-    while (count) {
-      for (let m = faces.length; m < chamfer_faces.length; ++m) {
-        let index = chamfer_faces[m].indexOf(face[face.length - 1]);
-        if (index >= 0 && index < 4) {
-          if (--index == -1) index = 3;
-          const next_vertex = chamfer_faces[m][index];
-          if (cf.indexOf(next_vertex) >= 0) {
-            face.push(next_vertex);
-            break;
-          }
-        }
-      }
-      --count;
-    }
-    face.push(-1);
-    chamfer_faces.push(face);
-  }
-  return { vectors: chamfer_vectors, faces: chamfer_faces };
-}
-
-/**
- * Creates complete die geometry with chamfering and physics shape.
- * @param {Array} vertices - Raw vertex coordinate arrays.
- * @param {Array} faces - Face index arrays with material index.
- * @param {number} radius - Scale factor.
- * @param {number} tab - UV mapping tab offset.
- * @param {number} af - UV mapping angle offset.
- * @param {number} chamfer - Chamfer amount (0-1).
- * @returns {THREE.Geometry} Geometry with attached cannon_shape.
- */
-function create_geom(vertices, faces, radius, tab, af, chamfer) {
-  const vectors = new Array(vertices.length);
-  for (let i = 0; i < vertices.length; ++i) {
-    vectors[i] = new THREE.Vector3().fromArray(vertices[i]).normalize();
-  }
-  const cg = chamfer_geom(vectors, faces, chamfer);
-  const geom = make_geom(cg.vectors, cg.faces, radius, tab, af);
-  geom.cannon_shape = create_shape(vectors, faces, radius);
-  return geom;
-}
-
 // ============================================================================
 // MODULE CONFIGURATION
 // ============================================================================
@@ -256,12 +125,7 @@ export const standart_d100_dice_face_labels = [
 ];
 
 /** @type {Object} Default material options for dice */
-export const material_options = {
-  specular: 0x172022,
-  color: 0xf0f0f0,
-  shininess: 40,
-  flatShading: true,
-};
+export const material_options = materialOptions;
 
 /** @type {string} Color for dice face labels */
 export let label_color = "#aaaaaa";
@@ -269,21 +133,13 @@ export let label_color = "#aaaaaa";
 /** @type {string} Background color for dice faces */
 export let dice_color = "#202020";
 
-/** @type {Array} D4 label configurations for face shifting */
-const d4_labels = [
-  [[], [0, 0, 0], [2, 4, 3], [1, 3, 4], [2, 1, 4], [1, 2, 3]],
-  [[], [0, 0, 0], [2, 3, 4], [3, 1, 4], [2, 4, 1], [3, 2, 1]],
-  [[], [0, 0, 0], [4, 3, 2], [3, 4, 1], [4, 2, 1], [3, 1, 2]],
-  [[], [0, 0, 0], [4, 2, 3], [1, 4, 3], [4, 1, 2], [1, 3, 2]],
-];
-
 /**
  * Calculates the nearest power of 2 texture size.
  * @param {number} approx - Approximate desired size.
  * @returns {number} The nearest power of 2.
  */
 function calc_texture_size(approx) {
-  return Math.pow(2, Math.floor(Math.log(approx) / Math.log(2)));
+  return calcTextureSize(approx);
 }
 
 // ============================================================================
@@ -339,248 +195,7 @@ export function create_dice_materials(face_labels, size, margin) {
  * @returns {Array<THREE.MeshPhongMaterial>} Array of materials for each face.
  */
 export function create_d4_materials(size, margin, labels) {
-  function create_d4_text(text, color, back_color) {
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    const ts = calc_texture_size(size + margin) * 2;
-    canvas.width = canvas.height = ts;
-    context.font = (ts - margin) / 1.5 + "pt Arial";
-    context.fillStyle = back_color;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillStyle = color;
-    for (const i in text) {
-      context.fillText(text[i], canvas.width / 2, canvas.height / 2 - ts * 0.3);
-      context.translate(canvas.width / 2, canvas.height / 2);
-      context.rotate((Math.PI * 2) / 3);
-      context.translate(-canvas.width / 2, -canvas.height / 2);
-    }
-    const texture = new THREE.Texture(canvas);
-    texture.needsUpdate = true;
-    return texture;
-  }
-  const materials = [];
-  for (let i = 0; i < labels.length; ++i)
-    materials.push(
-      new THREE.MeshPhongMaterial(
-        Object.assign({}, material_options, {
-          map: create_d4_text(labels[i], label_color, dice_color),
-        })
-      )
-    );
-  return materials;
-}
-
-// ============================================================================
-// EXPORTED GEOMETRY FUNCTIONS
-// ============================================================================
-
-/**
- * Creates geometry for a d4 (tetrahedron) die.
- * @param {number} radius - Scale factor for the die.
- * @returns {THREE.Geometry} The d4 geometry with physics shape.
- */
-export function create_d4_geometry(radius) {
-  const vertices = [
-    [1, 1, 1],
-    [-1, -1, 1],
-    [-1, 1, -1],
-    [1, -1, -1],
-  ];
-  const faces = [
-    [1, 0, 2, 1],
-    [0, 1, 3, 2],
-    [0, 3, 2, 3],
-    [1, 2, 3, 4],
-  ];
-  return create_geom(vertices, faces, radius, -0.1, (Math.PI * 7) / 6, 0.96);
-}
-
-/**
- * Creates geometry for a d6 (cube) die.
- * @param {number} radius - Scale factor for the die.
- * @returns {THREE.Geometry} The d6 geometry with physics shape.
- */
-export function create_d6_geometry(radius) {
-  const vertices = [
-    [-1, -1, -1],
-    [1, -1, -1],
-    [1, 1, -1],
-    [-1, 1, -1],
-    [-1, -1, 1],
-    [1, -1, 1],
-    [1, 1, 1],
-    [-1, 1, 1],
-  ];
-  const faces = [
-    [0, 3, 2, 1, 1],
-    [1, 2, 6, 5, 2],
-    [0, 1, 5, 4, 3],
-    [3, 7, 6, 2, 4],
-    [0, 4, 7, 3, 5],
-    [4, 5, 6, 7, 6],
-  ];
-  return create_geom(vertices, faces, radius, 0.1, Math.PI / 4, 0.96);
-}
-
-/**
- * Creates geometry for a d8 (octahedron) die.
- * @param {number} radius - Scale factor for the die.
- * @returns {THREE.Geometry} The d8 geometry with physics shape.
- */
-export function create_d8_geometry(radius) {
-  const vertices = [
-    [1, 0, 0],
-    [-1, 0, 0],
-    [0, 1, 0],
-    [0, -1, 0],
-    [0, 0, 1],
-    [0, 0, -1],
-  ];
-  const faces = [
-    [0, 2, 4, 1],
-    [0, 4, 3, 2],
-    [0, 3, 5, 3],
-    [0, 5, 2, 4],
-    [1, 3, 4, 5],
-    [1, 4, 2, 6],
-    [1, 2, 5, 7],
-    [1, 5, 3, 8],
-  ];
-  return create_geom(vertices, faces, radius, 0, -Math.PI / 4 / 2, 0.965);
-}
-
-/**
- * Creates geometry for a d10 (pentagonal trapezohedron) die.
- * @param {number} radius - Scale factor for the die.
- * @returns {THREE.Geometry} The d10 geometry with physics shape.
- */
-export function create_d10_geometry(radius) {
-  const a = (Math.PI * 2) / 10;
-  const h = 0.105;
-  const v = -1;
-  const vertices = [];
-  for (let i = 0, b = 0; i < 10; ++i, b += a)
-    vertices.push([Math.cos(b), Math.sin(b), h * (i % 2 ? 1 : -1)]);
-  vertices.push([0, 0, -1]);
-  vertices.push([0, 0, 1]);
-  const faces = [
-    [5, 7, 11, 0],
-    [4, 2, 10, 1],
-    [1, 3, 11, 2],
-    [0, 8, 10, 3],
-    [7, 9, 11, 4],
-    [8, 6, 10, 5],
-    [9, 1, 11, 6],
-    [2, 0, 10, 7],
-    [3, 5, 11, 8],
-    [6, 4, 10, 9],
-    [1, 0, 2, v],
-    [1, 2, 3, v],
-    [3, 2, 4, v],
-    [3, 4, 5, v],
-    [5, 4, 6, v],
-    [5, 6, 7, v],
-    [7, 6, 8, v],
-    [7, 8, 9, v],
-    [9, 8, 0, v],
-    [9, 0, 1, v],
-  ];
-  return create_geom(vertices, faces, radius, 0, (Math.PI * 6) / 5, 0.945);
-}
-
-/**
- * Creates geometry for a d12 (dodecahedron) die.
- * @param {number} radius - Scale factor for the die.
- * @returns {THREE.Geometry} The d12 geometry with physics shape.
- */
-export function create_d12_geometry(radius) {
-  const p = (1 + Math.sqrt(5)) / 2;
-  const q = 1 / p;
-  const vertices = [
-    [0, q, p],
-    [0, q, -p],
-    [0, -q, p],
-    [0, -q, -p],
-    [p, 0, q],
-    [p, 0, -q],
-    [-p, 0, q],
-    [-p, 0, -q],
-    [q, p, 0],
-    [q, -p, 0],
-    [-q, p, 0],
-    [-q, -p, 0],
-    [1, 1, 1],
-    [1, 1, -1],
-    [1, -1, 1],
-    [1, -1, -1],
-    [-1, 1, 1],
-    [-1, 1, -1],
-    [-1, -1, 1],
-    [-1, -1, -1],
-  ];
-  const faces = [
-    [2, 14, 4, 12, 0, 1],
-    [15, 9, 11, 19, 3, 2],
-    [16, 10, 17, 7, 6, 3],
-    [6, 7, 19, 11, 18, 4],
-    [6, 18, 2, 0, 16, 5],
-    [18, 11, 9, 14, 2, 6],
-    [1, 17, 10, 8, 13, 7],
-    [1, 13, 5, 15, 3, 8],
-    [13, 8, 12, 4, 5, 9],
-    [5, 4, 14, 9, 15, 10],
-    [0, 12, 8, 10, 16, 11],
-    [3, 19, 7, 17, 1, 12],
-  ];
-  return create_geom(vertices, faces, radius, 0.2, -Math.PI / 4 / 2, 0.968);
-}
-
-/**
- * Creates geometry for a d20 (icosahedron) die.
- * @param {number} radius - Scale factor for the die.
- * @returns {THREE.Geometry} The d20 geometry with physics shape.
- */
-export function create_d20_geometry(radius) {
-  const t = (1 + Math.sqrt(5)) / 2;
-  const vertices = [
-    [-1, t, 0],
-    [1, t, 0],
-    [-1, -t, 0],
-    [1, -t, 0],
-    [0, -1, t],
-    [0, 1, t],
-    [0, -1, -t],
-    [0, 1, -t],
-    [t, 0, -1],
-    [t, 0, 1],
-    [-t, 0, -1],
-    [-t, 0, 1],
-  ];
-  const faces = [
-    [0, 11, 5, 1],
-    [0, 5, 1, 2],
-    [0, 1, 7, 3],
-    [0, 7, 10, 4],
-    [0, 10, 11, 5],
-    [1, 5, 9, 6],
-    [5, 11, 4, 7],
-    [11, 10, 2, 8],
-    [10, 7, 6, 9],
-    [7, 1, 8, 10],
-    [3, 9, 4, 11],
-    [3, 4, 2, 12],
-    [3, 2, 6, 13],
-    [3, 6, 8, 14],
-    [3, 8, 9, 15],
-    [4, 9, 5, 16],
-    [2, 4, 11, 17],
-    [6, 2, 10, 18],
-    [8, 6, 7, 19],
-    [9, 8, 1, 20],
-  ];
-  return create_geom(vertices, faces, radius, -0.2, -Math.PI / 4 / 2, 0.955);
+  return createD4Materials(size, margin, labels);
 }
 
 // ============================================================================
@@ -605,42 +220,6 @@ export const desk_color = 0xdfdfdf;
 
 /** @type {boolean} Whether to render shadows */
 export let use_shadows = true;
-
-/** @type {Array<string>} All supported dice types */
-export const known_types = ["d4", "d6", "d8", "d10", "d12", "d20", "d100"];
-
-/** @type {Object} Face value ranges for each die type */
-export const dice_face_range = {
-  d4: [1, 4],
-  d6: [1, 6],
-  d8: [1, 8],
-  d10: [0, 9],
-  d12: [1, 12],
-  d20: [1, 20],
-  d100: [0, 9],
-};
-
-/** @type {Object} Mass values for each die type */
-export const dice_mass = {
-  d4: 300,
-  d6: 300,
-  d8: 340,
-  d10: 350,
-  d12: 350,
-  d20: 400,
-  d100: 350,
-};
-
-/** @type {Object} Inertia values for each die type */
-export const dice_inertia = {
-  d4: 5,
-  d6: 13,
-  d8: 10,
-  d10: 9,
-  d12: 8,
-  d20: 6,
-  d100: 9,
-};
 
 /** @type {number} Scale factor for dice sizing */
 export let scale = 50;
@@ -667,9 +246,9 @@ let dice_material_cache = null;
  */
 export function create_d4() {
   if (!d4_geometry_cache)
-    d4_geometry_cache = create_d4_geometry(scale * 1.2);
+    d4_geometry_cache = createD4Geometry(scale * 1.2);
   if (!d4_material_cache)
-    d4_material_cache = create_d4_materials(scale / 2, scale * 2, d4_labels[0]);
+    d4_material_cache = createD4Materials(scale / 2, scale * 2, d4Labels[0]);
   return new THREE.Mesh(d4_geometry_cache, d4_material_cache);
 }
 
@@ -680,7 +259,7 @@ export function create_d4() {
  */
 export function create_d6() {
   if (!d6_geometry_cache)
-    d6_geometry_cache = create_d6_geometry(scale * 0.9);
+    d6_geometry_cache = createD6Geometry(scale * 0.9);
   if (!dice_material_cache)
     dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
   return new THREE.Mesh(d6_geometry_cache, dice_material_cache);
@@ -693,7 +272,7 @@ export function create_d6() {
  */
 export function create_d8() {
   if (!d8_geometry_cache)
-    d8_geometry_cache = create_d8_geometry(scale);
+    d8_geometry_cache = createD8Geometry(scale);
   if (!dice_material_cache)
     dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.2);
   return new THREE.Mesh(d8_geometry_cache, dice_material_cache);
@@ -706,7 +285,7 @@ export function create_d8() {
  */
 export function create_d10() {
   if (!d10_geometry_cache)
-    d10_geometry_cache = create_d10_geometry(scale * 0.9);
+    d10_geometry_cache = createD10Geometry(scale * 0.9);
   if (!dice_material_cache)
     dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
   return new THREE.Mesh(d10_geometry_cache, dice_material_cache);
@@ -719,7 +298,7 @@ export function create_d10() {
  */
 export function create_d12() {
   if (!d12_geometry_cache)
-    d12_geometry_cache = create_d12_geometry(scale * 0.9);
+    d12_geometry_cache = createD12Geometry(scale * 0.9);
   if (!dice_material_cache)
     dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
   return new THREE.Mesh(d12_geometry_cache, dice_material_cache);
@@ -732,7 +311,7 @@ export function create_d12() {
  */
 export function create_d20() {
   if (!d20_geometry_cache)
-    d20_geometry_cache = create_d20_geometry(scale);
+    d20_geometry_cache = createD20Geometry(scale);
   if (!dice_material_cache)
     dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
   return new THREE.Mesh(d20_geometry_cache, dice_material_cache);
@@ -745,7 +324,7 @@ export function create_d20() {
  */
 export function create_d100() {
   if (!d10_geometry_cache)
-    d10_geometry_cache = create_d10_geometry(scale * 0.9);
+    d10_geometry_cache = createD10Geometry(scale * 0.9);
   if (!d100_material_cache)
     d100_material_cache = create_dice_materials(standart_d100_dice_face_labels, scale / 2, 1.5);
   return new THREE.Mesh(d10_geometry_cache, d100_material_cache);
@@ -1395,7 +974,7 @@ function shift_dice_faces(dice, value, res) {
   }
   if (dice.dice_type == "d4" && num != 0) {
     if (num < 0) num += 4;
-    dice.material = create_d4_materials(scale / 2, scale * 2, d4_labels[num]);
+    dice.material = createD4Materials(scale / 2, scale * 2, d4Labels[num]);
   }
   dice.geometry = geom;
 }

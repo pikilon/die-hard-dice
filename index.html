@@ -14,12 +14,6 @@
 </head>
 
 <body style="margin: 0">
-    <div id="control_panel" class="control_panel">
-        <h6><img src="../favicon.ico" style="vertical-align: middle"></img> <a href="..">darkshade</a> dice</h6>
-        <p id="loading_text">Loading libraries, please wait a bit...</p>
-        <p id="info_text"><a href="http://www.teall.info/2014/01/online-3d-dice-roller.html">More info and help</a></p>
-        <p id="info_text">mirrored from <a href="http://a.teall.info/dice">teal</a></p>
-    </div>
     <div id="info_div" style="display: none">
         <div class="center_field">
             <span id="label"></span>
@@ -47,8 +41,15 @@
         </div>
     </div>
     <div id="canvas"></div>
-    
 
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.124.0/build/three.module.js",
+            "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+        }
+    }
+    </script>
     <script type="module" src="./js/main.js"></script>
 
 </body>
