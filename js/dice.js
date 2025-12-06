@@ -7,18 +7,23 @@
     this.frame_rate = 1 / 60;
 
     function prepare_rnd(callback) {
-        if (!random_storage.length && $t.dice.use_true_random) {
+        if (!random_storage.length && teal.dice.use_true_random) {
             try {
-                $t.rpc({ method: "random", n: 512 }, 
-                function(random_responce) {
-                    if (!random_responce.error)
-                        random_storage = random_responce.result.random.data;
-                    else $t.dice.use_true_random = false;
-                    callback();
-                });
+                var ajax = new XMLHttpRequest();
+                ajax.open("post", 'f', true);
+                ajax.onreadystatechange = function() {
+                    if (ajax.readyState == 4) {
+                        var random_responce = JSON.parse(ajax.responseText);
+                        if (!random_responce.error)
+                            random_storage = random_responce.result.random.data;
+                        else teal.dice.use_true_random = false;
+                        callback();
+                    }
+                };
+                ajax.send(JSON.stringify({ method: "random", n: 512 }));
                 return;
             }
-            catch (e) { $t.dice.use_true_random = false; }
+            catch (e) { teal.dice.use_true_random = false; }
         }
         callback();
     }
@@ -169,7 +174,7 @@
         }
         var materials = [];
         for (var i = 0; i < face_labels.length; ++i)
-            materials.push(new THREE.MeshPhongMaterial($t.copyto(this.material_options,
+            materials.push(new THREE.MeshPhongMaterial(Object.assign({}, this.material_options,
                         { map: create_text_texture(face_labels[i], this.label_color, this.dice_color) })));
         return materials;
     }
@@ -206,7 +211,7 @@
         }
         var materials = [];
         for (var i = 0; i < labels.length; ++i)
-            materials.push(new THREE.MeshPhongMaterial($t.copyto(this.material_options,
+            materials.push(new THREE.MeshPhongMaterial(Object.assign({}, this.material_options,
                         { map: create_d4_text(labels[i], this.label_color, this.dice_color) })));
         return materials;
     }
@@ -726,7 +731,8 @@
     }
 
     this.dice_box.prototype.search_dice_by_mouse = function(ev) {
-        var m = $t.get_mouse_coords(ev);
+        var touches = ev.changedTouches;
+        var m = touches ? { x: touches[0].clientX, y: touches[0].clientY } : { x: ev.clientX, y: ev.clientY };
         var intersects = (new THREE.Raycaster(this.camera.position, 
                     (new THREE.Vector3((m.x - this.cw) / this.aspect,
                                        1 - (m.y - this.ch) / this.aspect, this.w / 9))
@@ -746,7 +752,7 @@
         var mouse_captured = false;
 
         for (var i = 0, pos = -3; i < that.known_types.length; ++i, ++pos) {
-            var dice = $t.dice['create_' + that.known_types[i]]();
+            var dice = teal.dice['create_' + that.known_types[i]]();
             dice.position.set(pos * step, 0, step * 0.5);
             dice.castShadow = true;
             dice.userData = that.known_types[i];
@@ -760,14 +766,14 @@
     }
 
     function throw_dices(box, vector, boost, dist, notation_getter, before_roll, after_roll) {
-        var uat = $t.dice.use_adapvite_timestep;
+        var uat = teal.dice.use_adapvite_timestep;
         function roll(request_results) {
             if (after_roll) {
                 box.clear();
                 box.roll(vectors, request_results || notation.result, function(result) {
                     if (after_roll) after_roll.call(box, notation, result);
                     box.rolling = false;
-                    $t.dice.use_adapvite_timestep = uat;
+                    teal.dice.use_adapvite_timestep = uat;
                 });
             }
         }
@@ -782,16 +788,21 @@
 
     this.dice_box.prototype.bind_mouse = function(container, notation_getter, before_roll, after_roll) {
         var box = this;
-        $t.bind(container, ['mousedown', 'touchstart'], function(ev) {
-            ev.preventDefault();
-            box.mouse_time = (new Date()).getTime();
-            box.mouse_start = $t.get_mouse_coords(ev);
+        ['mousedown', 'touchstart'].forEach(function(evt) {
+            container.addEventListener(evt, function(ev) {
+                ev.preventDefault();
+                box.mouse_time = (new Date()).getTime();
+                var touches = ev.changedTouches;
+                box.mouse_start = touches ? { x: touches[0].clientX, y: touches[0].clientY } : { x: ev.clientX, y: ev.clientY };
+            });
         });
-        $t.bind(container, ['mouseup', 'touchend'], function(ev) {
-            if (box.rolling) return;
-            if (box.mouse_start == undefined) return;
-            ev.stopPropagation();
-            var m = $t.get_mouse_coords(ev);
+        ['mouseup', 'touchend'].forEach(function(evt) {
+            container.addEventListener(evt, function(ev) {
+                if (box.rolling) return;
+                if (box.mouse_start == undefined) return;
+                ev.stopPropagation();
+                var touches = ev.changedTouches;
+                var m = touches ? { x: touches[0].clientX, y: touches[0].clientY } : { x: ev.clientX, y: ev.clientY };
             var vector = { x: m.x - box.mouse_start.x, y: -(m.y - box.mouse_start.y) };
             box.mouse_start = undefined;
             var dist = Math.sqrt(vector.x * vector.x + vector.y * vector.y);
@@ -802,14 +813,17 @@
             prepare_rnd(function() {
                 throw_dices(box, vector, boost, dist, notation_getter, before_roll, after_roll);
             });
+            });
         });
     }
 
     this.dice_box.prototype.bind_throw = function(button, notation_getter, before_roll, after_roll) {
         var box = this;
-        $t.bind(button, ['mouseup', 'touchend'], function(ev) {
-            ev.stopPropagation();
-            box.start_throw(notation_getter, before_roll, after_roll);
+        ['mouseup', 'touchend'].forEach(function(evt) {
+            button.addEventListener(evt, function(ev) {
+                ev.stopPropagation();
+                box.start_throw(notation_getter, before_roll, after_roll);
+            });
         });
     }
 

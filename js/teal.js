@@ -1,18 +1,17 @@
 "use strict";
 
 window.teal = {};
-window.$t = window.teal;
 
 teal.copyto = function(obj, res) {
     if (obj == null || typeof obj !== 'object') return obj;
     if (obj instanceof Array) {
         for (var i = obj.length - 1; i >= 0; --i)
-            res[i] = $t.copy(obj[i]);
+            res[i] = teal.copy(obj[i]);
     }
     else {
         for (var i in obj) {
             if (obj.hasOwnProperty(i))
-                res[i] = $t.copy(obj[i]);
+                res[i] = teal.copy(obj[i]);
         }
     }
     return res;
@@ -27,7 +26,7 @@ teal.element = function(name, props, place, content) {
     var dom = document.createElement(name);
     if (props) for (var i in props) dom.setAttribute(i, props[i]);
     if (place) place.appendChild(dom);
-    if (content !== undefined) $t.inner(content, dom);
+    if (content !== undefined) teal.inner(content, dom);
     return dom;
 }
 
