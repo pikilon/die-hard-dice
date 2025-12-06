@@ -1,4 +1,7 @@
-export function generateDice(dice = tealDice.dice || {}) {
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.124.0/build/three.module.js';
+import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js';
+
+export function generateDice(dice = {}) {
   var random_storage = [];
   this.use_true_random = true;
   this.frame_rate = 1 / 60;
@@ -35,16 +38,16 @@ export function generateDice(dice = tealDice.dice || {}) {
       cf = new Array(faces.length);
     for (var i = 0; i < vertices.length; ++i) {
       var v = vertices[i];
-      cv[i] = new window.CANNON.Vec3(v.x * radius, v.y * radius, v.z * radius);
+      cv[i] = new CANNON.Vec3(v.x * radius, v.y * radius, v.z * radius);
     }
     for (var i = 0; i < faces.length; ++i) {
       cf[i] = faces[i].slice(0, faces[i].length - 1);
     }
-    return new window.CANNON.ConvexPolyhedron(cv, cf);
+    return new CANNON.ConvexPolyhedron({ vertices: cv, faces: cf });
   }
 
   function make_geom(vertices, faces, radius, tab, af) {
-    var geom = new window.THREE.Geometry();
+    var geom = new THREE.Geometry();
     for (var i = 0; i < vertices.length; ++i) {
       var vertex = vertices[i].multiplyScalar(radius);
       vertex.index = geom.vertices.push(vertex) - 1;
@@ -55,7 +58,7 @@ export function generateDice(dice = tealDice.dice || {}) {
       var aa = (Math.PI * 2) / fl;
       for (var j = 0; j < fl - 2; ++j) {
         geom.faces.push(
-          new window.THREE.Face3(
+          new THREE.Face3(
             ii[0],
             ii[j + 1],
             ii[j + 2],
@@ -69,15 +72,15 @@ export function generateDice(dice = tealDice.dice || {}) {
           )
         );
         geom.faceVertexUvs[0].push([
-          new window.THREE.Vector2(
+          new THREE.Vector2(
             (Math.cos(af) + 1 + tab) / 2 / (1 + tab),
             (Math.sin(af) + 1 + tab) / 2 / (1 + tab)
           ),
-          new window.THREE.Vector2(
+          new THREE.Vector2(
             (Math.cos(aa * (j + 1) + af) + 1 + tab) / 2 / (1 + tab),
             (Math.sin(aa * (j + 1) + af) + 1 + tab) / 2 / (1 + tab)
           ),
-          new window.THREE.Vector2(
+          new THREE.Vector2(
             (Math.cos(aa * (j + 2) + af) + 1 + tab) / 2 / (1 + tab),
             (Math.sin(aa * (j + 2) + af) + 1 + tab) / 2 / (1 + tab)
           ),
@@ -85,8 +88,8 @@ export function generateDice(dice = tealDice.dice || {}) {
       }
     }
     geom.computeFaceNormals();
-    geom.boundingSphere = new window.THREE.Sphere(
-      new window.THREE.Vector3(),
+    geom.boundingSphere = new THREE.Sphere(
+      new THREE.Vector3(),
       radius
     );
     return geom;
@@ -100,7 +103,7 @@ export function generateDice(dice = tealDice.dice || {}) {
     for (var i = 0; i < faces.length; ++i) {
       var ii = faces[i],
         fl = ii.length - 1;
-      var center_point = new window.THREE.Vector3();
+      var center_point = new THREE.Vector3();
       var face = new Array(fl);
       for (var j = 0; j < fl; ++j) {
         var vv = vectors[ii[j]].clone();
@@ -166,7 +169,7 @@ export function generateDice(dice = tealDice.dice || {}) {
   function create_geom(vertices, faces, radius, tab, af, chamfer) {
     var vectors = new Array(vertices.length);
     for (var i = 0; i < vertices.length; ++i) {
-      vectors[i] = new window.THREE.Vector3()
+      vectors[i] = new THREE.Vector3()
         .fromArray(vertices[i])
         .normalize();
     }
@@ -236,14 +239,14 @@ export function generateDice(dice = tealDice.dice || {}) {
       if (text == "6" || text == "9") {
         context.fillText("  .", canvas.width / 2, canvas.height / 2);
       }
-      var texture = new window.THREE.Texture(canvas);
+      var texture = new THREE.Texture(canvas);
       texture.needsUpdate = true;
       return texture;
     }
     var materials = [];
     for (var i = 0; i < face_labels.length; ++i)
       materials.push(
-        new window.THREE.MeshPhongMaterial(
+        new THREE.MeshPhongMaterial(
           Object.assign({}, this.material_options, {
             map: create_text_texture(
               face_labels[i],
@@ -285,14 +288,14 @@ export function generateDice(dice = tealDice.dice || {}) {
         context.rotate((Math.PI * 2) / 3);
         context.translate(-canvas.width / 2, -canvas.height / 2);
       }
-      var texture = new window.THREE.Texture(canvas);
+      var texture = new THREE.Texture(canvas);
       texture.needsUpdate = true;
       return texture;
     }
     var materials = [];
     for (var i = 0; i < labels.length; ++i)
       materials.push(
-        new window.THREE.MeshPhongMaterial(
+        new THREE.MeshPhongMaterial(
           Object.assign({}, this.material_options, {
             map: create_d4_text(labels[i], this.label_color, this.dice_color),
           })
@@ -483,7 +486,7 @@ export function generateDice(dice = tealDice.dice || {}) {
     specular: 0x172022,
     color: 0xf0f0f0,
     shininess: 40,
-    shading: window.THREE.FlatShading,
+    flatShading: true,
   };
   this.label_color = "#aaaaaa";
   this.dice_color = "#202020";
@@ -532,94 +535,94 @@ export function generateDice(dice = tealDice.dice || {}) {
     if (!this.d4_geometry)
       this.d4_geometry = this.create_d4_geometry(this.scale * 1.2);
     if (!this.d4_material)
-      this.d4_material = new window.THREE.MeshFaceMaterial(
+      this.d4_material = (
         this.create_d4_materials(this.scale / 2, this.scale * 2, d4_labels[0])
       );
-    return new window.THREE.Mesh(this.d4_geometry, this.d4_material);
+    return new THREE.Mesh(this.d4_geometry, this.d4_material);
   };
 
   this.create_d6 = function () {
     if (!this.d6_geometry)
       this.d6_geometry = this.create_d6_geometry(this.scale * 0.9);
     if (!this.dice_material)
-      this.dice_material = new window.THREE.MeshFaceMaterial(
+      this.dice_material = (
         this.create_dice_materials(
           this.standart_d20_dice_face_labels,
           this.scale / 2,
           1.0
         )
       );
-    return new window.THREE.Mesh(this.d6_geometry, this.dice_material);
+    return new THREE.Mesh(this.d6_geometry, this.dice_material);
   };
 
   this.create_d8 = function () {
     if (!this.d8_geometry)
       this.d8_geometry = this.create_d8_geometry(this.scale);
     if (!this.dice_material)
-      this.dice_material = new window.THREE.MeshFaceMaterial(
+      this.dice_material = (
         this.create_dice_materials(
           this.standart_d20_dice_face_labels,
           this.scale / 2,
           1.2
         )
       );
-    return new window.THREE.Mesh(this.d8_geometry, this.dice_material);
+    return new THREE.Mesh(this.d8_geometry, this.dice_material);
   };
 
   this.create_d10 = function () {
     if (!this.d10_geometry)
       this.d10_geometry = this.create_d10_geometry(this.scale * 0.9);
     if (!this.dice_material)
-      this.dice_material = new window.THREE.MeshFaceMaterial(
+      this.dice_material = (
         this.create_dice_materials(
           this.standart_d20_dice_face_labels,
           this.scale / 2,
           1.0
         )
       );
-    return new window.THREE.Mesh(this.d10_geometry, this.dice_material);
+    return new THREE.Mesh(this.d10_geometry, this.dice_material);
   };
 
   this.create_d12 = function () {
     if (!this.d12_geometry)
       this.d12_geometry = this.create_d12_geometry(this.scale * 0.9);
     if (!this.dice_material)
-      this.dice_material = new window.THREE.MeshFaceMaterial(
+      this.dice_material = (
         this.create_dice_materials(
           this.standart_d20_dice_face_labels,
           this.scale / 2,
           1.0
         )
       );
-    return new window.THREE.Mesh(this.d12_geometry, this.dice_material);
+    return new THREE.Mesh(this.d12_geometry, this.dice_material);
   };
 
   this.create_d20 = function () {
     if (!this.d20_geometry)
       this.d20_geometry = this.create_d20_geometry(this.scale);
     if (!this.dice_material)
-      this.dice_material = new window.THREE.MeshFaceMaterial(
+      this.dice_material = (
         this.create_dice_materials(
           this.standart_d20_dice_face_labels,
           this.scale / 2,
           1.0
         )
       );
-    return new window.THREE.Mesh(this.d20_geometry, this.dice_material);
+    return new THREE.Mesh(this.d20_geometry, this.dice_material);
   };
 
   this.create_d100 = function () {
     if (!this.d10_geometry)
       this.d10_geometry = this.create_d10_geometry(this.scale * 0.9);
     if (!this.d100_material)
-      this.d100_material = new window.THREE.MeshFaceMaterial(
+      this.d100_material = (
         this.create_dice_materials(
           this.standart_d100_dice_face_labels,
           this.scale / 2,
           1.5
         )
       );
-    return new window.THREE.Mesh(this.d10_geometry, this.d100_material);
+    return new THREE.Mesh(this.d10_geometry, this.d100_material);
   };
 
   this.parse_notation = function (notation) {
@@ -677,109 +680,90 @@ export function generateDice(dice = tealDice.dice || {}) {
     this.animate_selector = true;
 
     this.dices = [];
-    this.scene = new window.THREE.Scene();
-    this.world = new window.CANNON.World();
+    this.scene = new THREE.Scene();
+    this.world = new CANNON.World();
 
-    this.renderer = window.WebGLRenderingContext
-      ? new window.THREE.WebGLRenderer({ antialias: true })
-      : new window.THREE.CanvasRenderer({ antialias: true });
+    this.renderer = WebGLRenderingContext
+      ? new THREE.WebGLRenderer({ antialias: true })
+      : new THREE.CanvasRenderer({ antialias: true });
     container.appendChild(this.renderer.domElement);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = window.THREE.PCFShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.setClearColor(0xffffff, 1);
 
     this.reinit(container, dimentions);
 
     this.world.gravity.set(0, 0, -9.8 * 800);
-    this.world.broadphase = new window.CANNON.NaiveBroadphase();
+    this.world.broadphase = new CANNON.NaiveBroadphase();
     this.world.solver.iterations = 16;
 
-    var ambientLight = new window.THREE.AmbientLight(that.ambient_light_color);
+    var ambientLight = new THREE.AmbientLight(that.ambient_light_color);
     this.scene.add(ambientLight);
 
-    this.dice_body_material = new window.CANNON.Material();
-    var desk_body_material = new window.CANNON.Material();
-    var barrier_body_material = new window.CANNON.Material();
+    this.dice_body_material = new CANNON.Material();
+    var desk_body_material = new CANNON.Material();
+    var barrier_body_material = new CANNON.Material();
     this.world.addContactMaterial(
-      new window.CANNON.ContactMaterial(
+      new CANNON.ContactMaterial(
         desk_body_material,
         this.dice_body_material,
-        0.01,
-        0.5
+        { friction: 0.01, restitution: 0.5 }
       )
     );
     this.world.addContactMaterial(
-      new window.CANNON.ContactMaterial(
+      new CANNON.ContactMaterial(
         barrier_body_material,
         this.dice_body_material,
-        0,
-        1.0
+        { friction: 0, restitution: 1.0 }
       )
     );
     this.world.addContactMaterial(
-      new window.CANNON.ContactMaterial(
+      new CANNON.ContactMaterial(
         this.dice_body_material,
         this.dice_body_material,
-        0,
-        0.5
+        { friction: 0, restitution: 0.5 }
       )
     );
 
-    this.world.add(
-      new window.CANNON.RigidBody(
-        0,
-        new window.CANNON.Plane(),
-        desk_body_material
-      )
-    );
+    var groundBody = new CANNON.Body({ mass: 0, material: desk_body_material });
+    groundBody.addShape(new CANNON.Plane());
+    this.world.addBody(groundBody);
     var barrier;
-    barrier = new window.CANNON.RigidBody(
-      0,
-      new window.CANNON.Plane(),
-      barrier_body_material
-    );
+    barrier = new CANNON.Body({ mass: 0, material: barrier_body_material });
+    barrier.addShape(new CANNON.Plane());
     barrier.quaternion.setFromAxisAngle(
-      new window.CANNON.Vec3(1, 0, 0),
+      new CANNON.Vec3(1, 0, 0),
       Math.PI / 2
     );
-    barrier.position.set(0, this.h * 0.93, 0);
-    this.world.add(barrier);
+    barrier.position.set(0, this.h * 0.85, 0);
+    this.world.addBody(barrier);
 
-    barrier = new window.CANNON.RigidBody(
-      0,
-      new window.CANNON.Plane(),
-      barrier_body_material
-    );
+    barrier = new CANNON.Body({ mass: 0, material: barrier_body_material });
+    barrier.addShape(new CANNON.Plane());
     barrier.quaternion.setFromAxisAngle(
-      new window.CANNON.Vec3(1, 0, 0),
+      new CANNON.Vec3(1, 0, 0),
       -Math.PI / 2
     );
-    barrier.position.set(0, -this.h * 0.93, 0);
-    this.world.add(barrier);
+    barrier.position.set(0, -this.h * 0.85, 0);
+    this.world.addBody(barrier);
 
-    barrier = new window.CANNON.RigidBody(
-      0,
-      new window.CANNON.Plane(),
-      barrier_body_material
-    );
+    barrier = new CANNON.Body({ mass: 0, material: barrier_body_material });
+    barrier.addShape(new CANNON.Plane());
     barrier.quaternion.setFromAxisAngle(
-      new window.CANNON.Vec3(0, 1, 0),
+      new CANNON.Vec3(0, 1, 0),
       -Math.PI / 2
     );
-    barrier.position.set(this.w * 0.93, 0, 0);
-    this.world.add(barrier);
+    barrier.position.set(this.w * 0.85, 0, 0);
+    this.world.addBody(barrier);
 
-    barrier = new window.CANNON.RigidBody(
-      0,
-      new window.CANNON.Plane(),
-      barrier_body_material
-    );
+    barrier = new CANNON.Body({ mass: 0, material: barrier_body_material });
+    barrier.addShape(new CANNON.Plane());
     barrier.quaternion.setFromAxisAngle(
-      new window.CANNON.Vec3(0, 1, 0),
+      new CANNON.Vec3(0, 1, 0),
       Math.PI / 2
     );
-    barrier.position.set(-this.w * 0.93, 0, 0);
-    this.world.add(barrier);
+    barrier.position.set(-this.w * 0.85, 0, 0);
+    this.world.addBody(barrier);
 
     this.last_time = 0;
     this.running = false;
@@ -804,7 +788,7 @@ export function generateDice(dice = tealDice.dice || {}) {
 
     this.wh = this.ch / this.aspect / Math.tan((10 * Math.PI) / 180);
     if (this.camera) this.scene.remove(this.camera);
-    this.camera = new window.THREE.PerspectiveCamera(
+    this.camera = new THREE.PerspectiveCamera(
       20,
       this.cw / this.ch,
       1,
@@ -814,24 +798,23 @@ export function generateDice(dice = tealDice.dice || {}) {
 
     var mw = Math.max(this.w, this.h);
     if (this.light) this.scene.remove(this.light);
-    this.light = new window.THREE.SpotLight(that.spot_light_color, 2.0);
+    this.light = new THREE.SpotLight(that.spot_light_color, 2.0);
     this.light.position.set(-mw / 2, mw / 2, mw * 2);
     this.light.target.position.set(0, 0, 0);
     this.light.distance = mw * 5;
     this.light.castShadow = true;
-    this.light.shadowCameraNear = mw / 10;
-    this.light.shadowCameraFar = mw * 5;
-    this.light.shadowCameraFov = 50;
-    this.light.shadowBias = 0.001;
-    this.light.shadowDarkness = 1.1;
-    this.light.shadowMapWidth = 1024;
-    this.light.shadowMapHeight = 1024;
+    this.light.shadow.camera.near = mw / 10;
+    this.light.shadow.camera.far = mw * 5;
+    this.light.shadow.camera.fov = 50;
+    this.light.shadow.bias = 0.001;
+    this.light.shadow.mapSize.width = 1024;
+    this.light.shadow.mapSize.height = 1024;
     this.scene.add(this.light);
 
     if (this.desk) this.scene.remove(this.desk);
-    this.desk = new window.THREE.Mesh(
-      new window.THREE.PlaneGeometry(this.w * 2, this.h * 2, 1, 1),
-      new window.THREE.MeshPhongMaterial({ color: that.desk_color })
+    this.desk = new THREE.Mesh(
+      new THREE.PlaneGeometry(this.w * 2, this.h * 2, 1, 1),
+      new THREE.MeshPhongMaterial({ color: that.desk_color })
     );
     this.desk.receiveShadow = that.use_shadows;
     this.scene.add(this.desk);
@@ -859,8 +842,8 @@ export function generateDice(dice = tealDice.dice || {}) {
     for (var i in notation.set) {
       var vec = make_random_vector(vector);
       var pos = {
-        x: this.w * (vec.x > 0 ? -1 : 1) * 0.9,
-        y: this.h * (vec.y > 0 ? -1 : 1) * 0.9,
+        x: this.w * (vec.x > 0 ? -1 : 1) * 0.7,
+        y: this.h * (vec.y > 0 ? -1 : 1) * 0.7,
         z: rnd() * 200 + 200,
       };
       var projector = Math.abs(vec.x / vec.y);
@@ -896,23 +879,25 @@ export function generateDice(dice = tealDice.dice || {}) {
     var dice = that["create_" + type]();
     dice.castShadow = true;
     dice.dice_type = type;
-    dice.body = new window.CANNON.RigidBody(
-      that.dice_mass[type],
-      dice.geometry.cannon_shape,
-      this.dice_body_material
-    );
+    dice.body = new CANNON.Body({
+      mass: that.dice_mass[type],
+      material: this.dice_body_material
+    });
+    dice.body.addShape(dice.geometry.cannon_shape);
     dice.body.position.set(pos.x, pos.y, pos.z);
     dice.body.quaternion.setFromAxisAngle(
-      new window.CANNON.Vec3(axis.x, axis.y, axis.z),
+      new CANNON.Vec3(axis.x, axis.y, axis.z),
       axis.a * Math.PI * 2
     );
     dice.body.angularVelocity.set(angle.x, angle.y, angle.z);
     dice.body.velocity.set(velocity.x, velocity.y, velocity.z);
     dice.body.linearDamping = 0.1;
     dice.body.angularDamping = 0.1;
+    dice.body.ccdSpeedThreshold = 100;
+    dice.body.ccdIterations = 10;
     this.scene.add(dice);
     this.dices.push(dice);
-    this.world.add(dice.body);
+    this.world.addBody(dice.body);
   };
 
   this.dice_box.prototype.check_if_throw_finished = function () {
@@ -949,16 +934,18 @@ export function generateDice(dice = tealDice.dice || {}) {
   };
 
   function get_dice_value(dice) {
-    var vector = new window.THREE.Vector3(
+    var vector = new THREE.Vector3(
       0,
       0,
       dice.dice_type == "d4" ? -1 : 1
     );
-    var closest_face,
+    var closest_face = null,
       closest_angle = Math.PI * 2;
-    for (var i = 0, l = dice.geometry.faces.length; i < l; ++i) {
-      var face = dice.geometry.faces[i];
-      if (face.materialIndex == 0) continue;
+    var geom = dice.geometry;
+    if (!geom || !geom.faces) return 1;
+    for (var i = 0, l = geom.faces.length; i < l; ++i) {
+      var face = geom.faces[i];
+      if (!face || face.materialIndex == 0) continue;
       var angle = face.normal
         .clone()
         .applyQuaternion(dice.body.quaternion)
@@ -968,6 +955,7 @@ export function generateDice(dice = tealDice.dice || {}) {
         closest_face = face;
       }
     }
+    if (!closest_face) return 1;
     var matindex = closest_face.materialIndex - 1;
     if (dice.dice_type == "d100") matindex *= 10;
     if (dice.dice_type == "d10" && matindex == 0) matindex = 10;
@@ -1038,7 +1026,7 @@ export function generateDice(dice = tealDice.dice || {}) {
     var dice;
     while ((dice = this.dices.pop())) {
       this.scene.remove(dice);
-      if (dice.body) this.world.remove(dice.body);
+      if (dice.body) this.world.removeBody(dice.body);
     }
     if (this.pane) this.scene.remove(this.pane);
     this.renderer.render(this.scene, this.camera);
@@ -1080,7 +1068,7 @@ export function generateDice(dice = tealDice.dice || {}) {
     }
     if (dice.dice_type == "d4" && num != 0) {
       if (num < 0) num += 4;
-      dice.material = new window.THREE.MeshFaceMaterial(
+      dice.material = (
         that.create_d4_materials(that.scale / 2, that.scale * 2, d4_labels[num])
       );
     }
@@ -1130,9 +1118,9 @@ export function generateDice(dice = tealDice.dice || {}) {
     var m = touches
       ? { x: touches[0].clientX, y: touches[0].clientY }
       : { x: ev.clientX, y: ev.clientY };
-    var intersects = new window.THREE.Raycaster(
+    var intersects = new THREE.Raycaster(
       this.camera.position,
-      new window.THREE.Vector3(
+      new THREE.Vector3(
         (m.x - this.cw) / this.aspect,
         1 - (m.y - this.ch) / this.aspect,
         this.w / 9
@@ -1146,9 +1134,9 @@ export function generateDice(dice = tealDice.dice || {}) {
   this.dice_box.prototype.draw_selector = function () {
     this.clear();
     var step = this.w / 4.5;
-    this.pane = new window.THREE.Mesh(
-      new window.THREE.PlaneGeometry(this.w * 6, this.h * 6, 1, 1),
-      new window.THREE.MeshPhongMaterial(that.selector_back_colors)
+    this.pane = new THREE.Mesh(
+      new THREE.PlaneGeometry(this.w * 6, this.h * 6, 1, 1),
+      new THREE.MeshPhongMaterial(that.selector_back_colors)
     );
     this.pane.receiveShadow = true;
     this.pane.position.set(0, 0, 1);

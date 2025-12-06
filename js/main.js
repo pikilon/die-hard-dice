@@ -1,6 +1,7 @@
 import { generateDice } from "./dice.js";
 
-
+// Initialize global tealDice object
+window.tealDice = {};
 
 function dice_initialize(container = document.body) {
   document.getElementById("loading_text")?.remove();
