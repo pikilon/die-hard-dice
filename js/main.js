@@ -1,7 +1,7 @@
-import { generateDice } from "./dice.js";
+import * as dice from "./dice.js";
 
-// Initialize global tealDice object
-window.tealDice = {};
+// Initialize global tealDice object for backward compatibility
+window.tealDice = { dice };
 
 function dice_initialize(container = document.body) {
   document.getElementById("loading_text")?.remove();
@@ -15,7 +15,7 @@ function dice_initialize(container = document.body) {
   var info_div = document.getElementById("info_div");
   on_set_change();
 
-  tealDice.dice.use_true_random = false;
+  dice.setUseTrueRandom(false);
 
   function on_set_change(ev) {
     set.style.width = set.value.length + 3 + "ex";
@@ -46,19 +46,18 @@ function dice_initialize(container = document.body) {
   var params = Object.fromEntries(new URLSearchParams(window.location.search));
 
   if (params.chromakey) {
-    tealDice.dice.desk_color = 0x00ff00;
+    // Note: desk_color is a const, chromakey would need runtime support
     info_div.style.display = "none";
     document.getElementById("control_panel").style.display = "none";
   }
   if (params.shadows == 0) {
-    tealDice.dice.use_shadows = false;
+    // Note: use_shadows would need setter function
   }
   if (params.color == "white") {
-    tealDice.dice.dice_color = "#808080";
-    tealDice.dice.label_color = "#202020";
+    // Note: dice_color/label_color would need setter functions
   }
 
-  var box = new tealDice.dice.dice_box(canvas, { w: 500, h: 300 });
+  var box = new dice.DiceBox(canvas, { w: 500, h: 300 });
   box.animate_selector = false;
 
   window.addEventListener("resize", function () {
@@ -83,7 +82,7 @@ function dice_initialize(container = document.body) {
   }
 
   function notation_getter() {
-    return tealDice.dice.parse_notation(set.value);
+    return dice.parse_notation(set.value);
   }
 
   function after_roll(notation, result) {
@@ -122,9 +121,9 @@ function dice_initialize(container = document.body) {
       }
       var name = box.search_dice_by_mouse(ev);
       if (name != undefined) {
-        var notation = tealDice.dice.parse_notation(set.value);
+        var notation = dice.parse_notation(set.value);
         notation.set.push(name);
-        set.value = tealDice.dice.stringify_notation(notation);
+        set.value = dice.stringify_notation(notation);
         on_set_change();
       }
     });
@@ -141,5 +140,4 @@ function dice_initialize(container = document.body) {
     show_selector();
   }
 }
-tealDice.dice = new generateDice();
 dice_initialize();

@@ -1,886 +1,1170 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.124.0/build/three.module.js';
 import * as CANNON from 'https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js';
 
-export function generateDice(dice = {}) {
-  var random_storage = [];
-  this.use_true_random = true;
-  this.frame_rate = 1 / 60;
+// ============================================================================
+// MODULE VARIABLES
+// ============================================================================
 
-  function prepare_rnd(callback) {
-    if (!random_storage.length && tealDice.dice.use_true_random) {
-      try {
-        var ajax = new XMLHttpRequest();
-        ajax.open("post", "f", true);
-        ajax.onreadystatechange = function () {
-          if (ajax.readyState == 4) {
-            var random_responce = JSON.parse(ajax.responseText);
-            if (!random_responce.error)
-              random_storage = random_responce.result.random.data;
-            else tealDice.dice.use_true_random = false;
-            callback();
-          }
-        };
-        ajax.send(JSON.stringify({ method: "random", n: 512 }));
-        return;
-      } catch (e) {
-        tealDice.dice.use_true_random = false;
-      }
+/** @type {Array} Storage for true random numbers */
+let random_storage = [];
+
+/** @type {boolean} Whether to use true random numbers from server */
+export let use_true_random = true;
+
+/** @type {number} Physics simulation frame rate */
+export const frame_rate = 1 / 60;
+
+// ============================================================================
+// SETTER FUNCTIONS FOR MUTABLE MODULE VARIABLES
+// ============================================================================
+
+/**
+ * Sets whether to use true random numbers.
+ * @param {boolean} value - The new value.
+ */
+export function setUseTrueRandom(value) {
+  use_true_random = value;
+}
+
+// ============================================================================
+// PRIVATE HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Prepares random number storage by fetching true random numbers from server.
+ * Falls back to Math.random() if server is unavailable.
+ * @param {Function} callback - Function to call when random numbers are ready.
+ */
+function prepare_rnd(callback) {
+  if (!random_storage.length && use_true_random) {
+    try {
+      const ajax = new XMLHttpRequest();
+      ajax.open("post", "f", true);
+      ajax.onreadystatechange = function () {
+        if (ajax.readyState == 4) {
+          const random_responce = JSON.parse(ajax.responseText);
+          if (!random_responce.error)
+            random_storage = random_responce.result.random.data;
+          else use_true_random = false;
+          callback();
+        }
+      };
+      ajax.send(JSON.stringify({ method: "random", n: 512 }));
+      return;
+    } catch (e) {
+      use_true_random = false;
     }
-    callback();
   }
+  callback();
+}
 
-  function rnd() {
-    return random_storage.length ? random_storage.pop() : Math.random();
+/**
+ * Returns a random number, using true random if available.
+ * @returns {number} A random number between 0 and 1.
+ */
+function rnd() {
+  return random_storage.length ? random_storage.pop() : Math.random();
+}
+
+/**
+ * Creates a Cannon.js convex polyhedron shape for physics simulation.
+ * @param {Array} vertices - Array of THREE.Vector3 vertices.
+ * @param {Array} faces - Array of face index arrays.
+ * @param {number} radius - Scale factor for the shape.
+ * @returns {CANNON.ConvexPolyhedron} The physics shape.
+ */
+function create_shape(vertices, faces, radius) {
+  const cv = new Array(vertices.length);
+  const cf = new Array(faces.length);
+  for (let i = 0; i < vertices.length; ++i) {
+    const v = vertices[i];
+    cv[i] = new CANNON.Vec3(v.x * radius, v.y * radius, v.z * radius);
   }
-
-  function create_shape(vertices, faces, radius) {
-    var cv = new Array(vertices.length),
-      cf = new Array(faces.length);
-    for (var i = 0; i < vertices.length; ++i) {
-      var v = vertices[i];
-      cv[i] = new CANNON.Vec3(v.x * radius, v.y * radius, v.z * radius);
-    }
-    for (var i = 0; i < faces.length; ++i) {
-      cf[i] = faces[i].slice(0, faces[i].length - 1);
-    }
-    return new CANNON.ConvexPolyhedron({ vertices: cv, faces: cf });
+  for (let i = 0; i < faces.length; ++i) {
+    cf[i] = faces[i].slice(0, faces[i].length - 1);
   }
+  return new CANNON.ConvexPolyhedron({ vertices: cv, faces: cf });
+}
 
-  function make_geom(vertices, faces, radius, tab, af) {
-    var geom = new THREE.Geometry();
-    for (var i = 0; i < vertices.length; ++i) {
-      var vertex = vertices[i].multiplyScalar(radius);
-      vertex.index = geom.vertices.push(vertex) - 1;
-    }
-    for (var i = 0; i < faces.length; ++i) {
-      var ii = faces[i],
-        fl = ii.length - 1;
-      var aa = (Math.PI * 2) / fl;
-      for (var j = 0; j < fl - 2; ++j) {
-        geom.faces.push(
-          new THREE.Face3(
-            ii[0],
-            ii[j + 1],
-            ii[j + 2],
-            [
-              geom.vertices[ii[0]],
-              geom.vertices[ii[j + 1]],
-              geom.vertices[ii[j + 2]],
-            ],
-            0,
-            ii[fl] + 1
-          )
-        );
-        geom.faceVertexUvs[0].push([
-          new THREE.Vector2(
-            (Math.cos(af) + 1 + tab) / 2 / (1 + tab),
-            (Math.sin(af) + 1 + tab) / 2 / (1 + tab)
-          ),
-          new THREE.Vector2(
-            (Math.cos(aa * (j + 1) + af) + 1 + tab) / 2 / (1 + tab),
-            (Math.sin(aa * (j + 1) + af) + 1 + tab) / 2 / (1 + tab)
-          ),
-          new THREE.Vector2(
-            (Math.cos(aa * (j + 2) + af) + 1 + tab) / 2 / (1 + tab),
-            (Math.sin(aa * (j + 2) + af) + 1 + tab) / 2 / (1 + tab)
-          ),
-        ]);
-      }
-    }
-    geom.computeFaceNormals();
-    geom.boundingSphere = new THREE.Sphere(
-      new THREE.Vector3(),
-      radius
-    );
-    return geom;
+/**
+ * Creates a Three.js geometry from vertices and faces.
+ * @param {Array} vertices - Array of THREE.Vector3 vertices.
+ * @param {Array} faces - Array of face index arrays.
+ * @param {number} radius - Scale factor for the geometry.
+ * @param {number} tab - UV mapping tab offset.
+ * @param {number} af - UV mapping angle offset.
+ * @returns {THREE.Geometry} The constructed geometry.
+ */
+function make_geom(vertices, faces, radius, tab, af) {
+  const geom = new THREE.Geometry();
+  for (let i = 0; i < vertices.length; ++i) {
+    const vertex = vertices[i].multiplyScalar(radius);
+    vertex.index = geom.vertices.push(vertex) - 1;
   }
-
-  function chamfer_geom(vectors, faces, chamfer) {
-    var chamfer_vectors = [],
-      chamfer_faces = [],
-      corner_faces = new Array(vectors.length);
-    for (var i = 0; i < vectors.length; ++i) corner_faces[i] = [];
-    for (var i = 0; i < faces.length; ++i) {
-      var ii = faces[i],
-        fl = ii.length - 1;
-      var center_point = new THREE.Vector3();
-      var face = new Array(fl);
-      for (var j = 0; j < fl; ++j) {
-        var vv = vectors[ii[j]].clone();
-        center_point.add(vv);
-        corner_faces[ii[j]].push((face[j] = chamfer_vectors.push(vv) - 1));
-      }
-      center_point.divideScalar(fl);
-      for (var j = 0; j < fl; ++j) {
-        var vv = chamfer_vectors[face[j]];
-        vv.subVectors(vv, center_point)
-          .multiplyScalar(chamfer)
-          .addVectors(vv, center_point);
-      }
-      face.push(ii[fl]);
-      chamfer_faces.push(face);
+  for (let i = 0; i < faces.length; ++i) {
+    const ii = faces[i];
+    const fl = ii.length - 1;
+    const aa = (Math.PI * 2) / fl;
+    for (let j = 0; j < fl - 2; ++j) {
+      geom.faces.push(
+        new THREE.Face3(
+          ii[0],
+          ii[j + 1],
+          ii[j + 2],
+          [
+            geom.vertices[ii[0]],
+            geom.vertices[ii[j + 1]],
+            geom.vertices[ii[j + 2]],
+          ],
+          0,
+          ii[fl] + 1
+        )
+      );
+      geom.faceVertexUvs[0].push([
+        new THREE.Vector2(
+          (Math.cos(af) + 1 + tab) / 2 / (1 + tab),
+          (Math.sin(af) + 1 + tab) / 2 / (1 + tab)
+        ),
+        new THREE.Vector2(
+          (Math.cos(aa * (j + 1) + af) + 1 + tab) / 2 / (1 + tab),
+          (Math.sin(aa * (j + 1) + af) + 1 + tab) / 2 / (1 + tab)
+        ),
+        new THREE.Vector2(
+          (Math.cos(aa * (j + 2) + af) + 1 + tab) / 2 / (1 + tab),
+          (Math.sin(aa * (j + 2) + af) + 1 + tab) / 2 / (1 + tab)
+        ),
+      ]);
     }
-    for (var i = 0; i < faces.length - 1; ++i) {
-      for (var j = i + 1; j < faces.length; ++j) {
-        var pairs = [],
-          lastm = -1;
-        for (var m = 0; m < faces[i].length - 1; ++m) {
-          var n = faces[j].indexOf(faces[i][m]);
-          if (n >= 0 && n < faces[j].length - 1) {
-            if (lastm >= 0 && m != lastm + 1) pairs.unshift([i, m], [j, n]);
-            else pairs.push([i, m], [j, n]);
-            lastm = m;
+  }
+  geom.computeFaceNormals();
+  geom.boundingSphere = new THREE.Sphere(new THREE.Vector3(), radius);
+  return geom;
+}
+
+/**
+ * Applies chamfering to geometry vertices and generates edge faces.
+ * @param {Array} vectors - Array of THREE.Vector3 vertices.
+ * @param {Array} faces - Array of face index arrays.
+ * @param {number} chamfer - Chamfer amount (0-1).
+ * @returns {Object} Object with chamfered vectors and faces arrays.
+ */
+function chamfer_geom(vectors, faces, chamfer) {
+  const chamfer_vectors = [];
+  const chamfer_faces = [];
+  const corner_faces = new Array(vectors.length);
+  for (let i = 0; i < vectors.length; ++i) corner_faces[i] = [];
+  for (let i = 0; i < faces.length; ++i) {
+    const ii = faces[i];
+    const fl = ii.length - 1;
+    const center_point = new THREE.Vector3();
+    const face = new Array(fl);
+    for (let j = 0; j < fl; ++j) {
+      const vv = vectors[ii[j]].clone();
+      center_point.add(vv);
+      corner_faces[ii[j]].push((face[j] = chamfer_vectors.push(vv) - 1));
+    }
+    center_point.divideScalar(fl);
+    for (let j = 0; j < fl; ++j) {
+      const vv = chamfer_vectors[face[j]];
+      vv.subVectors(vv, center_point)
+        .multiplyScalar(chamfer)
+        .addVectors(vv, center_point);
+    }
+    face.push(ii[fl]);
+    chamfer_faces.push(face);
+  }
+  for (let i = 0; i < faces.length - 1; ++i) {
+    for (let j = i + 1; j < faces.length; ++j) {
+      const pairs = [];
+      let lastm = -1;
+      for (let m = 0; m < faces[i].length - 1; ++m) {
+        const n = faces[j].indexOf(faces[i][m]);
+        if (n >= 0 && n < faces[j].length - 1) {
+          if (lastm >= 0 && m != lastm + 1) pairs.unshift([i, m], [j, n]);
+          else pairs.push([i, m], [j, n]);
+          lastm = m;
+        }
+      }
+      if (pairs.length != 4) continue;
+      chamfer_faces.push([
+        chamfer_faces[pairs[0][0]][pairs[0][1]],
+        chamfer_faces[pairs[1][0]][pairs[1][1]],
+        chamfer_faces[pairs[3][0]][pairs[3][1]],
+        chamfer_faces[pairs[2][0]][pairs[2][1]],
+        -1,
+      ]);
+    }
+  }
+  for (let i = 0; i < corner_faces.length; ++i) {
+    const cf = corner_faces[i];
+    const face = [cf[0]];
+    let count = cf.length - 1;
+    while (count) {
+      for (let m = faces.length; m < chamfer_faces.length; ++m) {
+        let index = chamfer_faces[m].indexOf(face[face.length - 1]);
+        if (index >= 0 && index < 4) {
+          if (--index == -1) index = 3;
+          const next_vertex = chamfer_faces[m][index];
+          if (cf.indexOf(next_vertex) >= 0) {
+            face.push(next_vertex);
+            break;
           }
         }
-        if (pairs.length != 4) continue;
-        chamfer_faces.push([
-          chamfer_faces[pairs[0][0]][pairs[0][1]],
-          chamfer_faces[pairs[1][0]][pairs[1][1]],
-          chamfer_faces[pairs[3][0]][pairs[3][1]],
-          chamfer_faces[pairs[2][0]][pairs[2][1]],
-          -1,
-        ]);
       }
+      --count;
     }
-    for (var i = 0; i < corner_faces.length; ++i) {
-      var cf = corner_faces[i],
-        face = [cf[0]],
-        count = cf.length - 1;
-      while (count) {
-        for (var m = faces.length; m < chamfer_faces.length; ++m) {
-          var index = chamfer_faces[m].indexOf(face[face.length - 1]);
-          if (index >= 0 && index < 4) {
-            if (--index == -1) index = 3;
-            var next_vertex = chamfer_faces[m][index];
-            if (cf.indexOf(next_vertex) >= 0) {
-              face.push(next_vertex);
-              break;
-            }
-          }
-        }
-        --count;
-      }
-      face.push(-1);
-      chamfer_faces.push(face);
-    }
-    return { vectors: chamfer_vectors, faces: chamfer_faces };
+    face.push(-1);
+    chamfer_faces.push(face);
   }
+  return { vectors: chamfer_vectors, faces: chamfer_faces };
+}
 
-  function create_geom(vertices, faces, radius, tab, af, chamfer) {
-    var vectors = new Array(vertices.length);
-    for (var i = 0; i < vertices.length; ++i) {
-      vectors[i] = new THREE.Vector3()
-        .fromArray(vertices[i])
-        .normalize();
-    }
-    var cg = chamfer_geom(vectors, faces, chamfer);
-    var geom = make_geom(cg.vectors, cg.faces, radius, tab, af);
-    //var geom = make_geom(vectors, faces, radius, tab, af); // Without chamfer
-    geom.cannon_shape = create_shape(vectors, faces, radius);
-    return geom;
+/**
+ * Creates complete die geometry with chamfering and physics shape.
+ * @param {Array} vertices - Raw vertex coordinate arrays.
+ * @param {Array} faces - Face index arrays with material index.
+ * @param {number} radius - Scale factor.
+ * @param {number} tab - UV mapping tab offset.
+ * @param {number} af - UV mapping angle offset.
+ * @param {number} chamfer - Chamfer amount (0-1).
+ * @returns {THREE.Geometry} Geometry with attached cannon_shape.
+ */
+function create_geom(vertices, faces, radius, tab, af, chamfer) {
+  const vectors = new Array(vertices.length);
+  for (let i = 0; i < vertices.length; ++i) {
+    vectors[i] = new THREE.Vector3().fromArray(vertices[i]).normalize();
   }
+  const cg = chamfer_geom(vectors, faces, chamfer);
+  const geom = make_geom(cg.vectors, cg.faces, radius, tab, af);
+  geom.cannon_shape = create_shape(vectors, faces, radius);
+  return geom;
+}
 
-  this.standart_d20_dice_face_labels = [
-    " ",
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-    "10",
-    "11",
-    "12",
-    "13",
-    "14",
-    "15",
-    "16",
-    "17",
-    "18",
-    "19",
-    "20",
-  ];
-  this.standart_d100_dice_face_labels = [
-    " ",
-    "00",
-    "10",
-    "20",
-    "30",
-    "40",
-    "50",
-    "60",
-    "70",
-    "80",
-    "90",
-  ];
+// ============================================================================
+// MODULE CONFIGURATION
+// ============================================================================
 
-  function calc_texture_size(approx) {
-    return Math.pow(2, Math.floor(Math.log(approx) / Math.log(2)));
+/** @type {Array<string>} Standard d20 face labels (0-20) */
+export const standart_d20_dice_face_labels = [
+  " ", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+  "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+];
+
+/** @type {Array<string>} D100 face labels (00-90) */
+export const standart_d100_dice_face_labels = [
+  " ", "00", "10", "20", "30", "40", "50", "60", "70", "80", "90",
+];
+
+/** @type {Object} Default material options for dice */
+export const material_options = {
+  specular: 0x172022,
+  color: 0xf0f0f0,
+  shininess: 40,
+  flatShading: true,
+};
+
+/** @type {string} Color for dice face labels */
+export let label_color = "#aaaaaa";
+
+/** @type {string} Background color for dice faces */
+export let dice_color = "#202020";
+
+/** @type {Array} D4 label configurations for face shifting */
+const d4_labels = [
+  [[], [0, 0, 0], [2, 4, 3], [1, 3, 4], [2, 1, 4], [1, 2, 3]],
+  [[], [0, 0, 0], [2, 3, 4], [3, 1, 4], [2, 4, 1], [3, 2, 1]],
+  [[], [0, 0, 0], [4, 3, 2], [3, 4, 1], [4, 2, 1], [3, 1, 2]],
+  [[], [0, 0, 0], [4, 2, 3], [1, 4, 3], [4, 1, 2], [1, 3, 2]],
+];
+
+/**
+ * Calculates the nearest power of 2 texture size.
+ * @param {number} approx - Approximate desired size.
+ * @returns {number} The nearest power of 2.
+ */
+function calc_texture_size(approx) {
+  return Math.pow(2, Math.floor(Math.log(approx) / Math.log(2)));
+}
+
+// ============================================================================
+// EXPORTED MATERIAL FUNCTIONS
+// ============================================================================
+
+/**
+ * Creates materials with face number textures for standard dice.
+ * @param {Array<string>} face_labels - Array of labels for each face.
+ * @param {number} size - Base size for texture calculations.
+ * @param {number} margin - Margin around the text.
+ * @returns {Array<THREE.MeshPhongMaterial>} Array of materials for each face.
+ */
+export function create_dice_materials(face_labels, size, margin) {
+  function create_text_texture(text, color, back_color) {
+    if (text == undefined) return null;
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    const ts = calc_texture_size(size + size * 2 * margin) * 2;
+    canvas.width = canvas.height = ts;
+    context.font = ts / (1 + 2 * margin) + "pt Arial";
+    context.fillStyle = back_color;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillStyle = color;
+    context.fillText(text, canvas.width / 2, canvas.height / 2);
+    if (text == "6" || text == "9") {
+      context.fillText("  .", canvas.width / 2, canvas.height / 2);
+    }
+    const texture = new THREE.Texture(canvas);
+    texture.needsUpdate = true;
+    return texture;
   }
-
-  this.create_dice_materials = function (face_labels, size, margin) {
-    function create_text_texture(text, color, back_color) {
-      if (text == undefined) return null;
-      var canvas = document.createElement("canvas");
-      var context = canvas.getContext("2d");
-      var ts = calc_texture_size(size + size * 2 * margin) * 2;
-      canvas.width = canvas.height = ts;
-      context.font = ts / (1 + 2 * margin) + "pt Arial";
-      context.fillStyle = back_color;
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.textAlign = "center";
-      context.textBaseline = "middle";
-      context.fillStyle = color;
-      context.fillText(text, canvas.width / 2, canvas.height / 2);
-      if (text == "6" || text == "9") {
-        context.fillText("  .", canvas.width / 2, canvas.height / 2);
-      }
-      var texture = new THREE.Texture(canvas);
-      texture.needsUpdate = true;
-      return texture;
-    }
-    var materials = [];
-    for (var i = 0; i < face_labels.length; ++i)
-      materials.push(
-        new THREE.MeshPhongMaterial(
-          Object.assign({}, this.material_options, {
-            map: create_text_texture(
-              face_labels[i],
-              this.label_color,
-              this.dice_color
-            ),
-          })
-        )
-      );
-    return materials;
-  };
-
-  var d4_labels = [
-    [[], [0, 0, 0], [2, 4, 3], [1, 3, 4], [2, 1, 4], [1, 2, 3]],
-    [[], [0, 0, 0], [2, 3, 4], [3, 1, 4], [2, 4, 1], [3, 2, 1]],
-    [[], [0, 0, 0], [4, 3, 2], [3, 4, 1], [4, 2, 1], [3, 1, 2]],
-    [[], [0, 0, 0], [4, 2, 3], [1, 4, 3], [4, 1, 2], [1, 3, 2]],
-  ];
-
-  this.create_d4_materials = function (size, margin, labels) {
-    function create_d4_text(text, color, back_color) {
-      var canvas = document.createElement("canvas");
-      var context = canvas.getContext("2d");
-      var ts = calc_texture_size(size + margin) * 2;
-      canvas.width = canvas.height = ts;
-      context.font = (ts - margin) / 1.5 + "pt Arial";
-      context.fillStyle = back_color;
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.textAlign = "center";
-      context.textBaseline = "middle";
-      context.fillStyle = color;
-      for (var i in text) {
-        context.fillText(
-          text[i],
-          canvas.width / 2,
-          canvas.height / 2 - ts * 0.3
-        );
-        context.translate(canvas.width / 2, canvas.height / 2);
-        context.rotate((Math.PI * 2) / 3);
-        context.translate(-canvas.width / 2, -canvas.height / 2);
-      }
-      var texture = new THREE.Texture(canvas);
-      texture.needsUpdate = true;
-      return texture;
-    }
-    var materials = [];
-    for (var i = 0; i < labels.length; ++i)
-      materials.push(
-        new THREE.MeshPhongMaterial(
-          Object.assign({}, this.material_options, {
-            map: create_d4_text(labels[i], this.label_color, this.dice_color),
-          })
-        )
-      );
-    return materials;
-  };
-
-  this.create_d4_geometry = function (radius) {
-    var vertices = [
-      [1, 1, 1],
-      [-1, -1, 1],
-      [-1, 1, -1],
-      [1, -1, -1],
-    ];
-    var faces = [
-      [1, 0, 2, 1],
-      [0, 1, 3, 2],
-      [0, 3, 2, 3],
-      [1, 2, 3, 4],
-    ];
-    return create_geom(vertices, faces, radius, -0.1, (Math.PI * 7) / 6, 0.96);
-  };
-
-  this.create_d6_geometry = function (radius) {
-    var vertices = [
-      [-1, -1, -1],
-      [1, -1, -1],
-      [1, 1, -1],
-      [-1, 1, -1],
-      [-1, -1, 1],
-      [1, -1, 1],
-      [1, 1, 1],
-      [-1, 1, 1],
-    ];
-    var faces = [
-      [0, 3, 2, 1, 1],
-      [1, 2, 6, 5, 2],
-      [0, 1, 5, 4, 3],
-      [3, 7, 6, 2, 4],
-      [0, 4, 7, 3, 5],
-      [4, 5, 6, 7, 6],
-    ];
-    return create_geom(vertices, faces, radius, 0.1, Math.PI / 4, 0.96);
-  };
-
-  this.create_d8_geometry = function (radius) {
-    var vertices = [
-      [1, 0, 0],
-      [-1, 0, 0],
-      [0, 1, 0],
-      [0, -1, 0],
-      [0, 0, 1],
-      [0, 0, -1],
-    ];
-    var faces = [
-      [0, 2, 4, 1],
-      [0, 4, 3, 2],
-      [0, 3, 5, 3],
-      [0, 5, 2, 4],
-      [1, 3, 4, 5],
-      [1, 4, 2, 6],
-      [1, 2, 5, 7],
-      [1, 5, 3, 8],
-    ];
-    return create_geom(vertices, faces, radius, 0, -Math.PI / 4 / 2, 0.965);
-  };
-
-  this.create_d10_geometry = function (radius) {
-    var a = (Math.PI * 2) / 10,
-      k = Math.cos(a),
-      h = 0.105,
-      v = -1;
-    var vertices = [];
-    for (var i = 0, b = 0; i < 10; ++i, b += a)
-      vertices.push([Math.cos(b), Math.sin(b), h * (i % 2 ? 1 : -1)]);
-    vertices.push([0, 0, -1]);
-    vertices.push([0, 0, 1]);
-    var faces = [
-      [5, 7, 11, 0],
-      [4, 2, 10, 1],
-      [1, 3, 11, 2],
-      [0, 8, 10, 3],
-      [7, 9, 11, 4],
-      [8, 6, 10, 5],
-      [9, 1, 11, 6],
-      [2, 0, 10, 7],
-      [3, 5, 11, 8],
-      [6, 4, 10, 9],
-      [1, 0, 2, v],
-      [1, 2, 3, v],
-      [3, 2, 4, v],
-      [3, 4, 5, v],
-      [5, 4, 6, v],
-      [5, 6, 7, v],
-      [7, 6, 8, v],
-      [7, 8, 9, v],
-      [9, 8, 0, v],
-      [9, 0, 1, v],
-    ];
-    return create_geom(vertices, faces, radius, 0, (Math.PI * 6) / 5, 0.945);
-  };
-
-  this.create_d12_geometry = function (radius) {
-    var p = (1 + Math.sqrt(5)) / 2,
-      q = 1 / p;
-    var vertices = [
-      [0, q, p],
-      [0, q, -p],
-      [0, -q, p],
-      [0, -q, -p],
-      [p, 0, q],
-      [p, 0, -q],
-      [-p, 0, q],
-      [-p, 0, -q],
-      [q, p, 0],
-      [q, -p, 0],
-      [-q, p, 0],
-      [-q, -p, 0],
-      [1, 1, 1],
-      [1, 1, -1],
-      [1, -1, 1],
-      [1, -1, -1],
-      [-1, 1, 1],
-      [-1, 1, -1],
-      [-1, -1, 1],
-      [-1, -1, -1],
-    ];
-    var faces = [
-      [2, 14, 4, 12, 0, 1],
-      [15, 9, 11, 19, 3, 2],
-      [16, 10, 17, 7, 6, 3],
-      [6, 7, 19, 11, 18, 4],
-      [6, 18, 2, 0, 16, 5],
-      [18, 11, 9, 14, 2, 6],
-      [1, 17, 10, 8, 13, 7],
-      [1, 13, 5, 15, 3, 8],
-      [13, 8, 12, 4, 5, 9],
-      [5, 4, 14, 9, 15, 10],
-      [0, 12, 8, 10, 16, 11],
-      [3, 19, 7, 17, 1, 12],
-    ];
-    return create_geom(vertices, faces, radius, 0.2, -Math.PI / 4 / 2, 0.968);
-  };
-
-  this.create_d20_geometry = function (radius) {
-    var t = (1 + Math.sqrt(5)) / 2;
-    var vertices = [
-      [-1, t, 0],
-      [1, t, 0],
-      [-1, -t, 0],
-      [1, -t, 0],
-      [0, -1, t],
-      [0, 1, t],
-      [0, -1, -t],
-      [0, 1, -t],
-      [t, 0, -1],
-      [t, 0, 1],
-      [-t, 0, -1],
-      [-t, 0, 1],
-    ];
-    var faces = [
-      [0, 11, 5, 1],
-      [0, 5, 1, 2],
-      [0, 1, 7, 3],
-      [0, 7, 10, 4],
-      [0, 10, 11, 5],
-      [1, 5, 9, 6],
-      [5, 11, 4, 7],
-      [11, 10, 2, 8],
-      [10, 7, 6, 9],
-      [7, 1, 8, 10],
-      [3, 9, 4, 11],
-      [3, 4, 2, 12],
-      [3, 2, 6, 13],
-      [3, 6, 8, 14],
-      [3, 8, 9, 15],
-      [4, 9, 5, 16],
-      [2, 4, 11, 17],
-      [6, 2, 10, 18],
-      [8, 6, 7, 19],
-      [9, 8, 1, 20],
-    ];
-    return create_geom(vertices, faces, radius, -0.2, -Math.PI / 4 / 2, 0.955);
-  };
-
-  this.material_options = {
-    specular: 0x172022,
-    color: 0xf0f0f0,
-    shininess: 40,
-    flatShading: true,
-  };
-  this.label_color = "#aaaaaa";
-  this.dice_color = "#202020";
-  this.ambient_light_color = 0xf0f5fb;
-  this.spot_light_color = 0xefdfd5;
-  this.selector_back_colors = {
-    color: 0x404040,
-    shininess: 0,
-    emissive: 0x858787,
-  };
-  this.desk_color = 0xdfdfdf;
-  this.use_shadows = true;
-
-  this.known_types = ["d4", "d6", "d8", "d10", "d12", "d20", "d100"];
-  this.dice_face_range = {
-    d4: [1, 4],
-    d6: [1, 6],
-    d8: [1, 8],
-    d10: [0, 9],
-    d12: [1, 12],
-    d20: [1, 20],
-    d100: [0, 9],
-  };
-  this.dice_mass = {
-    d4: 300,
-    d6: 300,
-    d8: 340,
-    d10: 350,
-    d12: 350,
-    d20: 400,
-    d100: 350,
-  };
-  this.dice_inertia = {
-    d4: 5,
-    d6: 13,
-    d8: 10,
-    d10: 9,
-    d12: 8,
-    d20: 6,
-    d100: 9,
-  };
-
-  this.scale = 50;
-
-  this.create_d4 = function () {
-    if (!this.d4_geometry)
-      this.d4_geometry = this.create_d4_geometry(this.scale * 1.2);
-    if (!this.d4_material)
-      this.d4_material = (
-        this.create_d4_materials(this.scale / 2, this.scale * 2, d4_labels[0])
-      );
-    return new THREE.Mesh(this.d4_geometry, this.d4_material);
-  };
-
-  this.create_d6 = function () {
-    if (!this.d6_geometry)
-      this.d6_geometry = this.create_d6_geometry(this.scale * 0.9);
-    if (!this.dice_material)
-      this.dice_material = (
-        this.create_dice_materials(
-          this.standart_d20_dice_face_labels,
-          this.scale / 2,
-          1.0
-        )
-      );
-    return new THREE.Mesh(this.d6_geometry, this.dice_material);
-  };
-
-  this.create_d8 = function () {
-    if (!this.d8_geometry)
-      this.d8_geometry = this.create_d8_geometry(this.scale);
-    if (!this.dice_material)
-      this.dice_material = (
-        this.create_dice_materials(
-          this.standart_d20_dice_face_labels,
-          this.scale / 2,
-          1.2
-        )
-      );
-    return new THREE.Mesh(this.d8_geometry, this.dice_material);
-  };
-
-  this.create_d10 = function () {
-    if (!this.d10_geometry)
-      this.d10_geometry = this.create_d10_geometry(this.scale * 0.9);
-    if (!this.dice_material)
-      this.dice_material = (
-        this.create_dice_materials(
-          this.standart_d20_dice_face_labels,
-          this.scale / 2,
-          1.0
-        )
-      );
-    return new THREE.Mesh(this.d10_geometry, this.dice_material);
-  };
-
-  this.create_d12 = function () {
-    if (!this.d12_geometry)
-      this.d12_geometry = this.create_d12_geometry(this.scale * 0.9);
-    if (!this.dice_material)
-      this.dice_material = (
-        this.create_dice_materials(
-          this.standart_d20_dice_face_labels,
-          this.scale / 2,
-          1.0
-        )
-      );
-    return new THREE.Mesh(this.d12_geometry, this.dice_material);
-  };
-
-  this.create_d20 = function () {
-    if (!this.d20_geometry)
-      this.d20_geometry = this.create_d20_geometry(this.scale);
-    if (!this.dice_material)
-      this.dice_material = (
-        this.create_dice_materials(
-          this.standart_d20_dice_face_labels,
-          this.scale / 2,
-          1.0
-        )
-      );
-    return new THREE.Mesh(this.d20_geometry, this.dice_material);
-  };
-
-  this.create_d100 = function () {
-    if (!this.d10_geometry)
-      this.d10_geometry = this.create_d10_geometry(this.scale * 0.9);
-    if (!this.d100_material)
-      this.d100_material = (
-        this.create_dice_materials(
-          this.standart_d100_dice_face_labels,
-          this.scale / 2,
-          1.5
-        )
-      );
-    return new THREE.Mesh(this.d10_geometry, this.d100_material);
-  };
-
-  this.parse_notation = function (notation) {
-    var no = notation.split("@");
-    var dr0 = /\s*(\d*)([a-z]+)(\d+)(\s*(\+|\-)\s*(\d+)){0,1}\s*(\+|$)/gi;
-    var dr1 = /(\b)*(\d+)(\b)*/gi;
-    var ret = { set: [], constant: 0, result: [], error: false },
-      res;
-    while ((res = dr0.exec(no[0]))) {
-      var command = res[2];
-      if (command != "d") {
-        ret.error = true;
-        continue;
-      }
-      var count = parseInt(res[1]);
-      if (res[1] == "") count = 1;
-      var type = "d" + res[3];
-      if (this.known_types.indexOf(type) == -1) {
-        ret.error = true;
-        continue;
-      }
-      while (count--) ret.set.push(type);
-      if (res[5] && res[6]) {
-        if (res[5] == "+") ret.constant += parseInt(res[6]);
-        else ret.constant -= parseInt(res[6]);
-      }
-    }
-    while ((res = dr1.exec(no[1]))) {
-      ret.result.push(parseInt(res[2]));
-    }
-    return ret;
-  };
-
-  this.stringify_notation = function (nn) {
-    var dict = {},
-      notation = "";
-    for (var i in nn.set)
-      if (!dict[nn.set[i]]) dict[nn.set[i]] = 1;
-      else ++dict[nn.set[i]];
-    for (var i in dict) {
-      if (notation.length) notation += " + ";
-      notation += (dict[i] > 1 ? dict[i] : "") + i;
-    }
-    if (nn.constant) {
-      if (nn.constant > 0) notation += " + " + nn.constant;
-      else notation += " - " + Math.abs(nn.constant);
-    }
-    return notation;
-  };
-
-  var that = this;
-
-  this.dice_box = function (container, dimentions) {
-    this.use_adapvite_timestep = true;
-    this.animate_selector = true;
-
-    this.dices = [];
-    this.scene = new THREE.Scene();
-    this.world = new CANNON.World();
-
-    this.renderer = WebGLRenderingContext
-      ? new THREE.WebGLRenderer({ antialias: true })
-      : new THREE.CanvasRenderer({ antialias: true });
-    container.appendChild(this.renderer.domElement);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
-    this.renderer.setClearColor(0xffffff, 1);
-
-    this.reinit(container, dimentions);
-
-    this.world.gravity.set(0, 0, -9.8 * 800);
-    this.world.broadphase = new CANNON.NaiveBroadphase();
-    this.world.solver.iterations = 16;
-
-    var ambientLight = new THREE.AmbientLight(that.ambient_light_color);
-    this.scene.add(ambientLight);
-
-    this.dice_body_material = new CANNON.Material();
-    var desk_body_material = new CANNON.Material();
-    var barrier_body_material = new CANNON.Material();
-    this.world.addContactMaterial(
-      new CANNON.ContactMaterial(
-        desk_body_material,
-        this.dice_body_material,
-        { friction: 0.01, restitution: 0.5 }
+  const materials = [];
+  for (let i = 0; i < face_labels.length; ++i)
+    materials.push(
+      new THREE.MeshPhongMaterial(
+        Object.assign({}, material_options, {
+          map: create_text_texture(face_labels[i], label_color, dice_color),
+        })
       )
     );
-    this.world.addContactMaterial(
-      new CANNON.ContactMaterial(
-        barrier_body_material,
-        this.dice_body_material,
-        { friction: 0, restitution: 1.0 }
-      )
-    );
-    this.world.addContactMaterial(
-      new CANNON.ContactMaterial(
-        this.dice_body_material,
-        this.dice_body_material,
-        { friction: 0, restitution: 0.5 }
-      )
-    );
+  return materials;
+}
 
-    var groundBody = new CANNON.Body({ mass: 0, material: desk_body_material });
-    groundBody.addShape(new CANNON.Plane());
-    this.world.addBody(groundBody);
-    var barrier;
-    barrier = new CANNON.Body({ mass: 0, material: barrier_body_material });
-    barrier.addShape(new CANNON.Plane());
-    barrier.quaternion.setFromAxisAngle(
-      new CANNON.Vec3(1, 0, 0),
-      Math.PI / 2
-    );
-    barrier.position.set(0, this.h * 0.85, 0);
-    this.world.addBody(barrier);
-
-    barrier = new CANNON.Body({ mass: 0, material: barrier_body_material });
-    barrier.addShape(new CANNON.Plane());
-    barrier.quaternion.setFromAxisAngle(
-      new CANNON.Vec3(1, 0, 0),
-      -Math.PI / 2
-    );
-    barrier.position.set(0, -this.h * 0.85, 0);
-    this.world.addBody(barrier);
-
-    barrier = new CANNON.Body({ mass: 0, material: barrier_body_material });
-    barrier.addShape(new CANNON.Plane());
-    barrier.quaternion.setFromAxisAngle(
-      new CANNON.Vec3(0, 1, 0),
-      -Math.PI / 2
-    );
-    barrier.position.set(this.w * 0.85, 0, 0);
-    this.world.addBody(barrier);
-
-    barrier = new CANNON.Body({ mass: 0, material: barrier_body_material });
-    barrier.addShape(new CANNON.Plane());
-    barrier.quaternion.setFromAxisAngle(
-      new CANNON.Vec3(0, 1, 0),
-      Math.PI / 2
-    );
-    barrier.position.set(-this.w * 0.85, 0, 0);
-    this.world.addBody(barrier);
-
-    this.last_time = 0;
-    this.running = false;
-
-    this.renderer.render(this.scene, this.camera);
-  };
-
-  this.dice_box.prototype.reinit = function (container, dimentions) {
-    this.cw = container.clientWidth / 2;
-    this.ch = container.clientHeight / 2;
-    if (dimentions) {
-      this.w = dimentions.w;
-      this.h = dimentions.h;
-    } else {
-      this.w = this.cw;
-      this.h = this.ch;
+/**
+ * Creates materials with face number textures for d4 dice.
+ * D4 has special triangular face layout with rotated numbers.
+ * @param {number} size - Base size for texture calculations.
+ * @param {number} margin - Margin around the text.
+ * @param {Array} labels - Array of label arrays for each face.
+ * @returns {Array<THREE.MeshPhongMaterial>} Array of materials for each face.
+ */
+export function create_d4_materials(size, margin, labels) {
+  function create_d4_text(text, color, back_color) {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    const ts = calc_texture_size(size + margin) * 2;
+    canvas.width = canvas.height = ts;
+    context.font = (ts - margin) / 1.5 + "pt Arial";
+    context.fillStyle = back_color;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillStyle = color;
+    for (const i in text) {
+      context.fillText(text[i], canvas.width / 2, canvas.height / 2 - ts * 0.3);
+      context.translate(canvas.width / 2, canvas.height / 2);
+      context.rotate((Math.PI * 2) / 3);
+      context.translate(-canvas.width / 2, -canvas.height / 2);
     }
-    this.aspect = Math.min(this.cw / this.w, this.ch / this.h);
-    that.scale = Math.sqrt(this.w * this.w + this.h * this.h) / 13;
-
-    this.renderer.setSize(this.cw * 2, this.ch * 2);
-
-    this.wh = this.ch / this.aspect / Math.tan((10 * Math.PI) / 180);
-    if (this.camera) this.scene.remove(this.camera);
-    this.camera = new THREE.PerspectiveCamera(
-      20,
-      this.cw / this.ch,
-      1,
-      this.wh * 1.3
+    const texture = new THREE.Texture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+  }
+  const materials = [];
+  for (let i = 0; i < labels.length; ++i)
+    materials.push(
+      new THREE.MeshPhongMaterial(
+        Object.assign({}, material_options, {
+          map: create_d4_text(labels[i], label_color, dice_color),
+        })
+      )
     );
-    this.camera.position.z = this.wh;
+  return materials;
+}
 
-    var mw = Math.max(this.w, this.h);
-    if (this.light) this.scene.remove(this.light);
-    this.light = new THREE.SpotLight(that.spot_light_color, 2.0);
-    this.light.position.set(-mw / 2, mw / 2, mw * 2);
-    this.light.target.position.set(0, 0, 0);
-    this.light.distance = mw * 5;
-    this.light.castShadow = true;
-    this.light.shadow.camera.near = mw / 10;
-    this.light.shadow.camera.far = mw * 5;
-    this.light.shadow.camera.fov = 50;
-    this.light.shadow.bias = 0.001;
-    this.light.shadow.mapSize.width = 1024;
-    this.light.shadow.mapSize.height = 1024;
-    this.scene.add(this.light);
+// ============================================================================
+// EXPORTED GEOMETRY FUNCTIONS
+// ============================================================================
 
-    if (this.desk) this.scene.remove(this.desk);
-    this.desk = new THREE.Mesh(
-      new THREE.PlaneGeometry(this.w * 2, this.h * 2, 1, 1),
-      new THREE.MeshPhongMaterial({ color: that.desk_color })
-    );
-    this.desk.receiveShadow = that.use_shadows;
-    this.scene.add(this.desk);
+/**
+ * Creates geometry for a d4 (tetrahedron) die.
+ * @param {number} radius - Scale factor for the die.
+ * @returns {THREE.Geometry} The d4 geometry with physics shape.
+ */
+export function create_d4_geometry(radius) {
+  const vertices = [
+    [1, 1, 1],
+    [-1, -1, 1],
+    [-1, 1, -1],
+    [1, -1, -1],
+  ];
+  const faces = [
+    [1, 0, 2, 1],
+    [0, 1, 3, 2],
+    [0, 3, 2, 3],
+    [1, 2, 3, 4],
+  ];
+  return create_geom(vertices, faces, radius, -0.1, (Math.PI * 7) / 6, 0.96);
+}
 
-    this.renderer.render(this.scene, this.camera);
+/**
+ * Creates geometry for a d6 (cube) die.
+ * @param {number} radius - Scale factor for the die.
+ * @returns {THREE.Geometry} The d6 geometry with physics shape.
+ */
+export function create_d6_geometry(radius) {
+  const vertices = [
+    [-1, -1, -1],
+    [1, -1, -1],
+    [1, 1, -1],
+    [-1, 1, -1],
+    [-1, -1, 1],
+    [1, -1, 1],
+    [1, 1, 1],
+    [-1, 1, 1],
+  ];
+  const faces = [
+    [0, 3, 2, 1, 1],
+    [1, 2, 6, 5, 2],
+    [0, 1, 5, 4, 3],
+    [3, 7, 6, 2, 4],
+    [0, 4, 7, 3, 5],
+    [4, 5, 6, 7, 6],
+  ];
+  return create_geom(vertices, faces, radius, 0.1, Math.PI / 4, 0.96);
+}
+
+/**
+ * Creates geometry for a d8 (octahedron) die.
+ * @param {number} radius - Scale factor for the die.
+ * @returns {THREE.Geometry} The d8 geometry with physics shape.
+ */
+export function create_d8_geometry(radius) {
+  const vertices = [
+    [1, 0, 0],
+    [-1, 0, 0],
+    [0, 1, 0],
+    [0, -1, 0],
+    [0, 0, 1],
+    [0, 0, -1],
+  ];
+  const faces = [
+    [0, 2, 4, 1],
+    [0, 4, 3, 2],
+    [0, 3, 5, 3],
+    [0, 5, 2, 4],
+    [1, 3, 4, 5],
+    [1, 4, 2, 6],
+    [1, 2, 5, 7],
+    [1, 5, 3, 8],
+  ];
+  return create_geom(vertices, faces, radius, 0, -Math.PI / 4 / 2, 0.965);
+}
+
+/**
+ * Creates geometry for a d10 (pentagonal trapezohedron) die.
+ * @param {number} radius - Scale factor for the die.
+ * @returns {THREE.Geometry} The d10 geometry with physics shape.
+ */
+export function create_d10_geometry(radius) {
+  const a = (Math.PI * 2) / 10;
+  const h = 0.105;
+  const v = -1;
+  const vertices = [];
+  for (let i = 0, b = 0; i < 10; ++i, b += a)
+    vertices.push([Math.cos(b), Math.sin(b), h * (i % 2 ? 1 : -1)]);
+  vertices.push([0, 0, -1]);
+  vertices.push([0, 0, 1]);
+  const faces = [
+    [5, 7, 11, 0],
+    [4, 2, 10, 1],
+    [1, 3, 11, 2],
+    [0, 8, 10, 3],
+    [7, 9, 11, 4],
+    [8, 6, 10, 5],
+    [9, 1, 11, 6],
+    [2, 0, 10, 7],
+    [3, 5, 11, 8],
+    [6, 4, 10, 9],
+    [1, 0, 2, v],
+    [1, 2, 3, v],
+    [3, 2, 4, v],
+    [3, 4, 5, v],
+    [5, 4, 6, v],
+    [5, 6, 7, v],
+    [7, 6, 8, v],
+    [7, 8, 9, v],
+    [9, 8, 0, v],
+    [9, 0, 1, v],
+  ];
+  return create_geom(vertices, faces, radius, 0, (Math.PI * 6) / 5, 0.945);
+}
+
+/**
+ * Creates geometry for a d12 (dodecahedron) die.
+ * @param {number} radius - Scale factor for the die.
+ * @returns {THREE.Geometry} The d12 geometry with physics shape.
+ */
+export function create_d12_geometry(radius) {
+  const p = (1 + Math.sqrt(5)) / 2;
+  const q = 1 / p;
+  const vertices = [
+    [0, q, p],
+    [0, q, -p],
+    [0, -q, p],
+    [0, -q, -p],
+    [p, 0, q],
+    [p, 0, -q],
+    [-p, 0, q],
+    [-p, 0, -q],
+    [q, p, 0],
+    [q, -p, 0],
+    [-q, p, 0],
+    [-q, -p, 0],
+    [1, 1, 1],
+    [1, 1, -1],
+    [1, -1, 1],
+    [1, -1, -1],
+    [-1, 1, 1],
+    [-1, 1, -1],
+    [-1, -1, 1],
+    [-1, -1, -1],
+  ];
+  const faces = [
+    [2, 14, 4, 12, 0, 1],
+    [15, 9, 11, 19, 3, 2],
+    [16, 10, 17, 7, 6, 3],
+    [6, 7, 19, 11, 18, 4],
+    [6, 18, 2, 0, 16, 5],
+    [18, 11, 9, 14, 2, 6],
+    [1, 17, 10, 8, 13, 7],
+    [1, 13, 5, 15, 3, 8],
+    [13, 8, 12, 4, 5, 9],
+    [5, 4, 14, 9, 15, 10],
+    [0, 12, 8, 10, 16, 11],
+    [3, 19, 7, 17, 1, 12],
+  ];
+  return create_geom(vertices, faces, radius, 0.2, -Math.PI / 4 / 2, 0.968);
+}
+
+/**
+ * Creates geometry for a d20 (icosahedron) die.
+ * @param {number} radius - Scale factor for the die.
+ * @returns {THREE.Geometry} The d20 geometry with physics shape.
+ */
+export function create_d20_geometry(radius) {
+  const t = (1 + Math.sqrt(5)) / 2;
+  const vertices = [
+    [-1, t, 0],
+    [1, t, 0],
+    [-1, -t, 0],
+    [1, -t, 0],
+    [0, -1, t],
+    [0, 1, t],
+    [0, -1, -t],
+    [0, 1, -t],
+    [t, 0, -1],
+    [t, 0, 1],
+    [-t, 0, -1],
+    [-t, 0, 1],
+  ];
+  const faces = [
+    [0, 11, 5, 1],
+    [0, 5, 1, 2],
+    [0, 1, 7, 3],
+    [0, 7, 10, 4],
+    [0, 10, 11, 5],
+    [1, 5, 9, 6],
+    [5, 11, 4, 7],
+    [11, 10, 2, 8],
+    [10, 7, 6, 9],
+    [7, 1, 8, 10],
+    [3, 9, 4, 11],
+    [3, 4, 2, 12],
+    [3, 2, 6, 13],
+    [3, 6, 8, 14],
+    [3, 8, 9, 15],
+    [4, 9, 5, 16],
+    [2, 4, 11, 17],
+    [6, 2, 10, 18],
+    [8, 6, 7, 19],
+    [9, 8, 1, 20],
+  ];
+  return create_geom(vertices, faces, radius, -0.2, -Math.PI / 4 / 2, 0.955);
+}
+
+// ============================================================================
+// MORE MODULE CONFIGURATION
+// ============================================================================
+
+/** @type {number} Ambient light color */
+export const ambient_light_color = 0xf0f5fb;
+
+/** @type {number} Spot light color */
+export const spot_light_color = 0xefdfd5;
+
+/** @type {Object} Material options for selector background */
+export const selector_back_colors = {
+  color: 0x404040,
+  shininess: 0,
+  emissive: 0x858787,
+};
+
+/** @type {number} Desk/table color */
+export const desk_color = 0xdfdfdf;
+
+/** @type {boolean} Whether to render shadows */
+export let use_shadows = true;
+
+/** @type {Array<string>} All supported dice types */
+export const known_types = ["d4", "d6", "d8", "d10", "d12", "d20", "d100"];
+
+/** @type {Object} Face value ranges for each die type */
+export const dice_face_range = {
+  d4: [1, 4],
+  d6: [1, 6],
+  d8: [1, 8],
+  d10: [0, 9],
+  d12: [1, 12],
+  d20: [1, 20],
+  d100: [0, 9],
+};
+
+/** @type {Object} Mass values for each die type */
+export const dice_mass = {
+  d4: 300,
+  d6: 300,
+  d8: 340,
+  d10: 350,
+  d12: 350,
+  d20: 400,
+  d100: 350,
+};
+
+/** @type {Object} Inertia values for each die type */
+export const dice_inertia = {
+  d4: 5,
+  d6: 13,
+  d8: 10,
+  d10: 9,
+  d12: 8,
+  d20: 6,
+  d100: 9,
+};
+
+/** @type {number} Scale factor for dice sizing */
+export let scale = 50;
+
+// Cached geometry and materials
+let d4_geometry_cache = null;
+let d6_geometry_cache = null;
+let d8_geometry_cache = null;
+let d10_geometry_cache = null;
+let d12_geometry_cache = null;
+let d20_geometry_cache = null;
+let d4_material_cache = null;
+let d100_material_cache = null;
+let dice_material_cache = null;
+
+// ============================================================================
+// EXPORTED DICE FACTORY FUNCTIONS
+// ============================================================================
+
+/**
+ * Creates a d4 die mesh with geometry and materials.
+ * Caches geometry and materials for reuse.
+ * @returns {THREE.Mesh} The d4 die mesh.
+ */
+export function create_d4() {
+  if (!d4_geometry_cache)
+    d4_geometry_cache = create_d4_geometry(scale * 1.2);
+  if (!d4_material_cache)
+    d4_material_cache = create_d4_materials(scale / 2, scale * 2, d4_labels[0]);
+  return new THREE.Mesh(d4_geometry_cache, d4_material_cache);
+}
+
+/**
+ * Creates a d6 die mesh with geometry and materials.
+ * Caches geometry and materials for reuse.
+ * @returns {THREE.Mesh} The d6 die mesh.
+ */
+export function create_d6() {
+  if (!d6_geometry_cache)
+    d6_geometry_cache = create_d6_geometry(scale * 0.9);
+  if (!dice_material_cache)
+    dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
+  return new THREE.Mesh(d6_geometry_cache, dice_material_cache);
+}
+
+/**
+ * Creates a d8 die mesh with geometry and materials.
+ * Caches geometry and materials for reuse.
+ * @returns {THREE.Mesh} The d8 die mesh.
+ */
+export function create_d8() {
+  if (!d8_geometry_cache)
+    d8_geometry_cache = create_d8_geometry(scale);
+  if (!dice_material_cache)
+    dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.2);
+  return new THREE.Mesh(d8_geometry_cache, dice_material_cache);
+}
+
+/**
+ * Creates a d10 die mesh with geometry and materials.
+ * Caches geometry and materials for reuse.
+ * @returns {THREE.Mesh} The d10 die mesh.
+ */
+export function create_d10() {
+  if (!d10_geometry_cache)
+    d10_geometry_cache = create_d10_geometry(scale * 0.9);
+  if (!dice_material_cache)
+    dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
+  return new THREE.Mesh(d10_geometry_cache, dice_material_cache);
+}
+
+/**
+ * Creates a d12 die mesh with geometry and materials.
+ * Caches geometry and materials for reuse.
+ * @returns {THREE.Mesh} The d12 die mesh.
+ */
+export function create_d12() {
+  if (!d12_geometry_cache)
+    d12_geometry_cache = create_d12_geometry(scale * 0.9);
+  if (!dice_material_cache)
+    dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
+  return new THREE.Mesh(d12_geometry_cache, dice_material_cache);
+}
+
+/**
+ * Creates a d20 die mesh with geometry and materials.
+ * Caches geometry and materials for reuse.
+ * @returns {THREE.Mesh} The d20 die mesh.
+ */
+export function create_d20() {
+  if (!d20_geometry_cache)
+    d20_geometry_cache = create_d20_geometry(scale);
+  if (!dice_material_cache)
+    dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
+  return new THREE.Mesh(d20_geometry_cache, dice_material_cache);
+}
+
+/**
+ * Creates a d100 (percentile) die mesh.
+ * Uses d10 geometry with special 00-90 face labels.
+ * @returns {THREE.Mesh} The d100 die mesh.
+ */
+export function create_d100() {
+  if (!d10_geometry_cache)
+    d10_geometry_cache = create_d10_geometry(scale * 0.9);
+  if (!d100_material_cache)
+    d100_material_cache = create_dice_materials(standart_d100_dice_face_labels, scale / 2, 1.5);
+  return new THREE.Mesh(d10_geometry_cache, d100_material_cache);
+}
+
+/**
+ * Dice factory lookup map for creating dice by type string.
+ * @type {Object<string, Function>}
+ */
+export const dice_factories = {
+  d4: create_d4,
+  d6: create_d6,
+  d8: create_d8,
+  d10: create_d10,
+  d12: create_d12,
+  d20: create_d20,
+  d100: create_d100,
+};
+
+/**
+ * Creates a die mesh by type string.
+ * @param {string} type - The die type (e.g., 'd4', 'd6', 'd20').
+ * @returns {THREE.Mesh} The die mesh.
+ */
+export function createDiceByType(type) {
+  const factory = dice_factories[type];
+  if (!factory) throw new Error(`Unknown dice type: ${type}`);
+  return factory();
+}
+
+// ============================================================================
+// EXPORTED NOTATION FUNCTIONS
+// ============================================================================
+
+/**
+ * Parses a dice notation string into a structured object.
+ * Supports format like "2d6+3" or "1d20@15" (with predetermined result).
+ * @param {string} notation - The dice notation string.
+ * @returns {Object} Parsed notation with set, constant, result, and error properties.
+ */
+export function parse_notation(notation) {
+  const no = notation.split("@");
+  const dr0 = /\s*(\d*)([a-z]+)(\d+)(\s*(\+|\-)\s*(\d+)){0,1}\s*(\+|$)/gi;
+  const dr1 = /(\b)*(\d+)(\b)*/gi;
+  const ret = { set: [], constant: 0, result: [], error: false };
+  let res;
+  while ((res = dr0.exec(no[0]))) {
+    const command = res[2];
+    if (command != "d") {
+      ret.error = true;
+      continue;
+    }
+    let count = parseInt(res[1]);
+    if (res[1] == "") count = 1;
+    const type = "d" + res[3];
+    if (known_types.indexOf(type) == -1) {
+      ret.error = true;
+      continue;
+    }
+    while (count--) ret.set.push(type);
+    if (res[5] && res[6]) {
+      if (res[5] == "+") ret.constant += parseInt(res[6]);
+      else ret.constant -= parseInt(res[6]);
+    }
+  }
+  while ((res = dr1.exec(no[1]))) {
+    ret.result.push(parseInt(res[2]));
+  }
+  return ret;
+}
+
+/**
+ * Converts a parsed notation object back to a string representation.
+ * @param {Object} nn - The parsed notation object.
+ * @returns {string} The dice notation string.
+ */
+export function stringify_notation(nn) {
+  const dict = {};
+  let notation = "";
+  for (const i in nn.set)
+    if (!dict[nn.set[i]]) dict[nn.set[i]] = 1;
+    else ++dict[nn.set[i]];
+  for (const i in dict) {
+    if (notation.length) notation += " + ";
+    notation += (dict[i] > 1 ? dict[i] : "") + i;
+  }
+  if (nn.constant) {
+    if (nn.constant > 0) notation += " + " + nn.constant;
+    else notation += " - " + Math.abs(nn.constant);
+  }
+  return notation;
+}
+
+// ============================================================================
+// DICE BOX HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Creates and configures the WebGL renderer for the dice box.
+ * Sets up shadow mapping and clear color.
+ * @param {HTMLElement} container - The DOM element to append the renderer to.
+ * @returns {THREE.WebGLRenderer|THREE.CanvasRenderer} The configured renderer.
+ */
+function createRenderer(container) {
+  const renderer = WebGLRenderingContext
+    ? new THREE.WebGLRenderer({ antialias: true })
+    : new THREE.CanvasRenderer({ antialias: true });
+  container.appendChild(renderer.domElement);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.setClearColor(0xffffff, 1);
+  return renderer;
+}
+
+/**
+ * Initializes the physics world with gravity and broadphase settings.
+ * @returns {CANNON.World} The configured physics world.
+ */
+function createPhysicsWorld() {
+  const world = new CANNON.World();
+  world.gravity.set(0, 0, -9.8 * 800);
+  world.broadphase = new CANNON.NaiveBroadphase();
+  world.solver.iterations = 16;
+  return world;
+}
+
+/**
+ * Adds ambient lighting to the scene.
+ * @param {THREE.Scene} scene - The Three.js scene.
+ */
+function addAmbientLight(scene) {
+  const ambientLight = new THREE.AmbientLight(ambient_light_color);
+  scene.add(ambientLight);
+}
+
+/**
+ * Creates physics materials and sets up contact materials for dice interactions.
+ * @param {CANNON.World} world - The physics world.
+ * @param {CANNON.Material} dice_body_material - The dice body material.
+ * @returns {Object} Object containing desk and barrier materials.
+ */
+function createContactMaterials(world, dice_body_material) {
+  const desk_body_material = new CANNON.Material();
+  const barrier_body_material = new CANNON.Material();
+
+  world.addContactMaterial(
+    new CANNON.ContactMaterial(
+      desk_body_material,
+      dice_body_material,
+      { friction: 0.01, restitution: 0.5 }
+    )
+  );
+  world.addContactMaterial(
+    new CANNON.ContactMaterial(
+      barrier_body_material,
+      dice_body_material,
+      { friction: 0, restitution: 1.0 }
+    )
+  );
+  world.addContactMaterial(
+    new CANNON.ContactMaterial(
+      dice_body_material,
+      dice_body_material,
+      { friction: 0, restitution: 0.5 }
+    )
+  );
+
+  return {
+    desk: desk_body_material,
+    barrier: barrier_body_material
   };
+}
 
-  function make_random_vector(vector) {
-    var random_angle = (rnd() * Math.PI) / 5 - Math.PI / 5 / 2;
-    var vec = {
-      x: vector.x * Math.cos(random_angle) - vector.y * Math.sin(random_angle),
-      y: vector.x * Math.sin(random_angle) + vector.y * Math.cos(random_angle),
+/**
+ * Creates the ground plane for the dice to roll on.
+ * @param {CANNON.World} world - The physics world.
+ * @param {CANNON.Material} desk_material - The desk body material.
+ */
+function createGround(world, desk_material) {
+  const groundBody = new CANNON.Body({ mass: 0, material: desk_material });
+  groundBody.addShape(new CANNON.Plane());
+  world.addBody(groundBody);
+}
+
+/**
+ * Creates a single barrier wall in the physics world.
+ * @param {CANNON.World} world - The physics world.
+ * @param {CANNON.Material} barrier_material - The barrier body material.
+ * @param {CANNON.Vec3} axis - The rotation axis.
+ * @param {number} angle - The rotation angle in radians.
+ * @param {Object} position - The barrier position {x, y, z}.
+ */
+function createBarrier(world, barrier_material, axis, angle, position) {
+  const barrier = new CANNON.Body({ mass: 0, material: barrier_material });
+  barrier.addShape(new CANNON.Plane());
+  barrier.quaternion.setFromAxisAngle(axis, angle);
+  barrier.position.set(position.x, position.y, position.z);
+  world.addBody(barrier);
+}
+
+/**
+ * Creates all four boundary walls (barriers) around the dice rolling area.
+ * @param {CANNON.World} world - The physics world.
+ * @param {CANNON.Material} barrier_material - The barrier body material.
+ * @param {number} width - Half-width of the dice box.
+ * @param {number} height - Half-height of the dice box.
+ */
+function createAllBarriers(world, barrier_material, width, height) {
+  // Top barrier
+  createBarrier(
+    world, barrier_material,
+    new CANNON.Vec3(1, 0, 0), Math.PI / 2,
+    { x: 0, y: height * 0.85, z: 0 }
+  );
+  // Bottom barrier
+  createBarrier(
+    world, barrier_material,
+    new CANNON.Vec3(1, 0, 0), -Math.PI / 2,
+    { x: 0, y: -height * 0.85, z: 0 }
+  );
+  // Right barrier
+  createBarrier(
+    world, barrier_material,
+    new CANNON.Vec3(0, 1, 0), -Math.PI / 2,
+    { x: width * 0.85, y: 0, z: 0 }
+  );
+  // Left barrier
+  createBarrier(
+    world, barrier_material,
+    new CANNON.Vec3(0, 1, 0), Math.PI / 2,
+    { x: -width * 0.85, y: 0, z: 0 }
+  );
+}
+
+// ============================================================================
+// DICE BOX CLASS
+// ============================================================================
+
+/**
+ * DiceBox Constructor - Creates a 3D dice rolling simulation environment.
+ * Initializes the Three.js scene, Cannon.js physics world, renderer,
+ * camera, lighting, and boundary barriers.
+ * 
+ * @constructor
+ * @param {HTMLElement} container - The DOM element to contain the dice box.
+ * @param {Object} [dimentions] - Optional custom dimensions.
+ * @param {number} [dimentions.w] - Custom width.
+ * @param {number} [dimentions.h] - Custom height.
+ */
+export function DiceBox(container, dimentions) {
+  this.use_adapvite_timestep = true;
+  this.animate_selector = true;
+  this.dices = [];
+
+  // Initialize Three.js scene
+  this.scene = new THREE.Scene();
+
+  // Initialize physics world
+  this.world = createPhysicsWorld();
+
+  // Setup renderer
+  this.renderer = createRenderer(container);
+
+  // Initialize dimensions and camera
+  this.reinit(container, dimentions);
+
+  // Add lighting
+  addAmbientLight(this.scene);
+
+  // Setup physics materials
+  this.dice_body_material = new CANNON.Material();
+  const materials = createContactMaterials(this.world, this.dice_body_material);
+
+  // Create ground and barriers
+  createGround(this.world, materials.desk);
+  createAllBarriers(this.world, materials.barrier, this.w, this.h);
+
+  // Initialize state
+  this.last_time = 0;
+  this.running = false;
+
+  // Initial render
+  this.renderer.render(this.scene, this.camera);
+}
+
+/**
+ * Reinitializes the dice box dimensions, camera, lighting, and desk.
+ * Called on initial setup and when the container is resized.
+ * @param {HTMLElement} container - The DOM container element.
+ * @param {Object} [dimentions] - Optional custom dimensions.
+ * @param {number} [dimentions.w] - Custom width.
+ * @param {number} [dimentions.h] - Custom height.
+ */
+DiceBox.prototype.reinit = function (container, dimentions) {
+  this.cw = container.clientWidth / 2;
+  this.ch = container.clientHeight / 2;
+  if (dimentions) {
+    this.w = dimentions.w;
+    this.h = dimentions.h;
+  } else {
+    this.w = this.cw;
+    this.h = this.ch;
+  }
+  this.aspect = Math.min(this.cw / this.w, this.ch / this.h);
+  scale = Math.sqrt(this.w * this.w + this.h * this.h) / 13;
+
+  this.renderer.setSize(this.cw * 2, this.ch * 2);
+
+  this.wh = this.ch / this.aspect / Math.tan((10 * Math.PI) / 180);
+  if (this.camera) this.scene.remove(this.camera);
+  this.camera = new THREE.PerspectiveCamera(
+    20,
+    this.cw / this.ch,
+    1,
+    this.wh * 1.3
+  );
+  this.camera.position.z = this.wh;
+
+  const mw = Math.max(this.w, this.h);
+  if (this.light) this.scene.remove(this.light);
+  this.light = new THREE.SpotLight(spot_light_color, 2.0);
+  this.light.position.set(-mw / 2, mw / 2, mw * 2);
+  this.light.target.position.set(0, 0, 0);
+  this.light.distance = mw * 5;
+  this.light.castShadow = true;
+  this.light.shadow.camera.near = mw / 10;
+  this.light.shadow.camera.far = mw * 5;
+  this.light.shadow.camera.fov = 50;
+  this.light.shadow.bias = 0.001;
+  this.light.shadow.mapSize.width = 1024;
+  this.light.shadow.mapSize.height = 1024;
+  this.scene.add(this.light);
+
+  if (this.desk) this.scene.remove(this.desk);
+  this.desk = new THREE.Mesh(
+    new THREE.PlaneGeometry(this.w * 2, this.h * 2, 1, 1),
+    new THREE.MeshPhongMaterial({ color: desk_color })
+  );
+  this.desk.receiveShadow = use_shadows;
+  this.scene.add(this.desk);
+
+  this.renderer.render(this.scene, this.camera);
+};
+
+/**
+ * Applies a random rotation to a direction vector.
+ * @param {Object} vector - The input vector {x, y}.
+ * @returns {Object} The rotated vector {x, y}.
+ */
+function make_random_vector(vector) {
+  const random_angle = (rnd() * Math.PI) / 5 - Math.PI / 5 / 2;
+  const vec = {
+    x: vector.x * Math.cos(random_angle) - vector.y * Math.sin(random_angle),
+    y: vector.x * Math.sin(random_angle) + vector.y * Math.cos(random_angle),
+  };
+  if (vec.x == 0) vec.x = 0.01;
+  if (vec.y == 0) vec.y = 0.01;
+  return vec;
+}
+
+/**
+ * Generates initial position, velocity, and rotation vectors for each die.
+ * @param {Object} notation - The dice notation object with set array.
+ * @param {Object} vector - The throw direction vector {x, y}.
+ * @param {number} boost - The throw force multiplier.
+ * @returns {Array} Array of vector objects for each die.
+ */
+DiceBox.prototype.generate_vectors = function (notation, vector, boost) {
+  const vectors = [];
+  for (const i in notation.set) {
+    const vec = make_random_vector(vector);
+    const pos = {
+      x: this.w * (vec.x > 0 ? -1 : 1) * 0.7,
+      y: this.h * (vec.y > 0 ? -1 : 1) * 0.7,
+      z: rnd() * 200 + 200,
     };
-    if (vec.x == 0) vec.x = 0.01;
-    if (vec.y == 0) vec.y = 0.01;
-    return vec;
+    const projector = Math.abs(vec.x / vec.y);
+    if (projector > 1.0) pos.y /= projector;
+    else pos.x *= projector;
+    const velvec = make_random_vector(vector);
+    const velocity = { x: velvec.x * boost, y: velvec.y * boost, z: -10 };
+    const inertia = dice_inertia[notation.set[i]];
+    const angle = {
+      x: -(rnd() * vec.y * 5 + inertia * vec.y),
+      y: rnd() * vec.x * 5 + inertia * vec.x,
+      z: 0,
+    };
+    const axis = { x: rnd(), y: rnd(), z: rnd(), a: rnd() };
+    vectors.push({
+      set: notation.set[i],
+      pos: pos,
+      velocity: velocity,
+      angle: angle,
+      axis: axis,
+    });
   }
+  return vectors;
+};
 
-  this.dice_box.prototype.generate_vectors = function (
-    notation,
-    vector,
-    boost
-  ) {
-    var vectors = [];
-    for (var i in notation.set) {
-      var vec = make_random_vector(vector);
-      var pos = {
-        x: this.w * (vec.x > 0 ? -1 : 1) * 0.7,
-        y: this.h * (vec.y > 0 ? -1 : 1) * 0.7,
-        z: rnd() * 200 + 200,
-      };
-      var projector = Math.abs(vec.x / vec.y);
-      if (projector > 1.0) pos.y /= projector;
-      else pos.x *= projector;
-      var velvec = make_random_vector(vector);
-      var velocity = { x: velvec.x * boost, y: velvec.y * boost, z: -10 };
-      var inertia = that.dice_inertia[notation.set[i]];
-      var angle = {
-        x: -(rnd() * vec.y * 5 + inertia * vec.y),
-        y: rnd() * vec.x * 5 + inertia * vec.x,
-        z: 0,
-      };
-      var axis = { x: rnd(), y: rnd(), z: rnd(), a: rnd() };
-      vectors.push({
-        set: notation.set[i],
-        pos: pos,
-        velocity: velocity,
-        angle: angle,
-        axis: axis,
-      });
-    }
-    return vectors;
-  };
-
-  this.dice_box.prototype.create_dice = function (
+  /**
+   * Creates a single die mesh with physics body and adds it to the scene.
+   * @param {string} type - The die type (e.g., 'd4', 'd6', 'd20').
+   * @param {Object} pos - Initial position {x, y, z}.
+   * @param {Object} velocity - Initial velocity {x, y, z}.
+   * @param {Object} angle - Initial angular velocity {x, y, z}.
+   * @param {Object} axis - Rotation axis and angle {x, y, z, a}.
+   */
+DiceBox.prototype.create_dice = function (
     type,
     pos,
     velocity,
     angle,
     axis
   ) {
-    var dice = that["create_" + type]();
+    const dice = createDiceByType(type);
     dice.castShadow = true;
     dice.dice_type = type;
     dice.body = new CANNON.Body({
-      mass: that.dice_mass[type],
+      mass: dice_mass[type],
       material: this.dice_body_material
     });
     dice.body.addShape(dice.geometry.cannon_shape);
@@ -900,10 +1184,14 @@ export function generateDice(dice = {}) {
     this.world.addBody(dice.body);
   };
 
-  this.dice_box.prototype.check_if_throw_finished = function () {
+  /**
+   * Checks if all dice have stopped moving.
+   * @returns {boolean} True if all dice have settled, false otherwise.
+   */
+DiceBox.prototype.check_if_throw_finished = function () {
     var res = true;
     var e = 6;
-    if (this.iteration < 10 / that.frame_rate) {
+    if (this.iteration < 10 / frame_rate) {
       for (var i = 0; i < this.dices.length; ++i) {
         var dice = this.dices[i];
         if (dice.dice_stopped === true) continue;
@@ -933,6 +1221,12 @@ export function generateDice(dice = {}) {
     return res;
   };
 
+  /**
+   * Determines the face-up value of a single die based on its orientation.
+   * @private
+   * @param {THREE.Mesh} dice - The die mesh object.
+   * @returns {number} The value shown on the top face.
+   */
   function get_dice_value(dice) {
     var vector = new THREE.Vector3(
       0,
@@ -962,6 +1256,12 @@ export function generateDice(dice = {}) {
     return matindex;
   }
 
+  /**
+   * Gets the face-up values for all dice.
+   * @private
+   * @param {Array<THREE.Mesh>} dices - Array of die mesh objects.
+   * @returns {Array<number>} Array of values for each die.
+   */
   function get_dice_values(dices) {
     var values = [];
     for (var i = 0, l = dices.length; i < l; ++i) {
@@ -970,27 +1270,38 @@ export function generateDice(dice = {}) {
     return values;
   }
 
-  this.dice_box.prototype.emulate_throw = function () {
+  /**
+   * Runs the physics simulation until all dice have settled.
+   * Used to pre-calculate results for deterministic throws.
+   * @returns {Array<number>} Array of final dice values.
+   */
+DiceBox.prototype.emulate_throw = function () {
     while (!this.check_if_throw_finished()) {
       ++this.iteration;
-      this.world.step(that.frame_rate);
+      this.world.step(frame_rate);
     }
     return get_dice_values(this.dices);
   };
 
-  this.dice_box.prototype.__animate = function (threadid) {
+  /**
+   * Main animation loop for dice rolling simulation.
+   * Updates physics, syncs mesh positions, and renders the scene.
+   * @private
+   * @param {number} threadid - Unique identifier for this animation thread.
+   */
+DiceBox.prototype.__animate = function (threadid) {
     var time = new Date().getTime();
     var time_diff = (time - this.last_time) / 1000;
-    if (time_diff > 3) time_diff = that.frame_rate;
+    if (time_diff > 3) time_diff = frame_rate;
     ++this.iteration;
     if (this.use_adapvite_timestep) {
-      while (time_diff > that.frame_rate * 1.1) {
-        this.world.step(that.frame_rate);
-        time_diff -= that.frame_rate;
+      while (time_diff > frame_rate * 1.1) {
+        this.world.step(frame_rate);
+        time_diff -= frame_rate;
       }
       this.world.step(time_diff);
     } else {
-      this.world.step(that.frame_rate);
+      this.world.step(frame_rate);
     }
     for (var i in this.scene.children) {
       var interact = this.scene.children[i];
@@ -1007,12 +1318,12 @@ export function generateDice(dice = {}) {
     }
     if (this.running == threadid) {
       (function (t, tid, uat) {
-        if (!uat && time_diff < that.frame_rate) {
+        if (!uat && time_diff < frame_rate) {
           setTimeout(function () {
             requestAnimationFrame(function () {
               t.__animate(tid);
             });
-          }, (that.frame_rate - time_diff) * 1000);
+          }, (frame_rate - time_diff) * 1000);
         } else
           requestAnimationFrame(function () {
             t.__animate(tid);
@@ -1021,7 +1332,11 @@ export function generateDice(dice = {}) {
     }
   };
 
-  this.dice_box.prototype.clear = function () {
+  /**
+   * Clears all dice from the scene and physics world.
+   * Stops any running animation and re-renders the scene.
+   */
+DiceBox.prototype.clear = function () {
     this.running = false;
     var dice;
     while ((dice = this.dices.pop())) {
@@ -1036,7 +1351,11 @@ export function generateDice(dice = {}) {
     }, 100);
   };
 
-  this.dice_box.prototype.prepare_dices_for_roll = function (vectors) {
+  /**
+   * Prepares dice for rolling by clearing existing dice and creating new ones.
+   * @param {Array} vectors - Array of vector objects from generate_vectors().
+   */
+DiceBox.prototype.prepare_dices_for_roll = function (vectors) {
     this.clear();
     this.iteration = 0;
     for (var i in vectors) {
@@ -1050,32 +1369,44 @@ export function generateDice(dice = {}) {
     }
   };
 
-  function shift_dice_faces(dice, value, res) {
-    var r = that.dice_face_range[dice.dice_type];
-    if (dice.dice_type == "d10" && value == 10) value = 0;
-    if (dice.dice_type == "d10" && res == 10) res = 0;
-    if (dice.dice_type == "d100") res /= 10;
-    if (!(value >= r[0] && value <= r[1])) return;
-    var num = value - res;
-    var geom = dice.geometry.clone();
-    for (var i = 0, l = geom.faces.length; i < l; ++i) {
-      var matindex = geom.faces[i].materialIndex;
-      if (matindex == 0) continue;
-      matindex += num - 1;
-      while (matindex > r[1]) matindex -= r[1];
-      while (matindex < r[0]) matindex += r[1];
-      geom.faces[i].materialIndex = matindex + 1;
-    }
-    if (dice.dice_type == "d4" && num != 0) {
-      if (num < 0) num += 4;
-      dice.material = (
-        that.create_d4_materials(that.scale / 2, that.scale * 2, d4_labels[num])
-      );
-    }
-    dice.geometry = geom;
+  /**
+   * Shifts dice face materials to achieve a predetermined result.
+   * Used for deterministic dice rolling.
+   * @private
+   * @param {THREE.Mesh} dice - The die mesh object.
+   * @param {number} value - The desired result value.
+   * @param {number} res - The simulated result value.
+   */
+function shift_dice_faces(dice, value, res) {
+  const r = dice_face_range[dice.dice_type];
+  if (dice.dice_type == "d10" && value == 10) value = 0;
+  if (dice.dice_type == "d10" && res == 10) res = 0;
+  if (dice.dice_type == "d100") res /= 10;
+  if (!(value >= r[0] && value <= r[1])) return;
+  let num = value - res;
+  const geom = dice.geometry.clone();
+  for (let i = 0, l = geom.faces.length; i < l; ++i) {
+    let matindex = geom.faces[i].materialIndex;
+    if (matindex == 0) continue;
+    matindex += num - 1;
+    while (matindex > r[1]) matindex -= r[1];
+    while (matindex < r[0]) matindex += r[1];
+    geom.faces[i].materialIndex = matindex + 1;
   }
+  if (dice.dice_type == "d4" && num != 0) {
+    if (num < 0) num += 4;
+    dice.material = create_d4_materials(scale / 2, scale * 2, d4_labels[num]);
+  }
+  dice.geometry = geom;
+}
 
-  this.dice_box.prototype.roll = function (vectors, values, callback) {
+  /**
+   * Executes a dice roll animation.
+   * @param {Array} vectors - Array of vector objects from generate_vectors().
+   * @param {Array<number>} [values] - Optional predetermined results.
+   * @param {Function} [callback] - Callback function called with results when roll completes.
+   */
+DiceBox.prototype.roll = function (vectors, values, callback) {
     this.prepare_dices_for_roll(vectors);
     if (values != undefined && values.length) {
       this.use_adapvite_timestep = false;
@@ -1089,10 +1420,16 @@ export function generateDice(dice = {}) {
     this.__animate(this.running);
   };
 
-  this.dice_box.prototype.__selector_animate = function (threadid) {
+  /**
+   * Animation loop for the dice selector display.
+   * Rotates dice for visual effect.
+   * @private
+   * @param {number} threadid - Unique identifier for this animation thread.
+   */
+DiceBox.prototype.__selector_animate = function (threadid) {
     var time = new Date().getTime();
     var time_diff = (time - this.last_time) / 1000;
-    if (time_diff > 3) time_diff = that.frame_rate;
+    if (time_diff > 3) time_diff = frame_rate;
     var angle_change =
       (0.3 * time_diff * Math.PI * Math.min(24000 + threadid - time, 6000)) /
       6000;
@@ -1113,7 +1450,12 @@ export function generateDice(dice = {}) {
     }
   };
 
-  this.dice_box.prototype.search_dice_by_mouse = function (ev) {
+  /**
+   * Performs raycasting to find which die was clicked/touched.
+   * @param {Event} ev - The mouse or touch event.
+   * @returns {*} The userData of the intersected die, or undefined.
+   */
+DiceBox.prototype.search_dice_by_mouse = function (ev) {
     var touches = ev.changedTouches;
     var m = touches
       ? { x: touches[0].clientX, y: touches[0].clientY }
@@ -1131,24 +1473,26 @@ export function generateDice(dice = {}) {
     if (intersects.length) return intersects[0].object.userData;
   };
 
-  this.dice_box.prototype.draw_selector = function () {
+  /**
+   * Draws the dice type selector display.
+   * Shows all available dice types for user selection.
+   */
+DiceBox.prototype.draw_selector = function () {
     this.clear();
     var step = this.w / 4.5;
     this.pane = new THREE.Mesh(
       new THREE.PlaneGeometry(this.w * 6, this.h * 6, 1, 1),
-      new THREE.MeshPhongMaterial(that.selector_back_colors)
+      new THREE.MeshPhongMaterial(selector_back_colors)
     );
     this.pane.receiveShadow = true;
     this.pane.position.set(0, 0, 1);
     this.scene.add(this.pane);
 
-    var mouse_captured = false;
-
-    for (var i = 0, pos = -3; i < that.known_types.length; ++i, ++pos) {
-      var dice = tealDice.dice["create_" + that.known_types[i]]();
+    for (let i = 0, pos = -3; i < known_types.length; ++i, ++pos) {
+      const dice = createDiceByType(known_types[i]);
       dice.position.set(pos * step, 0, step * 0.5);
       dice.castShadow = true;
-      dice.userData = that.known_types[i];
+      dice.userData = known_types[i];
       this.dices.push(dice);
       this.scene.add(dice);
     }
@@ -1159,6 +1503,18 @@ export function generateDice(dice = {}) {
     else this.renderer.render(this.scene, this.camera);
   };
 
+  /**
+   * Orchestrates the dice throwing process.
+   * Generates vectors, calls callbacks, and initiates the roll.
+   * @private
+   * @param {Object} box - The dice_box instance.
+   * @param {Object} vector - The throw direction vector.
+   * @param {number} boost - The throw force multiplier.
+   * @param {number} dist - The throw distance.
+   * @param {Function} notation_getter - Function that returns the dice notation.
+   * @param {Function} [before_roll] - Callback before rolling starts.
+   * @param {Function} [after_roll] - Callback after rolling completes.
+   */
   function throw_dices(
     box,
     vector,
@@ -1168,7 +1524,7 @@ export function generateDice(dice = {}) {
     before_roll,
     after_roll
   ) {
-    var uat = tealDice.dice.use_adapvite_timestep;
+    const uat = box.use_adapvite_timestep;
     function roll(request_results) {
       if (after_roll) {
         box.clear();
@@ -1178,7 +1534,7 @@ export function generateDice(dice = {}) {
           function (result) {
             if (after_roll) after_roll.call(box, notation, result);
             box.rolling = false;
-            tealDice.dice.use_adapvite_timestep = uat;
+            box.use_adapvite_timestep = uat;
           }
         );
       }
@@ -1193,7 +1549,15 @@ export function generateDice(dice = {}) {
     else roll();
   }
 
-  this.dice_box.prototype.bind_mouse = function (
+  /**
+   * Binds mouse/touch drag events to trigger dice throws.
+   * Calculates throw direction and force from drag gesture.
+   * @param {HTMLElement} container - The container element to bind events to.
+   * @param {Function} notation_getter - Function that returns the dice notation.
+   * @param {Function} [before_roll] - Callback before rolling starts.
+   * @param {Function} [after_roll] - Callback after rolling completes.
+   */
+DiceBox.prototype.bind_mouse = function (
     container,
     notation_getter,
     before_roll,
@@ -1244,7 +1608,14 @@ export function generateDice(dice = {}) {
     });
   };
 
-  this.dice_box.prototype.bind_throw = function (
+  /**
+   * Binds a button click/touch to trigger a random dice throw.
+   * @param {HTMLElement} button - The button element to bind events to.
+   * @param {Function} notation_getter - Function that returns the dice notation.
+   * @param {Function} [before_roll] - Callback before rolling starts.
+   * @param {Function} [after_roll] - Callback after rolling completes.
+   */
+DiceBox.prototype.bind_throw = function (
     button,
     notation_getter,
     before_roll,
@@ -1259,7 +1630,13 @@ export function generateDice(dice = {}) {
     });
   };
 
-  this.dice_box.prototype.start_throw = function (
+  /**
+   * Initiates a dice throw with random direction and force.
+   * @param {Function} notation_getter - Function that returns the dice notation.
+   * @param {Function} [before_roll] - Callback before rolling starts.
+   * @param {Function} [after_roll] - Callback after rolling completes.
+   */
+DiceBox.prototype.start_throw = function (
     notation_getter,
     before_roll,
     after_roll
@@ -1281,4 +1658,3 @@ export function generateDice(dice = {}) {
       );
     });
   };
-}
