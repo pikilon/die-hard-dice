@@ -7,7 +7,7 @@
     this.frame_rate = 1 / 60;
 
     function prepare_rnd(callback) {
-        if (!random_storage.length && teal.dice.use_true_random) {
+        if (!random_storage.length && tealDice.dice.use_true_random) {
             try {
                 var ajax = new XMLHttpRequest();
                 ajax.open("post", 'f', true);
@@ -16,14 +16,14 @@
                         var random_responce = JSON.parse(ajax.responseText);
                         if (!random_responce.error)
                             random_storage = random_responce.result.random.data;
-                        else teal.dice.use_true_random = false;
+                        else tealDice.dice.use_true_random = false;
                         callback();
                     }
                 };
                 ajax.send(JSON.stringify({ method: "random", n: 512 }));
                 return;
             }
-            catch (e) { teal.dice.use_true_random = false; }
+            catch (e) { tealDice.dice.use_true_random = false; }
         }
         callback();
     }
@@ -752,7 +752,7 @@
         var mouse_captured = false;
 
         for (var i = 0, pos = -3; i < that.known_types.length; ++i, ++pos) {
-            var dice = teal.dice['create_' + that.known_types[i]]();
+            var dice = tealDice.dice['create_' + that.known_types[i]]();
             dice.position.set(pos * step, 0, step * 0.5);
             dice.castShadow = true;
             dice.userData = that.known_types[i];
@@ -766,14 +766,14 @@
     }
 
     function throw_dices(box, vector, boost, dist, notation_getter, before_roll, after_roll) {
-        var uat = teal.dice.use_adapvite_timestep;
+        var uat = tealDice.dice.use_adapvite_timestep;
         function roll(request_results) {
             if (after_roll) {
                 box.clear();
                 box.roll(vectors, request_results || notation.result, function(result) {
                     if (after_roll) after_roll.call(box, notation, result);
                     box.rolling = false;
-                    teal.dice.use_adapvite_timestep = uat;
+                    tealDice.dice.use_adapvite_timestep = uat;
                 });
             }
         }
@@ -838,5 +838,5 @@
         });
     }
 
-}).apply(teal.dice = teal.dice || {});
+}).apply(tealDice.dice = tealDice.dice || {});
 
