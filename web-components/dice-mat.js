@@ -432,6 +432,38 @@ export class DiceMat extends LitElement {
       material = faces.map((text) =>
         this.createTextMaterial(text, dieDef.color)
       );
+    } else if (dieDef.type === "d4") {
+      // Each face shows 3 different numbers - the ones NOT on the opposite vertex
+      // First number = top position (the result), then bottom-left, bottom-right
+      const d4FaceNumbers = [
+        ["4", "3", "1"],  // face 0 - result 4 (shows 1,3,4)
+        ["3", "4", "2"],  // face 1 - result 3 (shows 2,3,4)
+        ["2", "1", "4"],  // face 2 - result 2 (shows 1,2,4)
+        ["1", "2", "3"],  // face 3 - result 1 (shows 1,2,3)
+      ];
+
+      geometry = geometry.toNonIndexed();
+      geometry.clearGroups();
+
+      // d4 tetrahedron has 4 triangular faces, each with 3 vertices = 12 vertices total
+      const vertexCount = geometry.attributes.position.count;
+      const uvArray = new Float32Array(vertexCount * 2);
+
+      for (let i = 0; i < 4; i++) {
+        geometry.addGroup(i * 3, 3, i);
+
+        // UV mapping for triangular face
+        const baseIdx = i * 3;
+        uvArray[(baseIdx) * 2] = 0.5;      uvArray[(baseIdx) * 2 + 1] = 1;     // top vertex
+        uvArray[(baseIdx + 1) * 2] = 0;    uvArray[(baseIdx + 1) * 2 + 1] = 0; // bottom left
+        uvArray[(baseIdx + 2) * 2] = 1;    uvArray[(baseIdx + 2) * 2 + 1] = 0; // bottom right
+      }
+
+      geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvArray, 2));
+
+      material = d4FaceNumbers.map((nums) =>
+        this.createD4TextMaterial(nums[0], nums[1], nums[2], dieDef.color)
+      );
     } else if (dieDef.type === "d20") {
       const faces =
         dieDef.faces && dieDef.faces.length === 20
@@ -492,6 +524,68 @@ export class DiceMat extends LitElement {
 
     this.world.addBody(body);
     return { mesh, body };
+  }
+
+  createD4TextMaterial(topNum, bottomLeftNum, bottomRightNum, color) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+
+    const bgColor = color || "#ffffff";
+
+    // Background
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0, 0, 256, 256);
+
+    // Calculate contrast color
+    const getContrastColor = (hexColor) => {
+      let r = 0, g = 0, b = 0;
+      if (hexColor.startsWith("#")) {
+        const hex = hexColor.substring(1);
+        if (hex.length === 3) {
+          r = parseInt(hex[0] + hex[0], 16);
+          g = parseInt(hex[1] + hex[1], 16);
+          b = parseInt(hex[2] + hex[2], 16);
+        } else if (hex.length === 6) {
+          r = parseInt(hex.substring(0, 2), 16);
+          g = parseInt(hex.substring(2, 4), 16);
+          b = parseInt(hex.substring(4, 6), 16);
+        }
+      } else if (typeof hexColor === "number") {
+        r = (hexColor >> 16) & 255;
+        g = (hexColor >> 8) & 255;
+        b = hexColor & 255;
+      }
+      const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+      return yiq >= 128 ? "#000000" : "#ffffff";
+    };
+
+    const textColor = getContrastColor(bgColor);
+    ctx.fillStyle = textColor;
+    ctx.font = "bold 70px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // Top number (upright) - this is the "read here" position / result
+    ctx.fillText(topNum, 128, 80);
+
+    // Bottom left number (rotated ~60° clockwise to follow left edge)
+    ctx.save();
+    ctx.translate(50, 210);
+    ctx.rotate(Math.PI / 3); // 60 degrees
+    ctx.fillText(bottomLeftNum, 0, 0);
+    ctx.restore();
+
+    // Bottom right number (rotated ~60° counter-clockwise to follow right edge)
+    ctx.save();
+    ctx.translate(206, 210);
+    ctx.rotate(-Math.PI / 3); // -60 degrees
+    ctx.fillText(bottomRightNum, 0, 0);
+    ctx.restore();
+
+    const texture = new THREE.CanvasTexture(canvas);
+    return new THREE.MeshStandardMaterial({ map: texture });
   }
 
   createTextMaterial(text, color) {
@@ -797,6 +891,38 @@ export class DiceMat extends LitElement {
         } else {
           value =
             dieDef.faces && dieDef.faces.length > 1 ? dieDef.faces[1] : "T";
+        }
+      } else if (dieDef.type === "d4") {
+        // Tetrahedron. 4 faces.
+        // Find the face normal most aligned with world up.
+        const pos = mesh.geometry.attributes.position;
+        let maxDot = -Infinity;
+        let faceIndex = -1;
+
+        for (let i = 0; i < 4; i++) {
+          const v1 = new THREE.Vector3().fromBufferAttribute(pos, i * 3);
+          const v2 = new THREE.Vector3().fromBufferAttribute(pos, i * 3 + 1);
+          const v3 = new THREE.Vector3().fromBufferAttribute(pos, i * 3 + 2);
+
+          const normal = new THREE.Vector3()
+            .crossVectors(v2.clone().sub(v1), v3.clone().sub(v1))
+            .normalize();
+
+          normal.applyQuaternion(mesh.quaternion);
+
+          const dot = normal.dot(new THREE.Vector3(0, 1, 0));
+          if (dot > maxDot) {
+            maxDot = dot;
+            faceIndex = i;
+          }
+        }
+
+        // Map face index to result: face 0=4, face 1=3, face 2=2, face 3=1
+        const d4Results = [4, 3, 2, 1];
+        if (dieDef.faces && dieDef.faces.length === 4) {
+          value = dieDef.faces[faceIndex];
+        } else {
+          value = d4Results[faceIndex];
         }
       } else if (dieDef.type === "d20") {
         // Icosahedron. 20 faces.
