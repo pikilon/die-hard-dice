@@ -1,3 +1,7 @@
+import { generateDice } from "./dice.js";
+
+
+
 function dice_initialize(container = document.body) {
   document.getElementById("loading_text")?.remove();
 
@@ -136,5 +140,5 @@ function dice_initialize(container = document.body) {
     show_selector();
   }
 }
-
+tealDice.dice = new generateDice();
 dice_initialize();
