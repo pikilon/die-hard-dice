@@ -87,9 +87,16 @@ export class DiceMat extends LitElement {
     this.settledTime = 0;
     this.isSettled = true;
 
+    // Camera rotation
+    this.isRotatingCamera = false;
+    this.cameraAngle = 0;
+    this.cameraRadius = Math.sqrt(15 * 15 + 15 * 15);
+    this.lastMouseX = 0;
+
     this._onWindowResize = this.onWindowResize.bind(this);
     this._onMouseMove = this.onMouseMove.bind(this);
-    this._onMouseUp = this.releaseThrow.bind(this);
+    this._onMouseUp = this.onMouseUp.bind(this);
+    this._onCanvasMouseDown = this.onCanvasMouseDown.bind(this);
   }
 
   firstUpdated() {
@@ -100,6 +107,9 @@ export class DiceMat extends LitElement {
     window.addEventListener("resize", this._onWindowResize);
     window.addEventListener("mousemove", this._onMouseMove);
     window.addEventListener("mouseup", this._onMouseUp);
+
+    const container = this.shadowRoot.getElementById("canvas-container");
+    container.addEventListener("mousedown", this._onCanvasMouseDown);
 
     // Initial spawn if dice are present
     if (this.dice) {
@@ -119,6 +129,8 @@ export class DiceMat extends LitElement {
     window.removeEventListener("resize", this._onWindowResize);
     window.removeEventListener("mousemove", this._onMouseMove);
     window.removeEventListener("mouseup", this._onMouseUp);
+    const container = this.shadowRoot?.getElementById("canvas-container");
+    if (container) container.removeEventListener("mousedown", this._onCanvasMouseDown);
   }
 
   initThree() {
@@ -1013,6 +1025,26 @@ export class DiceMat extends LitElement {
         this.lastTime = now;
       }
     }
+
+    // Camera rotation
+    if (this.isRotatingCamera && !this.isDragging) {
+      const deltaX = this.mousePos.x - this.lastMouseX;
+      this.cameraAngle += deltaX * 0.5;
+    }
+    this.lastMouseX = this.mousePos.x;
+  }
+
+  onCanvasMouseDown(e) {
+    // Only start camera rotation if not clicking the throw button
+    if (!this.isDragging) {
+      this.isRotatingCamera = true;
+      this.lastMouseX = this.mousePos.x;
+    }
+  }
+
+  onMouseUp() {
+    this.releaseThrow();
+    this.isRotatingCamera = false;
   }
 
   startThrow() {
@@ -1141,6 +1173,15 @@ export class DiceMat extends LitElement {
       }
 
       this.checkSettled();
+    }
+
+    // Update camera position based on angle
+    if (this.camera) {
+      const baseAngle = Math.PI / 4;
+      const angle = baseAngle + this.cameraAngle;
+      this.camera.position.x = Math.sin(angle) * this.cameraRadius;
+      this.camera.position.z = Math.cos(angle) * this.cameraRadius;
+      this.camera.lookAt(0, 0, 0);
     }
 
     if (this.renderer && this.scene && this.camera) {
