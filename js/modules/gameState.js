@@ -1,3 +1,5 @@
+import { DEFAULT_DICE } from './notationUtils.js';
+
 /**
  * PubSub State Module for Dice Game
  * Manages the game set (selected dice) and last roll results
@@ -7,15 +9,7 @@ class GameState {
   constructor() {
     this.state = {
       // Diccionario de dados disponibles
-      diceDictionary: [
-        { title: "d4", sides: ["1", "2", "3", "4"] },
-        { title: "d6", sides: ["1", "2", "3", "4", "5", "6"] },
-        { title: "d8", sides: ["1", "2", "3", "4", "5", "6", "7", "8"] },
-        { title: "d10", sides: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] },
-        { title: "d12", sides: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"] },
-        { title: "d20", sides: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"] },
-        { title: "d100", sides: ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"] }
-      ],
+      diceDictionary: DEFAULT_DICE,
       // Array de dados seleccionados con índice del diccionario y cantidad
       // Ejemplo: [{ dictionaryIndex: 1, quantity: 4 }] (4 d6)
       gameSet: [

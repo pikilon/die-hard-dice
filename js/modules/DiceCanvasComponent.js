@@ -1,9 +1,8 @@
-import { DiceBox, parse_notation, stringify_notation } from '../dice.js';
+import { DiceBox } from '../dice.js';
 import { gameState } from '../modules/gameState.js';
 import { 
   gameSetToOldFormat, 
-  notationToGameSet, 
-  resultsToString 
+  notationToGameSet
 } from './notationUtils.js';
 
 /**
@@ -15,23 +14,12 @@ class DiceCanvasComponent extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this.box = null;
     this.unsubscribeGameSet = null;
-    this.unsubscribeResult = null;
   }
 
   connectedCallback() {
     this.render();
     this.initialize();
     
-    // Suscribirse a cambios en el resultado
-    this.unsubscribeResult = gameState.subscribe('lastResult', (result) => {
-      this.updateResultDisplay(result);
-    });
-
-    // Suscribirse a cambios en la suma
-    this.unsubscribeSum = gameState.subscribe('sum', (sum) => {
-      this.updateResultDisplay(gameState.getState('lastResult'));
-    });
-
     // Suscribirse a cambios en el gameSet
     this.unsubscribeGameSet = gameState.subscribe('gameSet', (gameSet) => {
       console.log('GameSet updated:', gameSet);
@@ -41,12 +29,6 @@ class DiceCanvasComponent extends HTMLElement {
   disconnectedCallback() {
     if (this.unsubscribeGameSet) {
       this.unsubscribeGameSet();
-    }
-    if (this.unsubscribeResult) {
-      this.unsubscribeResult();
-    }
-    if (this.unsubscribeSum) {
-      this.unsubscribeSum();
     }
     
     // Limpiar event listeners de window
@@ -61,42 +43,6 @@ class DiceCanvasComponent extends HTMLElement {
           width: 100%;
           height: 100%;
           position: relative;
-        }
-
-        #info_div {
-          position: fixed;
-          bottom: 0;
-          width: 100%;
-          text-align: center;
-          padding: 20px;
-          box-sizing: border-box;
-          pointer-events: none;
-        }
-
-        #info_div.hidden {
-          display: none;
-        }
-
-        .center_field {
-          background: rgba(255, 255, 255, 0.5);
-          display: inline-block;
-          padding: 20px;
-          border-radius: 8px;
-        }
-
-        #label {
-          font-size: 24pt;
-          font-weight: bold;
-          color: rgba(21, 26, 26, 0.9);
-        }
-
-        .bottom_field {
-          margin-top: 10px;
-        }
-
-        #labelhelp {
-          font-size: 12pt;
-          color: rgba(21, 26, 26, 0.6);
         }
 
         #selector_div {
@@ -139,25 +85,12 @@ class DiceCanvasComponent extends HTMLElement {
           </div>
         </div>
       </div>
-
-      <div id="info_div" class="hidden">
-        <div class="center_field">
-          <span id="label"></span>
-        </div>
-        <div class="center_field">
-          <div class="bottom_field">
-            <span id="labelhelp">click to continue or tap and drag again</span>
-          </div>
-        </div>
-      </div>
     `;
   }
 
   initialize() {
     const canvas = this.shadowRoot.getElementById('canvas');
-    const label = this.shadowRoot.getElementById('label');
     const selectorDiv = this.shadowRoot.getElementById('selector_div');
-    const infoDiv = this.shadowRoot.getElementById('info_div');
 
     // Configurar canvas
     canvas.style.width = window.innerWidth - 1 + 'px';
@@ -190,27 +123,17 @@ class DiceCanvasComponent extends HTMLElement {
     };
 
     const before_roll = (vectors, notation, callback) => {
-      infoDiv.classList.add('hidden');
       selectorDiv.classList.add('hidden');
       callback();
     };
 
     const after_roll = (notation, result) => {
-      const params = Object.fromEntries(new URLSearchParams(window.location.search));
-      if (params.chromakey || params.noresult) return;
-
       // Convertir resultados numéricos a strings
       const resultStrings = result.map(r => String(r));
       
       // Actualizar el estado global (esto calculará automáticamente la suma)
+      // El componente dice-result se encargará de mostrar el resultado
       gameState.setLastResult(resultStrings);
-      
-      // Mostrar resultado
-      const sum = gameState.getState('sum');
-      const displayText = resultsToString(resultStrings, sum);
-      
-      label.innerHTML = displayText;
-      infoDiv.classList.remove('hidden');
     };
 
     // Bind mouse interactions
@@ -265,10 +188,6 @@ class DiceCanvasComponent extends HTMLElement {
 
     // Verificar parámetros URL
     const params = Object.fromEntries(new URLSearchParams(window.location.search));
-    
-    if (params.chromakey) {
-      infoDiv.style.display = 'none';
-    }
 
     if (params.notation) {
       const parsedGameSet = notationToGameSet(params.notation);
@@ -287,19 +206,8 @@ class DiceCanvasComponent extends HTMLElement {
 
   showSelector() {
     const selectorDiv = this.shadowRoot.getElementById('selector_div');
-    const infoDiv = this.shadowRoot.getElementById('info_div');
-    
-    infoDiv.classList.add('hidden');
     selectorDiv.classList.remove('hidden');
     this.box.draw_selector();
-  }
-
-  updateResultDisplay(result) {
-    const label = this.shadowRoot.getElementById('label');
-    if (label && result && result.length > 0) {
-      const sum = gameState.getState('sum');
-      label.innerHTML = resultsToString(result, sum);
-    }
   }
 }
 

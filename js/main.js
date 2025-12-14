@@ -9,6 +9,7 @@ import { setUseTrueRandom } from "./dice.js";
 import { gameState } from "./modules/gameState.js";
 import "./modules/DiceInputComponent.js";
 import "./modules/DiceCanvasComponent.js";
+import "./modules/DiceResultComponent.js";
 
 function dice_initialize() {
   document.getElementById("loading_text")?.remove();

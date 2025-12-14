@@ -8,7 +8,7 @@ import { gameState } from './gameState.js';
  * Array de definiciones de dados (debe coincidir con diceDictionary del estado)
  * Índice 0: d4, 1: d6, 2: d8, 3: d10, 4: d12, 5: d20, 6: d100
  */
-const DICE_DICTIONARY = [
+export const DEFAULT_DICE = [
   { title: "d4", sides: ["1", "2", "3", "4"] },
   { title: "d6", sides: ["1", "2", "3", "4", "5", "6"] },
   { title: "d8", sides: ["1", "2", "3", "4", "5", "6", "7", "8"] },
@@ -51,7 +51,7 @@ export function notationToGameSet(notation) {
   // Convertir a formato gameSet con dictionaryIndex
   const gameSet = [];
   for (const [diceType, quantity] of Object.entries(diceCount)) {
-    const index = DICE_DICTIONARY.findIndex(d => d.title === diceType);
+    const index = DEFAULT_DICE.findIndex(d => d.title === diceType);
     if (index !== -1) {
       gameSet.push({
         dictionaryIndex: index,
@@ -83,7 +83,7 @@ export function gameSetToNotation(gameSet) {
   }
 
   return gameSet.map(item => {
-    const dice = DICE_DICTIONARY[item.dictionaryIndex];
+    const dice = DEFAULT_DICE[item.dictionaryIndex];
     if (!dice) {
       console.warn(`Invalid dictionaryIndex: ${item.dictionaryIndex}`);
       return '';
@@ -128,7 +128,7 @@ export function parseOldNotation(oldNotation) {
 
   // Convertir a nuevo formato con dictionaryIndex
   return Object.entries(diceCount).map(([diceType, quantity]) => {
-    const index = DICE_DICTIONARY.findIndex(d => d.title === diceType);
+    const index = DEFAULT_DICE.findIndex(d => d.title === diceType);
     return index !== -1 ? { dictionaryIndex: index, quantity } : null;
   }).filter(d => d !== null);
 }
@@ -142,7 +142,7 @@ export function gameSetToOldFormat(gameSet) {
   const result = [];
   
   gameSet.forEach(item => {
-    const dice = DICE_DICTIONARY[item.dictionaryIndex];
+    const dice = DEFAULT_DICE[item.dictionaryIndex];
     if (dice) {
       for (let i = 0; i < item.quantity; i++) {
         result.push(dice.title);
@@ -159,7 +159,7 @@ export function gameSetToOldFormat(gameSet) {
  * @returns {string[]} - Array de caras
  */
 export function getSidesByIndex(dictionaryIndex) {
-  const dice = DICE_DICTIONARY[dictionaryIndex];
+  const dice = DEFAULT_DICE[dictionaryIndex];
   return dice ? [...dice.sides] : [];
 }
 
@@ -169,8 +169,8 @@ export function getSidesByIndex(dictionaryIndex) {
  * @returns {string} - Título del dado (ej: "d6")
  */
 export function getTitleByIndex(dictionaryIndex) {
-  const dice = DICE_DICTIONARY[dictionaryIndex];
+  const dice = DEFAULT_DICE[dictionaryIndex];
   return dice ? dice.title : '';
 }
 
-export { DICE_DICTIONARY };
+export { DEFAULT_DICE as DICE_DICTIONARY };
