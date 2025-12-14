@@ -8,10 +8,10 @@
 import { setUseTrueRandom } from "./dice.js";
 import { gameState } from "./modules/gameState.js";
 import "./modules/DiceInputComponent.js";
-import "./modules/DiceSelectorComponent.js";
 import "./modules/DiceThrowerComponent.js";
 import "./modules/DiceResultComponent.js";
-import "./modules/DiceSelectorHelpComponent.js";
+import "./modules/DiceSelectorComponent.js";
+import "./modules/DiceInstructionComponent.js";
 
 function dice_initialize() {
   document.getElementById("loading_text")?.remove();

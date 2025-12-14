@@ -1,9 +1,9 @@
 import { gameState } from './gameState.js';
 
 /**
- * Web Component para mostrar el mensaje de selección de dados
+ * Web Component para mostrar las instrucciones de uso de dados
  */
-class DiceSelectorHelpComponent extends HTMLElement {
+class DiceInstructionComponent extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -34,53 +34,47 @@ class DiceSelectorHelpComponent extends HTMLElement {
       <style>
         :host {
           display: block;
-        }
-
-        #selector_div {
           position: fixed;
-          top: 50%;
+          bottom: 20px;
           left: 50%;
-          transform: translate(-50%, -50%);
-          text-align: center;
-          padding: 20px;
-          pointer-events: none;
+          transform: translateX(-50%);
+          z-index: 1000;
           transition: opacity 0.3s ease;
         }
 
-        #selector_div.hidden {
+        :host(.hidden) {
           display: none;
         }
 
-        .center_field {
-          background: rgba(255, 255, 255, 0.7);
-          padding: 15px;
+        .instruction-container {
+          background: rgba(255, 255, 255, 0.9);
+          padding: 15px 25px;
           border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
-        #sethelp {
+        .instruction-text {
           font-size: 14pt;
-          color: rgba(21, 26, 26, 0.8);
+          color: rgba(21, 26, 26, 0.9);
           line-height: 1.5;
+          text-align: center;
         }
       </style>
 
-      <div id="selector_div" class="hidden">
-        <div class="center_field">
-          <div id="sethelp">
-            choose your dice set by clicking the dices or by direct input of notation,<br/>
-            tap and drag on free space of screen or hit throw button to roll
-          </div>
+      <div class="instruction-container">
+        <div class="instruction-text">
+          Choose your dice set by clicking the dices or by direct input of notation,<br/>
+          tap and drag on free space of screen or hit throw button to roll
         </div>
       </div>
     `;
   }
 
   updateVisibility(shouldShow) {
-    const selectorDiv = this.shadowRoot.getElementById('selector_div');
     if (shouldShow) {
-      selectorDiv.classList.remove('hidden');
+      this.classList.remove('hidden');
     } else {
-      selectorDiv.classList.add('hidden');
+      this.classList.add('hidden');
     }
   }
 
@@ -93,6 +87,6 @@ class DiceSelectorHelpComponent extends HTMLElement {
   }
 }
 
-customElements.define('dice-selector-help', DiceSelectorHelpComponent);
+customElements.define('dice-instruction', DiceInstructionComponent);
 
-export { DiceSelectorHelpComponent };
+export { DiceInstructionComponent };

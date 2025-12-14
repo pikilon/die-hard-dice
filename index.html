@@ -1,46 +1,54 @@
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xml:lang="en" lang="en" xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta
+      name="keywords"
+      content="DnD, dangeon and dragons, roleplay, dice, roller, 3D, RPG, wargame" />
+    <meta name="description" content="Online 3D dice roller" />
+    <title>teal 3d dice roller</title>
 
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-<meta name="keywords" content="DnD, dangeon and dragons, roleplay, dice, roller, 3D, RPG, wargame"/>
-<meta name="description" content="Online 3D dice roller"/>
-<title>teal 3d dice roller</title>
+    <link rel="stylesheet" type="text/css" href="./css/main.css" />
+    <link rel="stylesheet" type="text/css" href="./css/dice.css" />
+  </head>
 
-<link rel="stylesheet" type="text/css" href="./css/main.css">
-<link rel="stylesheet" type="text/css" href="./css/dice.css">
-
-</head>
-
-<body style="margin: 0" class="noselect">
+  <body style="margin: 0" class="noselect">
     <!-- Web Component para lanzar dados -->
     <dice-thrower></dice-thrower>
-    
-    <!-- Web Component para seleccionar dados -->
-    <dice-selector></dice-selector>
-    
+
     <!-- Web Component para el input de control -->
-    <div style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000;">
-        <dice-input></dice-input>
+    <div
+      style="
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+      ">
+      <dice-input></dice-input>
     </div>
+
+    <!-- Web Component para seleccionar dados-->
+    <dice-selector></dice-selector>
+
+
+    <!-- Web Component para mostrar instrucciones de uso -->
+    <dice-instruction></dice-instruction>
+
     
     <!-- Web Component para mostrar resultados -->
     <dice-result></dice-result>
-    
-    <!-- Web Component para mostrar mensaje de ayuda de selección -->
-    <dice-selector-help></dice-selector-help>
+
+
 
     <script type="importmap">
-    {
+      {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.124.0/build/three.module.js",
-            "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+          "three": "https://cdn.jsdelivr.net/npm/three@0.124.0/build/three.module.js",
+          "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
         }
-    }
+      }
     </script>
     <script type="module" src="./js/main.js"></script>
-
-</body>
+  </body>
 </html>
-
