@@ -2,29 +2,32 @@
  * Utilidades para convertir entre notación de dados y el formato de estado
  */
 
+import { gameState } from './gameState.js';
+
 /**
- * Mapeo de tipos de dados a sus caras
+ * Array de definiciones de dados (debe coincidir con diceDictionary del estado)
+ * Índice 0: d4, 1: d6, 2: d8, 3: d10, 4: d12, 5: d20, 6: d100
  */
-const DICE_SIDES = {
-  'd4': ["1", "2", "3", "4"],
-  'd6': ["1", "2", "3", "4", "5", "6"],
-  'd8': ["1", "2", "3", "4", "5", "6", "7", "8"],
-  'd10': ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
-  'd12': ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
-  'd20': ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"],
-  'd100': ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"],
-};
+const DICE_DICTIONARY = [
+  { title: "d4", sides: ["1", "2", "3", "4"] },
+  { title: "d6", sides: ["1", "2", "3", "4", "5", "6"] },
+  { title: "d8", sides: ["1", "2", "3", "4", "5", "6", "7", "8"] },
+  { title: "d10", sides: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] },
+  { title: "d12", sides: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"] },
+  { title: "d20", sides: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"] },
+  { title: "d100", sides: ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"] }
+];
 
 /**
  * Convierte una notación string a formato gameSet
  * @param {string} notation - Notación tipo "4d6 + 2d8"
- * @returns {Array<{quantity: number, sides: string[]}>}
+ * @returns {Array<{dictionaryIndex: number, quantity: number}>}
  * 
  * @example
  * notationToGameSet("4d6 + 2d8")
  * // Returns: [
- * //   { quantity: 4, sides: ["1", "2", "3", "4", "5", "6"] },
- * //   { quantity: 2, sides: ["1", "2", "3", "4", "5", "6", "7", "8"] }
+ * //   { dictionaryIndex: 1, quantity: 4 },
+ * //   { dictionaryIndex: 2, quantity: 2 }
  * // ]
  */
 export function notationToGameSet(notation) {
@@ -32,7 +35,7 @@ export function notationToGameSet(notation) {
     return [];
   }
 
-  const gameSet = [];
+  const diceCount = {};
   // Regex para extraer cantidad y tipo de dado (ej: "4d6", "d20", "2d8")
   const diceRegex = /(\d*)d(\d+)/gi;
   let match;
@@ -41,20 +44,19 @@ export function notationToGameSet(notation) {
     const quantity = match[1] ? parseInt(match[1]) : 1;
     const diceType = 'd' + match[2];
     
-    if (DICE_SIDES[diceType]) {
-      // Buscar si ya existe un dado del mismo tipo en el gameSet
-      const existingDice = gameSet.find(d => 
-        JSON.stringify(d.sides) === JSON.stringify(DICE_SIDES[diceType])
-      );
-      
-      if (existingDice) {
-        existingDice.quantity += quantity;
-      } else {
-        gameSet.push({
-          quantity: quantity,
-          sides: [...DICE_SIDES[diceType]]
-        });
-      }
+    // Contar dados del mismo tipo
+    diceCount[diceType] = (diceCount[diceType] || 0) + quantity;
+  }
+
+  // Convertir a formato gameSet con dictionaryIndex
+  const gameSet = [];
+  for (const [diceType, quantity] of Object.entries(diceCount)) {
+    const index = DICE_DICTIONARY.findIndex(d => d.title === diceType);
+    if (index !== -1) {
+      gameSet.push({
+        dictionaryIndex: index,
+        quantity: quantity
+      });
     } else {
       console.warn(`Unknown dice type: ${diceType}`);
     }
@@ -65,13 +67,13 @@ export function notationToGameSet(notation) {
 
 /**
  * Convierte un gameSet a notación string
- * @param {Array<{quantity: number, sides: string[]}>} gameSet
+ * @param {Array<{dictionaryIndex: number, quantity: number}>} gameSet
  * @returns {string} - Notación tipo "4d6 + 2d8"
  * 
  * @example
  * gameSetToNotation([
- *   { quantity: 4, sides: ["1", "2", "3", "4", "5", "6"] },
- *   { quantity: 2, sides: ["1", "2", "3", "4", "5", "6", "7", "8"] }
+ *   { dictionaryIndex: 1, quantity: 4 },
+ *   { dictionaryIndex: 2, quantity: 2 }
  * ])
  * // Returns: "4d6 + 2d8"
  */
@@ -80,32 +82,18 @@ export function gameSetToNotation(gameSet) {
     return '0';
   }
 
-  return gameSet.map(dice => {
-    // Detectar el tipo de dado basado en el número de caras
-    const sidesCount = dice.sides.length;
-    const diceType = getDiceTypeFromSides(dice.sides);
-    
-    const prefix = dice.quantity > 1 ? dice.quantity : '';
-    return `${prefix}${diceType}`;
-  }).join(' + ');
+  return gameSet.map(item => {
+    const dice = DICE_DICTIONARY[item.dictionaryIndex];
+    if (!dice) {
+      console.warn(`Invalid dictionaryIndex: ${item.dictionaryIndex}`);
+      return '';
+    }
+    const prefix = item.quantity > 1 ? item.quantity : '';
+    return `${prefix}${dice.title}`;
+  }).filter(s => s).join(' + ');
 }
 
-/**
- * Determina el tipo de dado basado en sus caras
- * @param {string[]} sides - Array de caras del dado
- * @returns {string} - Tipo de dado (ej: "d6", "d20")
- */
-function getDiceTypeFromSides(sides) {
-  // Buscar coincidencia exacta
-  for (const [type, standardSides] of Object.entries(DICE_SIDES)) {
-    if (JSON.stringify(sides) === JSON.stringify(standardSides)) {
-      return type;
-    }
-  }
-  
-  // Si no hay coincidencia, usar el número de caras
-  return `d${sides.length}`;
-}
+
 
 /**
  * Convierte un array de resultados a formato string legible
@@ -124,7 +112,7 @@ export function resultsToString(results, sum) {
 /**
  * Parsea una notación antigua (del formato viejo) y la convierte al nuevo formato
  * @param {Object} oldNotation - Objeto notation del formato antiguo
- * @returns {Array<{quantity: number, sides: string[]}>}
+ * @returns {Array<{dictionaryIndex: number, quantity: number}>}
  */
 export function parseOldNotation(oldNotation) {
   if (!oldNotation || !oldNotation.set) {
@@ -138,25 +126,27 @@ export function parseOldNotation(oldNotation) {
     diceCount[diceType] = (diceCount[diceType] || 0) + 1;
   });
 
-  // Convertir a nuevo formato
-  return Object.entries(diceCount).map(([diceType, quantity]) => ({
-    quantity: quantity,
-    sides: DICE_SIDES[diceType] ? [...DICE_SIDES[diceType]] : []
-  })).filter(d => d.sides.length > 0);
+  // Convertir a nuevo formato con dictionaryIndex
+  return Object.entries(diceCount).map(([diceType, quantity]) => {
+    const index = DICE_DICTIONARY.findIndex(d => d.title === diceType);
+    return index !== -1 ? { dictionaryIndex: index, quantity } : null;
+  }).filter(d => d !== null);
 }
 
 /**
  * Convierte el gameSet al formato antiguo de notation.set
- * @param {Array<{quantity: number, sides: string[]}>} gameSet
+ * @param {Array<{dictionaryIndex: number, quantity: number}>} gameSet
  * @returns {string[]} - Array de tipos de dados (ej: ["d6", "d6", "d8"])
  */
 export function gameSetToOldFormat(gameSet) {
   const result = [];
   
-  gameSet.forEach(dice => {
-    const diceType = getDiceTypeFromSides(dice.sides);
-    for (let i = 0; i < dice.quantity; i++) {
-      result.push(diceType);
+  gameSet.forEach(item => {
+    const dice = DICE_DICTIONARY[item.dictionaryIndex];
+    if (dice) {
+      for (let i = 0; i < item.quantity; i++) {
+        result.push(dice.title);
+      }
     }
   });
   
@@ -164,23 +154,23 @@ export function gameSetToOldFormat(gameSet) {
 }
 
 /**
- * Obtiene las caras estándar para un tipo de dado
- * @param {string} diceType - Tipo de dado (ej: "d6", "d20")
+ * Obtiene las caras estándar para un tipo de dado por índice
+ * @param {number} dictionaryIndex - Índice en el diccionario
  * @returns {string[]} - Array de caras
  */
-export function getStandardSides(diceType) {
-  return DICE_SIDES[diceType] ? [...DICE_SIDES[diceType]] : [];
+export function getSidesByIndex(dictionaryIndex) {
+  const dice = DICE_DICTIONARY[dictionaryIndex];
+  return dice ? [...dice.sides] : [];
 }
 
 /**
- * Verifica si un dado es estándar
- * @param {string[]} sides - Caras del dado
- * @returns {boolean}
+ * Obtiene el título de un dado por índice
+ * @param {number} dictionaryIndex - Índice en el diccionario
+ * @returns {string} - Título del dado (ej: "d6")
  */
-export function isStandardDice(sides) {
-  return Object.values(DICE_SIDES).some(standardSides => 
-    JSON.stringify(sides) === JSON.stringify(standardSides)
-  );
+export function getTitleByIndex(dictionaryIndex) {
+  const dice = DICE_DICTIONARY[dictionaryIndex];
+  return dice ? dice.title : '';
 }
 
-export { DICE_SIDES };
+export { DICE_DICTIONARY };

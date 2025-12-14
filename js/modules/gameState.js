@@ -6,10 +6,20 @@
 class GameState {
   constructor() {
     this.state = {
-      // Array de dados con cantidad y caras customizables
-      // Ejemplo: [{ quantity: 4, sides: ["1", "2", "3", "4", "5", "6"] }]
+      // Diccionario de dados disponibles
+      diceDictionary: [
+        { title: "d4", sides: ["1", "2", "3", "4"] },
+        { title: "d6", sides: ["1", "2", "3", "4", "5", "6"] },
+        { title: "d8", sides: ["1", "2", "3", "4", "5", "6", "7", "8"] },
+        { title: "d10", sides: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] },
+        { title: "d12", sides: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"] },
+        { title: "d20", sides: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"] },
+        { title: "d100", sides: ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"] }
+      ],
+      // Array de dados seleccionados con índice del diccionario y cantidad
+      // Ejemplo: [{ dictionaryIndex: 1, quantity: 4 }] (4 d6)
       gameSet: [
-        { quantity: 4, sides: ["😍", "2", "3", "4", "5", "6"] }
+        { dictionaryIndex: 1, quantity: 4 }
       ],
       // Array de resultados como strings
       // Ejemplo: ["3", "4", "5", "2"]
@@ -19,6 +29,7 @@ class GameState {
     };
     
     this.subscribers = {
+      diceDictionary: [],
       gameSet: [],
       lastResult: [],
       sum: [],
@@ -51,7 +62,7 @@ class GameState {
 
   /**
    * Obtener el estado actual
-   * @param {string} key - opcional, 'gameSet', 'lastResult', o 'sum'
+   * @param {string} key - opcional, 'diceDictionary', 'gameSet', 'lastResult', o 'sum'
    * @returns {any} el valor del estado
    */
   getState(key) {
@@ -59,21 +70,37 @@ class GameState {
       return this.state[key];
     }
     return { 
-      gameSet: [...this.state.gameSet.map(d => ({...d, sides: [...d.sides]}))],
+      diceDictionary: [...this.state.diceDictionary.map(d => ({...d, sides: [...d.sides]}))],
+      gameSet: [...this.state.gameSet.map(d => ({...d}))],
       lastResult: [...this.state.lastResult],
       sum: this.state.sum
     };
   }
 
   /**
+   * Obtener los dados expandidos del gameSet (con sus caras)
+   * @returns {Array} Array de dados expandidos con quantity y sides
+   */
+  getExpandedGameSet() {
+    return this.state.gameSet.map(item => {
+      const diceDefinition = this.state.diceDictionary[item.dictionaryIndex];
+      return {
+        quantity: item.quantity,
+        sides: [...diceDefinition.sides],
+        title: diceDefinition.title
+      };
+    });
+  }
+
+  /**
    * Actualizar el game set
-   * @param {Array} gameSet - array de objetos { quantity, sides }
+   * @param {Array} gameSet - array de objetos { dictionaryIndex, quantity }
    */
   setGameSet(gameSet) {
     if (JSON.stringify(this.state.gameSet) !== JSON.stringify(gameSet)) {
       this.state.gameSet = gameSet.map(d => ({
-        quantity: d.quantity,
-        sides: [...d.sides]
+        dictionaryIndex: d.dictionaryIndex,
+        quantity: d.quantity
       }));
       this._notify('gameSet', this.state.gameSet);
       this._notify('all', this.state);
@@ -93,7 +120,10 @@ class GameState {
       console.log('🎲 Lanzamiento realizado:', {
         resultados: this.state.lastResult,
         suma: this.state.sum,
-        dados: this.state.gameSet.map(d => `${d.quantity}d${d.sides.length}`)
+        dados: this.state.gameSet.map(item => {
+          const dice = this.state.diceDictionary[item.dictionaryIndex];
+          return `${item.quantity}${dice.title}`;
+        })
       });
       
       this._notify('lastResult', this.state.lastResult);
@@ -112,8 +142,8 @@ class GameState {
     if (updates.gameSet !== undefined && 
         JSON.stringify(this.state.gameSet) !== JSON.stringify(updates.gameSet)) {
       this.state.gameSet = updates.gameSet.map(d => ({
-        quantity: d.quantity,
-        sides: [...d.sides]
+        dictionaryIndex: d.dictionaryIndex,
+        quantity: d.quantity
       }));
       this._notify('gameSet', this.state.gameSet);
       changed = true;
@@ -137,13 +167,11 @@ class GameState {
    * Resetear el estado
    */
   reset() {
-    this.state = {
-      gameSet: [
-        { quantity: 4, sides: ["1", "2", "3", "4", "5", "6"] }
-      ],
-      lastResult: [],
-      sum: 0,
-    };
+    this.state.gameSet = [
+      { dictionaryIndex: 1, quantity: 4 }
+    ];
+    this.state.lastResult = [];
+    this.state.sum = 0;
     this._notify('gameSet', this.state.gameSet);
     this._notify('lastResult', this.state.lastResult);
     this._notify('sum', this.state.sum);
