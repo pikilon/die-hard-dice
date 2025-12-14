@@ -45,29 +45,6 @@ class DiceCanvasComponent extends HTMLElement {
           position: relative;
         }
 
-        #selector_div {
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          text-align: center;
-          padding: 20px;
-          pointer-events: none;
-        }
-
-        #selector_div.hidden {
-          display: none;
-        }
-
-        #sethelp {
-          background: rgba(255, 255, 255, 0.7);
-          padding: 15px;
-          border-radius: 8px;
-          font-size: 14pt;
-          color: rgba(21, 26, 26, 0.8);
-          line-height: 1.5;
-        }
-
         #canvas {
           width: 100%;
           height: 100%;
@@ -76,21 +53,11 @@ class DiceCanvasComponent extends HTMLElement {
       </style>
 
       <div id="canvas"></div>
-      
-      <div id="selector_div" class="hidden">
-        <div class="center_field">
-          <div id="sethelp">
-            choose your dice set by clicking the dices or by direct input of notation,<br/>
-            tap and drag on free space of screen or hit throw button to roll
-          </div>
-        </div>
-      </div>
     `;
   }
 
   initialize() {
     const canvas = this.shadowRoot.getElementById('canvas');
-    const selectorDiv = this.shadowRoot.getElementById('selector_div');
 
     // Configurar canvas
     canvas.style.width = window.innerWidth - 1 + 'px';
@@ -123,7 +90,7 @@ class DiceCanvasComponent extends HTMLElement {
     };
 
     const before_roll = (vectors, notation, callback) => {
-      selectorDiv.classList.add('hidden');
+      gameState.setIsThrowing(true);
       callback();
     };
 
@@ -143,7 +110,9 @@ class DiceCanvasComponent extends HTMLElement {
     const handleCanvasClick = (ev) => {
       ev.stopPropagation();
       
-      if (selectorDiv.classList.contains('hidden')) {
+      const isThrowing = gameState.getState('isThrowing');
+      if (isThrowing) {
+        // Si está lanzando y ya terminó, mostrar selector
         if (!this.box.rolling) {
           this.showSelector();
         }
@@ -205,8 +174,7 @@ class DiceCanvasComponent extends HTMLElement {
   }
 
   showSelector() {
-    const selectorDiv = this.shadowRoot.getElementById('selector_div');
-    selectorDiv.classList.remove('hidden');
+    gameState.setIsThrowing(false);
     this.box.draw_selector();
   }
 }

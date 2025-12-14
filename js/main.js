@@ -10,6 +10,7 @@ import { gameState } from "./modules/gameState.js";
 import "./modules/DiceInputComponent.js";
 import "./modules/DiceCanvasComponent.js";
 import "./modules/DiceResultComponent.js";
+import "./modules/DiceSelectorHelpComponent.js";
 
 function dice_initialize() {
   document.getElementById("loading_text")?.remove();

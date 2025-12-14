@@ -20,6 +20,8 @@ class GameState {
       lastResult: [],
       // Suma de los resultados numéricos
       sum: 0,
+      // Indica si se está lanzando los dados
+      isThrowing: false,
     };
     
     this.subscribers = {
@@ -27,13 +29,14 @@ class GameState {
       gameSet: [],
       lastResult: [],
       sum: [],
+      isThrowing: [],
       all: [], // se notifica en cualquier cambio
     };
   }
 
   /**
    * Suscribirse a cambios en el estado
-   * @param {string} key - 'gameSet', 'lastResult', 'sum', o 'all'
+   * @param {string} key - 'gameSet', 'lastResult', 'sum', 'isThrowing', o 'all'
    * @param {Function} callback - función que se ejecuta cuando cambia el estado
    * @returns {Function} función para desuscribirse
    */
@@ -56,7 +59,7 @@ class GameState {
 
   /**
    * Obtener el estado actual
-   * @param {string} key - opcional, 'diceDictionary', 'gameSet', 'lastResult', o 'sum'
+   * @param {string} key - opcional, 'diceDictionary', 'gameSet', 'lastResult', 'sum', o 'isThrowing'
    * @returns {any} el valor del estado
    */
   getState(key) {
@@ -67,7 +70,8 @@ class GameState {
       diceDictionary: [...this.state.diceDictionary.map(d => ({...d, sides: [...d.sides]}))],
       gameSet: [...this.state.gameSet.map(d => ({...d}))],
       lastResult: [...this.state.lastResult],
-      sum: this.state.sum
+      sum: this.state.sum,
+      isThrowing: this.state.isThrowing
     };
   }
 
@@ -158,6 +162,18 @@ class GameState {
   }
 
   /**
+   * Establecer el estado de lanzamiento
+   * @param {boolean} isThrowing - true si está lanzando, false si no
+   */
+  setIsThrowing(isThrowing) {
+    if (this.state.isThrowing !== isThrowing) {
+      this.state.isThrowing = isThrowing;
+      this._notify('isThrowing', this.state.isThrowing);
+      this._notify('all', this.state);
+    }
+  }
+
+  /**
    * Resetear el estado
    */
   reset() {
@@ -166,9 +182,11 @@ class GameState {
     ];
     this.state.lastResult = [];
     this.state.sum = 0;
+    this.state.isThrowing = false;
     this._notify('gameSet', this.state.gameSet);
     this._notify('lastResult', this.state.lastResult);
     this._notify('sum', this.state.sum);
+    this._notify('isThrowing', this.state.isThrowing);
     this._notify('all', this.state);
   }
 

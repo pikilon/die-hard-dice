@@ -10,6 +10,7 @@ class DiceResultComponent extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this.unsubscribeResult = null;
     this.unsubscribeSum = null;
+    this.unsubscribeIsThrowing = null;
   }
 
   connectedCallback() {
@@ -25,9 +26,16 @@ class DiceResultComponent extends HTMLElement {
       this.updateDisplay(gameState.getState('lastResult'));
     });
 
-    // Manejar click para ocultar resultado
+    // Suscribirse a cambios en isThrowing para ocultar cuando se muestre el selector
+    this.unsubscribeIsThrowing = gameState.subscribe('isThrowing', (isThrowing) => {
+      if (!isThrowing) {
+        this.hide();
+      }
+    });
+
+    // Manejar click para ocultar resultado y mostrar selector
     this.shadowRoot.getElementById('info_div').addEventListener('click', () => {
-      this.hide();
+      gameState.setIsThrowing(false);
     });
   }
 
@@ -37,6 +45,9 @@ class DiceResultComponent extends HTMLElement {
     }
     if (this.unsubscribeSum) {
       this.unsubscribeSum();
+    }
+    if (this.unsubscribeIsThrowing) {
+      this.unsubscribeIsThrowing();
     }
   }
 
