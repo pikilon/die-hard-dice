@@ -99,14 +99,14 @@ export function gameSetToNotation(gameSet) {
  * Convierte un array de resultados a formato string legible
  * @param {string[]} results - Array de resultados
  * @param {number} sum - Suma total
- * @returns {string} - Formato "3 4 5 2 = 14"
+ * @returns {string} - Formato "3 + 4 + 5 + 2 = 14"
  */
 export function resultsToString(results, sum) {
   if (!results || results.length === 0) {
     return '';
   }
   
-  return `${results.join(' ')} = ${sum}`;
+  return `${results.join(' + ')} = ${sum}`;
 }
 
 /**
