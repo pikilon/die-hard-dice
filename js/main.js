@@ -8,7 +8,8 @@
 import { setUseTrueRandom } from "./dice.js";
 import { gameState } from "./modules/gameState.js";
 import "./modules/DiceInputComponent.js";
-import "./modules/DiceCanvasComponent.js";
+import "./modules/DiceSelectorComponent.js";
+import "./modules/DiceThrowerComponent.js";
 import "./modules/DiceResultComponent.js";
 import "./modules/DiceSelectorHelpComponent.js";
 

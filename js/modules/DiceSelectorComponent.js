@@ -1,37 +1,48 @@
 import { DiceBox } from '../dice.js';
-import { gameState } from '../modules/gameState.js';
+import { gameState } from './gameState.js';
 import { 
   gameSetToOldFormat, 
   notationToGameSet
 } from './notationUtils.js';
 
 /**
- * Web Component para el canvas de lanzamiento de dados
+ * Web Component para seleccionar dados
+ * Muestra los dados disponibles y permite hacer clic para añadirlos al gameSet
  */
-class DiceCanvasComponent extends HTMLElement {
+class DiceSelectorComponent extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
     this.box = null;
-    this.unsubscribeGameSet = null;
+    this.unsubscribeIsThrowing = null;
   }
 
   connectedCallback() {
     this.render();
     this.initialize();
     
-    // Suscribirse a cambios en el gameSet
-    this.unsubscribeGameSet = gameState.subscribe('gameSet', (gameSet) => {
-      console.log('GameSet updated:', gameSet);
+    // Suscribirse a cambios en isThrowing para mostrar/ocultar selector
+    this.unsubscribeIsThrowing = gameState.subscribe('isThrowing', (isThrowing) => {
+      if (!isThrowing) {
+        this.show();
+      } else {
+        this.hide();
+      }
     });
+
+    // Mostrar inicialmente si no está lanzando
+    const isThrowing = gameState.getState('isThrowing');
+    if (!isThrowing) {
+      // Pequeño delay para asegurar que el canvas está listo
+      setTimeout(() => this.show(), 100);
+    }
   }
 
   disconnectedCallback() {
-    if (this.unsubscribeGameSet) {
-      this.unsubscribeGameSet();
+    if (this.unsubscribeIsThrowing) {
+      this.unsubscribeIsThrowing();
     }
     
-    // Limpiar event listeners de window
     window.removeEventListener('resize', this.resizeHandler);
   }
 
@@ -42,13 +53,21 @@ class DiceCanvasComponent extends HTMLElement {
           display: block;
           width: 100%;
           height: 100%;
-          position: relative;
+          position: absolute;
+          top: 0;
+          left: 0;
+          pointer-events: none;
+        }
+
+        :host(.hidden) {
+          display: none;
         }
 
         #canvas {
           width: 100%;
           height: 100%;
           display: block;
+          pointer-events: auto;
         }
       </style>
 
@@ -72,51 +91,20 @@ class DiceCanvasComponent extends HTMLElement {
       canvas.style.width = window.innerWidth - 1 + 'px';
       canvas.style.height = window.innerHeight - 1 + 'px';
       this.box.reinit(canvas, { w: 500, h: 300 });
+      
+      // Re-dibujar selector si está visible
+      if (!gameState.getState('isThrowing')) {
+        this.box.draw_selector();
+      }
     };
     window.addEventListener('resize', this.resizeHandler);
 
-    // Configurar callbacks para DiceBox
-    const notation_getter = () => {
-      // Convertir el gameSet al formato antiguo que espera DiceBox
-      const currentGameSet = gameState.getState('gameSet');
-      const oldFormatSet = gameSetToOldFormat(currentGameSet);
-      
-      return {
-        set: oldFormatSet,
-        constant: 0,
-        result: [],
-        error: false
-      };
-    };
-
-    const before_roll = (vectors, notation, callback) => {
-      gameState.setIsThrowing(true);
-      callback();
-    };
-
-    const after_roll = (notation, result) => {
-      // Convertir resultados numéricos a strings
-      const resultStrings = result.map(r => String(r));
-      
-      // Actualizar el estado global (esto calculará automáticamente la suma)
-      // El componente dice-result se encargará de mostrar el resultado
-      gameState.setLastResult(resultStrings);
-    };
-
-    // Bind mouse interactions
-    this.box.bind_mouse(document.body, notation_getter, before_roll, after_roll);
-
-    // Manejar clicks en el canvas para selector de dados
+    // Manejar clicks para añadir dados al gameSet
     const handleCanvasClick = (ev) => {
       ev.stopPropagation();
       
       const isThrowing = gameState.getState('isThrowing');
       if (isThrowing) {
-        // Si está lanzando y ya terminó, mostrar selector
-        if (!this.box.rolling) {
-          this.showSelector();
-        }
-        this.box.rolling = false;
         return;
       }
 
@@ -145,14 +133,7 @@ class DiceCanvasComponent extends HTMLElement {
     };
 
     ['mouseup', 'touchend'].forEach((evt) => {
-      document.body.addEventListener(evt, handleCanvasClick);
-    });
-
-    // Escuchar evento throw-dice del componente de input
-    document.addEventListener('throw-dice', (ev) => {
-      const throwEvent = new Event('mouseup', { bubbles: true, cancelable: true });
-      // Simular el throw usando el binding existente
-      this.box.start_throw(notation_getter, before_roll, after_roll);
+      canvas.addEventListener(evt, handleCanvasClick);
     });
 
     // Verificar parámetros URL
@@ -162,23 +143,20 @@ class DiceCanvasComponent extends HTMLElement {
       const parsedGameSet = notationToGameSet(params.notation);
       gameState.setGameSet(parsedGameSet);
     }
+  }
 
-    if (params.roll) {
-      // Auto-lanzar
-      setTimeout(() => {
-        this.box.start_throw(notation_getter, before_roll, after_roll);
-      }, 500);
-    } else {
-      this.showSelector();
+  show() {
+    this.classList.remove('hidden');
+    if (this.box) {
+      this.box.draw_selector();
     }
   }
 
-  showSelector() {
-    gameState.setIsThrowing(false);
-    this.box.draw_selector();
+  hide() {
+    this.classList.add('hidden');
   }
 }
 
-customElements.define('dice-canvas', DiceCanvasComponent);
+customElements.define('dice-selector', DiceSelectorComponent);
 
-export { DiceCanvasComponent };
+export { DiceSelectorComponent };
