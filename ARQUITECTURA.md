@@ -1,7 +1,7 @@
 # Arquitectura PubSub con Web Components
 
 ## Resumen
-Se ha refactorizado la aplicación para usar un patrón **PubSub (Publisher-Subscriber)** con **Web Components**, mejorando la separación de responsabilidades y la mantenibilidad del código.
+Se ha refactorizado la aplicación para usar un patrón **PubSub (Publisher-Subscriber)** con **Web Components**, mejorando la separación de responsabilidades y la mantenibilidad del código. El estado ahora soporta dados con **caras customizables**.
 
 ## Estructura de Archivos
 
@@ -11,6 +11,8 @@ js/
 ├── dice.js                              # Lógica de dados (sin cambios)
 └── modules/
     ├── gameState.js                     # Estado centralizado con patrón PubSub
+    ├── notationUtils.js                 # Utilidades de conversión de notación
+    ├── customDice.js                    # Utilidades para dados customizables
     ├── DiceInputComponent.js            # Web Component para input de dados
     └── DiceCanvasComponent.js           # Web Component para canvas de lanzamiento
 ```
@@ -23,8 +25,21 @@ Módulo singleton que gestiona el estado global de la aplicación usando el patr
 ### Estado Almacenado
 ```javascript
 {
-  gameSet: '4d6',      // Notación de dados seleccionada (ej: "4d6 + d8")
-  lastResult: ''       // Último resultado en formato string (ej: "3 4 5 2 = 14")
+  // Array de dados con cantidad y caras customizables
+  gameSet: [
+    { 
+      quantity: 4, 
+      sides: ["1", "2", "3", "4", "5", "6"] 
+    },
+    { 
+      quantity: 1, 
+      sides: ["1", "2", "3", "4", "5", "6", "7", "8"] 
+    }
+  ],
+  // Array de resultados como strings
+  lastResult: ["3", "4", "5", "2", "7"],
+  // Suma automática de resultados numéricos
+  sum: 21
 }
 ```
 
@@ -36,11 +51,19 @@ Suscribirse a cambios en el estado.
 // Suscribirse a cambios en gameSet
 const unsubscribe = gameState.subscribe('gameSet', (newGameSet) => {
   console.log('GameSet cambió:', newGameSet);
+  // newGameSet es un array de { quantity, sides }
 });
 
 // Suscribirse a cambios en lastResult
 gameState.subscribe('lastResult', (result) => {
   console.log('Resultado:', result);
+  // result es un array de strings: ["3", "4", "5"]
+});
+
+// Suscribirse a cambios en sum
+gameState.subscribe('sum', (sum) => {
+  console.log('Suma:', sum);
+  // sum es un número: 12
 });
 
 // Suscribirse a cualquier cambio
@@ -55,20 +78,26 @@ unsubscribe();
 #### `getState(key?)`
 Obtener el estado actual.
 ```javascript
-const gameSet = gameState.getState('gameSet');  // Obtener un valor específico
-const fullState = gameState.getState();         // Obtener todo el estado
+const gameSet = gameState.getState('gameSet');      // Array de dados
+const lastResult = gameState.getState('lastResult'); // Array de strings
+const sum = gameState.getState('sum');               // Número
+const fullState = gameState.getState();              // Todo el estado
 ```
 
 #### `setGameSet(gameSet)`
 Actualizar el game set.
 ```javascript
-gameState.setGameSet('2d20 + d6');
+gameState.setGameSet([
+  { quantity: 2, sides: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"] },
+  { quantity: 1, sides: ["1", "2", "3", "4", "5", "6"] }
+]);
 ```
 
 #### `setLastResult(result)`
-Actualizar el último resultado.
+Actualizar el último resultado (calcula automáticamente la suma).
 ```javascript
-gameState.setLastResult('5 12 3 = 20');
+gameState.setLastResult(["5", "12", "3"]);
+// Automáticamente calcula sum = 20
 ```
 
 #### `update(updates)`
@@ -86,7 +115,111 @@ Resetear el estado a valores por defecto.
 gameState.reset();
 ```
 
-## 2. Web Component: `<dice-input>`
+## 2. Utilidades de Notación: `notationUtils.js`
+
+### Descripción
+Módulo con funciones para convertir entre la notación string (ej: "4d6 + d8") y el nuevo formato de estado con arrays de dados customizables.
+
+### Funciones Principales
+
+#### `notationToGameSet(notation)`
+Convierte notación string a formato gameSet.
+```javascript
+notationToGameSet("4d6 + 2d8")
+// Returns: [
+//   { quantity: 4, sides: ["1", "2", "3", "4", "5", "6"] },
+//   { quantity: 2, sides: ["1", "2", "3", "4", "5", "6", "7", "8"] }
+// ]
+```
+
+#### `gameSetToNotation(gameSet)`
+Convierte gameSet a notación string.
+```javascript
+gameSetToNotation([
+  { quantity: 4, sides: ["1", "2", "3", "4", "5", "6"] }
+])
+// Returns: "4d6"
+```
+
+#### `resultsToString(results, sum)`
+Formatea resultados para mostrar.
+```javascript
+resultsToString(["3", "4", "5"], 12)
+// Returns: "3 4 5 = 12"
+```
+
+#### `gameSetToOldFormat(gameSet)`
+Convierte al formato antiguo de DiceBox.
+```javascript
+gameSetToOldFormat([
+  { quantity: 2, sides: ["1", "2", "3", "4", "5", "6"] }
+])
+// Returns: ["d6", "d6"]
+```
+
+## 3. Dados Customizables: `customDice.js`
+
+### Descripción
+Utilidades para crear y trabajar con dados de caras customizables. Proporciona presets y funciones para crear dados no estándar.
+
+### Funciones Principales
+
+#### `createCustomDice(quantity, sides)`
+Crea un dado con caras arbitrarias.
+```javascript
+// Dado con símbolos
+createCustomDice(1, ["⚔️", "🛡️", "🏹", "🔮", "💀", "⭐"])
+
+// Dado de sí/no
+createCustomDice(1, ["Yes", "Yes", "No", "No", "Maybe", "Maybe"])
+```
+
+#### `createFudgeDice(quantity)`
+Crea dados Fudge/FATE.
+```javascript
+createFudgeDice(4)
+// Returns: { quantity: 4, sides: ["+", "+", "0", "0", "-", "-"] }
+```
+
+#### `createRangeDice(quantity, min, max)`
+Crea dados con rango numérico custom.
+```javascript
+createRangeDice(2, 0, 9)
+// Dados del 0 al 9
+```
+
+#### `createWeightedDice(quantity, valueWeights)`
+Crea dados con probabilidades no uniformes.
+```javascript
+createWeightedDice(1, { "6": 3, "1": 1 })
+// 75% de probabilidad de sacar "6", 25% de sacar "1"
+```
+
+### Presets Disponibles
+```javascript
+import { CUSTOM_DICE_PRESETS, getCustomDicePreset } from './customDice.js';
+
+// Dados disponibles:
+// - fudge: Dados Fudge/FATE
+// - direction4: Norte, Sur, Este, Oeste
+// - direction8: 8 direcciones con diagonales
+// - yesNo: Sí/No/Tal vez
+// - mathOps: Operaciones matemáticas
+// - coin: Cara/Cruz
+
+const fudgeDice = getCustomDicePreset('fudge');
+gameState.setGameSet([fudgeDice]);
+```
+
+### Nota Importante sobre Visualización 3D
+⚠️ **Limitación Actual**: El sistema 3D de DiceBox usa geometrías fijas para cada tipo de dado (d4, d6, d8, etc.). Los dados customizables funcionan a nivel de **estado y lógica**, pero la visualización 3D seguirá mostrando las caras numéricas estándar.
+
+Para implementar visualización 3D de caras custom se requeriría:
+1. Modificar las geometrías para aceptar labels customizables
+2. Actualizar el sistema de texturas/materiales
+3. Modificar la detección de cara superior
+
+## 4. Web Component: `<dice-input>`
 
 ### Descripción
 Componente que gestiona el input de notación de dados y los botones de control.
@@ -122,7 +255,7 @@ document.addEventListener('throw-dice', (event) => {
     </div>
 ```
 
-## 3. Web Component: `<dice-canvas>`
+## 5. Web Component: `<dice-canvas>`
 
 ### Descripción
 Componente que gestiona el canvas 3D de lanzamiento de dados y la visualización de resultados.
@@ -149,7 +282,7 @@ Componente que gestiona el canvas 3D de lanzamiento de dados y la visualización
     <div id="info_div">            <!-- Resultados -->
 ```
 
-## 4. Flujo de Datos
+## 6. Flujo de Datos
 
 ### Lanzamiento de Dados
 ```
@@ -161,26 +294,49 @@ Componente que gestiona el canvas 3D de lanzamiento de dados y la visualización
    ↓
 4. <dice-canvas> lee gameState.gameSet
    ↓
-5. DiceBox realiza el lanzamiento 3D
+5. gameSetToOldFormat() convierte al formato de DiceBox
    ↓
-6. <dice-canvas> actualiza gameState.lastResult
+6. DiceBox realiza el lanzamiento 3D
    ↓
-7. Todos los suscriptores reciben notificación
+7. Resultados se convierten a strings
    ↓
-8. UI se actualiza automáticamente
+8. <dice-canvas> actualiza gameState.setLastResult(resultStrings)
+   ↓
+9. gameState calcula automáticamente la suma
+   ↓
+10. Todos los suscriptores reciben notificación
+   ↓
+11. UI se actualiza automáticamente
 ```
 
 ### Cambio de Notación
 ```
 1. Usuario modifica input en <dice-input>
    ↓
-2. <dice-input> llama a gameState.setGameSet()
+2. notationToGameSet() parsea el string
    ↓
-3. gameState notifica a todos los suscriptores
+3. <dice-input> llama a gameState.setGameSet(parsedGameSet)
    ↓
-4. <dice-canvas> recibe notificación (opcional)
+4. gameState notifica a todos los suscriptores
    ↓
-5. Estado queda sincronizado
+5. <dice-input> recibe notificación y actualiza su valor
+   ↓
+6. Estado queda sincronizado en toda la app
+```
+
+### Cálculo Automático de Suma
+```
+1. gameState.setLastResult(["5", "12", "X", "3"])
+   ↓
+2. _calculateSum() itera sobre el array
+   ↓
+3. Convierte a número cada string (parseFloat)
+   ↓
+4. Ignora valores no numéricos (NaN)
+   ↓
+5. sum = 5 + 12 + 3 = 20
+   ↓
+6. Notifica a suscriptores de 'sum'
 ```
 
 ## Ventajas de la Nueva Arquitectura
@@ -236,22 +392,120 @@ Todos los navegadores modernos soportan Web Components (Custom Elements v1 y Sha
 // Código acoplado con referencias directas
 set.value = "4d6";
 label.innerHTML = result;
+
+// Notación en string, difícil de extender
+var notation = parse_notation("4d6");
+// { set: ["d6", "d6", "d6", "d6"], constant: 0 }
 ```
 
 ### Ahora
 ```javascript
 // Código desacoplado con estado centralizado
-gameState.setGameSet("4d6");
-gameState.setLastResult(result);
+import { notationToGameSet } from './notationUtils.js';
+
+const gameSet = notationToGameSet("4d6");
+gameState.setGameSet(gameSet);
+// gameSet: [{ quantity: 4, sides: ["1", "2", "3", "4", "5", "6"] }]
+
+gameState.setLastResult(["3", "4", "5", "2"]);
+// Automáticamente calcula sum: 14
+
+// Fácil de extender con dados custom
+import { createFudgeDice } from './customDice.js';
+gameState.setGameSet([
+  createFudgeDice(4),
+  { quantity: 1, sides: ["A", "B", "C", "D", "E", "F"] }
+]);
+```
+
+## Ejemplos de Uso
+
+### Ejemplo 1: Dados Estándar
+```javascript
+import { gameState } from './modules/gameState.js';
+import { notationToGameSet } from './modules/notationUtils.js';
+
+// Configurar dados estándar
+const gameSet = notationToGameSet("4d6 + 2d8");
+gameState.setGameSet(gameSet);
+
+// Simular resultado
+gameState.setLastResult(["3", "4", "5", "2", "6", "7"]);
+console.log(gameState.getState('sum')); // 27
+```
+
+### Ejemplo 2: Dados Customizables
+```javascript
+import { gameState } from './modules/gameState.js';
+import { createFudgeDice, createCustomDice } from './modules/customDice.js';
+
+// Configurar dados Fudge
+gameState.setGameSet([
+  createFudgeDice(4)
+]);
+
+// Resultado de dados Fudge
+gameState.setLastResult(["+", "+", "0", "-"]);
+console.log(gameState.getState('sum')); // 0 (no son números)
+
+// Calcular suma Fudge manualmente
+import { calculateFudgeSum } from './modules/customDice.js';
+const fudgeSum = calculateFudgeSum(["+", "+", "0", "-"]); // 1
+```
+
+### Ejemplo 3: Mix de Dados
+```javascript
+import { createCustomDice } from './modules/customDice.js';
+
+// Mix de dados estándar y custom
+gameState.setGameSet([
+  { quantity: 2, sides: ["1", "2", "3", "4", "5", "6"] }, // 2d6
+  createCustomDice(1, ["🎯", "💥", "⭐", "🌟"]), // Dado de símbolos
+  { quantity: 1, sides: ["+5", "+10", "+15", "+20"] } // Dado de bonos
+]);
+
+// Resultado mixto
+gameState.setLastResult(["4", "5", "🎯", "+10"]);
+console.log(gameState.getState('sum')); // 9 (solo cuenta 4, 5)
+```
+
+### Ejemplo 4: Suscripciones Reactivas
+```javascript
+// Componente que muestra historial
+const historyComponent = {
+  history: [],
+  
+  init() {
+    gameState.subscribe('lastResult', (result) => {
+      this.history.push({
+        result: result,
+        sum: gameState.getState('sum'),
+        timestamp: new Date()
+      });
+      this.render();
+    });
+  },
+  
+  render() {
+    console.log('Historial:', this.history);
+  }
+};
+
+historyComponent.init();
 ```
 
 ## Próximos Pasos Sugeridos
 
-1. **Historial de lanzamientos**: Agregar un componente que muestre el historial
-2. **Estadísticas**: Componente que calcule y muestre estadísticas
-3. **Presets**: Guardar y cargar configuraciones de dados favoritas
-4. **Compartir**: Generar URLs con el estado actual
-5. **Temas**: Sistema de temas para personalizar colores
+1. **Visualización 3D de caras custom**: Modificar DiceBox para renderizar caras customizables
+2. **Historial de lanzamientos**: Web component que muestre historial con timestamp
+3. **Estadísticas**: Análisis de distribución y probabilidades
+4. **Presets de dados**: UI para guardar/cargar configuraciones favoritas
+5. **Editor de dados custom**: Interfaz visual para crear dados personalizados
+6. **Compartir**: Generar URLs con gameSet serializado
+7. **Modos de juego**: Presets para diferentes sistemas de RPG
+8. **Temas**: Sistema de temas para personalizar colores
+9. **Calculadora Fudge**: UI especializada para dados Fudge/FATE
+10. **Animaciones custom**: Diferentes animaciones según tipo de dado
 
 ## Testing
 

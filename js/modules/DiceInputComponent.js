@@ -1,4 +1,5 @@
 import { gameState } from '../modules/gameState.js';
+import { gameSetToNotation, notationToGameSet } from './notationUtils.js';
 
 /**
  * Web Component para el input del set de dados
@@ -17,15 +18,17 @@ class DiceInputComponent extends HTMLElement {
     // Suscribirse a cambios en el gameSet
     this.unsubscribe = gameState.subscribe('gameSet', (gameSet) => {
       const input = this.shadowRoot.querySelector('#set');
-      if (input && input.value !== gameSet) {
-        input.value = gameSet;
+      const notationString = gameSetToNotation(gameSet);
+      if (input && input.value !== notationString) {
+        input.value = notationString;
         this.updateInputWidth();
       }
     });
 
     // Inicializar con el valor actual
     const input = this.shadowRoot.querySelector('#set');
-    input.value = gameState.getState('gameSet');
+    const currentGameSet = gameState.getState('gameSet');
+    input.value = gameSetToNotation(currentGameSet);
     this.updateInputWidth();
   }
 
@@ -120,7 +123,8 @@ class DiceInputComponent extends HTMLElement {
 
     // Actualizar el estado cuando cambia el input
     const updateState = () => {
-      gameState.setGameSet(input.value);
+      const newGameSet = notationToGameSet(input.value);
+      gameState.setGameSet(newGameSet);
       this.updateInputWidth();
     };
 
@@ -145,7 +149,7 @@ class DiceInputComponent extends HTMLElement {
       clearBtn.addEventListener(evt, (ev) => {
         ev.stopPropagation();
         input.value = '0';
-        gameState.setGameSet('0');
+        gameState.setGameSet([]);
         this.updateInputWidth();
       });
     });

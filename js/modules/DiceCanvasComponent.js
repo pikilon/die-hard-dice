@@ -1,5 +1,10 @@
-import { DiceBox, parse_notation } from '../dice.js';
+import { DiceBox, parse_notation, stringify_notation } from '../dice.js';
 import { gameState } from '../modules/gameState.js';
+import { 
+  gameSetToOldFormat, 
+  notationToGameSet, 
+  resultsToString 
+} from './notationUtils.js';
 
 /**
  * Web Component para el canvas de lanzamiento de dados
@@ -22,9 +27,13 @@ class DiceCanvasComponent extends HTMLElement {
       this.updateResultDisplay(result);
     });
 
+    // Suscribirse a cambios en la suma
+    this.unsubscribeSum = gameState.subscribe('sum', (sum) => {
+      this.updateResultDisplay(gameState.getState('lastResult'));
+    });
+
     // Suscribirse a cambios en el gameSet
     this.unsubscribeGameSet = gameState.subscribe('gameSet', (gameSet) => {
-      // Podría usarse para validar o actualizar la UI
       console.log('GameSet updated:', gameSet);
     });
   }
@@ -35,6 +44,9 @@ class DiceCanvasComponent extends HTMLElement {
     }
     if (this.unsubscribeResult) {
       this.unsubscribeResult();
+    }
+    if (this.unsubscribeSum) {
+      this.unsubscribeSum();
     }
     
     // Limpiar event listeners de window
@@ -165,7 +177,16 @@ class DiceCanvasComponent extends HTMLElement {
 
     // Configurar callbacks para DiceBox
     const notation_getter = () => {
-      return parse_notation(gameState.getState('gameSet'));
+      // Convertir el gameSet al formato antiguo que espera DiceBox
+      const currentGameSet = gameState.getState('gameSet');
+      const oldFormatSet = gameSetToOldFormat(currentGameSet);
+      
+      return {
+        set: oldFormatSet,
+        constant: 0,
+        result: [],
+        error: false
+      };
     };
 
     const before_roll = (vectors, notation, callback) => {
@@ -178,21 +199,17 @@ class DiceCanvasComponent extends HTMLElement {
       const params = Object.fromEntries(new URLSearchParams(window.location.search));
       if (params.chromakey || params.noresult) return;
 
-      let res = result.join(' ');
-      if (notation.constant) {
-        if (notation.constant > 0) res += ' +' + notation.constant;
-        else res += ' -' + Math.abs(notation.constant);
-      }
+      // Convertir resultados numéricos a strings
+      const resultStrings = result.map(r => String(r));
       
-      if (result.length >= 1) {
-        const sum = result.reduce((s, a) => s + a) + notation.constant;
-        res += ' = ' + sum;
-      }
-
-      // Actualizar el estado global
-      gameState.setLastResult(res);
+      // Actualizar el estado global (esto calculará automáticamente la suma)
+      gameState.setLastResult(resultStrings);
       
-      label.innerHTML = res;
+      // Mostrar resultado
+      const sum = gameState.getState('sum');
+      const displayText = resultsToString(resultStrings, sum);
+      
+      label.innerHTML = displayText;
       infoDiv.classList.remove('hidden');
     };
 
@@ -214,25 +231,23 @@ class DiceCanvasComponent extends HTMLElement {
       const name = this.box.search_dice_by_mouse(ev);
       if (name !== undefined) {
         const currentGameSet = gameState.getState('gameSet');
-        const notation = parse_notation(currentGameSet);
-        notation.set.push(name);
         
-        // Construir nuevo gameSet
-        let newGameSet = '';
+        // Convertir a formato antiguo, añadir el nuevo dado, y reconvertir
+        const oldFormat = gameSetToOldFormat(currentGameSet);
+        oldFormat.push(name);
+        
+        // Crear string notation temporal para parsear
         const diceCount = {};
-        notation.set.forEach(die => {
+        oldFormat.forEach(die => {
           diceCount[die] = (diceCount[die] || 0) + 1;
         });
         
-        newGameSet = Object.entries(diceCount)
+        const notationString = Object.entries(diceCount)
           .map(([die, count]) => `${count}${die}`)
           .join(' + ');
         
-        if (notation.constant !== 0) {
-          if (notation.constant > 0) newGameSet += ' +' + notation.constant;
-          else newGameSet += ' ' + notation.constant;
-        }
-
+        // Convertir de vuelta al formato nuevo
+        const newGameSet = notationToGameSet(notationString);
         gameState.setGameSet(newGameSet);
       }
     };
@@ -256,7 +271,8 @@ class DiceCanvasComponent extends HTMLElement {
     }
 
     if (params.notation) {
-      gameState.setGameSet(params.notation);
+      const parsedGameSet = notationToGameSet(params.notation);
+      gameState.setGameSet(parsedGameSet);
     }
 
     if (params.roll) {
@@ -280,8 +296,9 @@ class DiceCanvasComponent extends HTMLElement {
 
   updateResultDisplay(result) {
     const label = this.shadowRoot.getElementById('label');
-    if (label && result) {
-      label.innerHTML = result;
+    if (label && result && result.length > 0) {
+      const sum = gameState.getState('sum');
+      label.innerHTML = resultsToString(result, sum);
     }
   }
 }
