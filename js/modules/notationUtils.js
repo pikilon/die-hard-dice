@@ -9,13 +9,17 @@ import { gameState } from './gameState.js';
  * Índice 0: d4, 1: d6, 2: d8, 3: d10, 4: d12, 5: d20, 6: d100
  */
 export const DEFAULT_DICE = [
-  { title: "d4", sides: ["1", "2", "3", "4"] },
-  { title: "d6", sides: ["1", "2", "3", "4", "5", "6"] },
-  { title: "d8", sides: ["1", "2", "3", "4", "5", "6", "7", "8"] },
-  { title: "d10", sides: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] },
-  { title: "d12", sides: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"] },
-  { title: "d20", sides: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"] },
-  { title: "d100", sides: ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"] }
+  { title: "d4", type: "d4", sides: ["1", "2", "3", "4"] },
+  { title: "d6", type: "d6", sides: ["1", "2", "3", "4", "5", "6"] },
+  { title: "d8", type: "d8", sides: ["1", "2", "3", "4", "5", "6", "7", "8"] },
+  { title: "d10", type: "d10", sides: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] },
+  { title: "d12", type: "d12", sides: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"] },
+  { title: "d20", type: "d20", sides: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"] },
+  { title: "d100", type: "d100", sides: ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"] },
+  // Custom dice examples
+  { title: "d6-custom", type: "d6", sides: ["X", "Y", "Z", "W", "V", "U"] },
+  { title: "d4-letter", type: "d4", sides: ["A", "B", "C", "D"] },
+  { title: "d10-custom", type: "d10", sides: ["Ü", "A", "B", "3", "4", "5", "6", "7", "8", "9"] },
 ];
 
 /**
@@ -99,14 +103,29 @@ export function gameSetToNotation(gameSet) {
  * Convierte un array de resultados a formato string legible
  * @param {string[]} results - Array de resultados
  * @param {number} sum - Suma total
- * @returns {string} - Formato "3 + 4 + 5 + 2 = 14"
+ * @returns {string} - Format: "A, B, 4, 3<br>4 + 3 = 7"
  */
 export function resultsToString(results, sum) {
   if (!results || results.length === 0) {
     return '';
   }
   
-  return `${results.join(' + ')} = ${sum}`;
+  // Line 1: All faces separated by comma
+  const allFaces = results.join(', ');
+  
+  // Line 2: Only numeric values with sum
+  const numericResults = results.filter(r => !isNaN(parseFloat(r)));
+  
+  let line2 = '';
+  if (numericResults.length > 0) {
+    line2 = numericResults.join(' + ') + ' = ' + sum;
+  }
+  
+  // Combine with line break
+  if (line2) {
+    return `${allFaces}<br>${line2}`;
+  }
+  return allFaces;
 }
 
 /**
@@ -136,21 +155,51 @@ export function parseOldNotation(oldNotation) {
 /**
  * Convierte el gameSet al formato antiguo de notation.set
  * @param {Array<{dictionaryIndex: number, quantity: number}>} gameSet
- * @returns {string[]} - Array de tipos de dados (ej: ["d6", "d6", "d8"])
+ * @param {Array} [diceDictionary] - Optional custom dice dictionary (defaults to DEFAULT_DICE)
+ * @returns {Array<string|{type: string, sides: string[]}>} - Array de tipos de dados o objetos con tipo y caras personalizadas
  */
-export function gameSetToOldFormat(gameSet) {
+export function gameSetToOldFormat(gameSet, diceDictionary = DEFAULT_DICE) {
   const result = [];
   
   gameSet.forEach(item => {
-    const dice = DEFAULT_DICE[item.dictionaryIndex];
+    const dice = diceDictionary[item.dictionaryIndex];
     if (dice) {
+      const isCustomSides = !isStandardDice(dice);
+      const geometryType = dice.type || dice.title; // Use type for geometry, fallback to title
       for (let i = 0; i < item.quantity; i++) {
-        result.push(dice.title);
+        if (isCustomSides) {
+          result.push({ type: geometryType, sides: dice.sides });
+        } else {
+          result.push(geometryType);
+        }
       }
     }
   });
   
   return result;
+}
+
+/**
+ * Checks if a dice definition has standard sides (numeric 1-n or 0-9 for d10)
+ * @param {Object} dice - Dice definition with title and sides
+ * @returns {boolean} - True if standard, false if custom
+ */
+export function isStandardDice(dice) {
+  const standardSides = {
+    d4: ["1", "2", "3", "4"],
+    d6: ["1", "2", "3", "4", "5", "6"],
+    d8: ["1", "2", "3", "4", "5", "6", "7", "8"],
+    d10: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+    d12: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
+    d20: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"],
+    d100: ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"]
+  };
+  
+  const standard = standardSides[dice.title];
+  if (!standard) return false;
+  if (dice.sides.length !== standard.length) return false;
+  
+  return dice.sides.every((side, i) => side === standard[i]);
 }
 
 /**

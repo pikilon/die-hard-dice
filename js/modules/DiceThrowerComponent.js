@@ -68,7 +68,8 @@ class DiceThrowerComponent extends HTMLElement {
     const notation_getter = () => {
       // Convertir el gameSet al formato antiguo que espera DiceBox
       const currentGameSet = gameState.getState('gameSet');
-      const oldFormatSet = gameSetToOldFormat(currentGameSet);
+      const diceDictionary = gameState.getState('diceDictionary');
+      const oldFormatSet = gameSetToOldFormat(currentGameSet, diceDictionary);
       
       return {
         set: oldFormatSet,

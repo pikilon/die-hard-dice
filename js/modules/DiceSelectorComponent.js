@@ -1,6 +1,6 @@
 import { DiceBox } from "../dice.js";
 import { gameState } from "./gameState.js";
-import { gameSetToOldFormat, notationToGameSet } from "./notationUtils.js";
+import { isStandardDice } from "./notationUtils.js";
 
 /**
  * Web Component para el selector de dados
@@ -110,27 +110,49 @@ class DiceSelectorComponent extends HTMLElement {
         return;
       }
 
-      const name = this.box.search_dice_by_mouse(ev);
-      if (name !== undefined) {
+      const userData = this.box.search_dice_by_mouse(ev);
+      if (userData !== undefined) {
         const currentGameSet = gameState.getState("gameSet");
-
-        // Convertir a formato antiguo, añadir el nuevo dado, y reconvertir
-        const oldFormat = gameSetToOldFormat(currentGameSet);
-        oldFormat.push(name);
-
-        // Crear string notation temporal para parsear
-        const diceCount = {};
-        oldFormat.forEach((die) => {
-          diceCount[die] = (diceCount[die] || 0) + 1;
-        });
-
-        const notationString = Object.entries(diceCount)
-          .map(([die, count]) => `${count}${die}`)
-          .join(" + ");
-
-        // Convertir de vuelta al formato nuevo
-        const newGameSet = notationToGameSet(notationString);
-        gameState.setGameSet(newGameSet);
+        
+        // userData now contains { dictionaryIndex, type, sides }
+        const dictionaryIndex = typeof userData === 'object' ? userData.dictionaryIndex : null;
+        
+        if (dictionaryIndex !== null) {
+          // New format: directly use dictionaryIndex
+          const existingEntry = currentGameSet.find(item => item.dictionaryIndex === dictionaryIndex);
+          
+          if (existingEntry) {
+            // Increment quantity if already exists
+            const newGameSet = currentGameSet.map(item => 
+              item.dictionaryIndex === dictionaryIndex 
+                ? { ...item, quantity: item.quantity + 1 }
+                : item
+            );
+            gameState.setGameSet(newGameSet);
+          } else {
+            // Add new entry
+            const newGameSet = [...currentGameSet, { dictionaryIndex, quantity: 1 }];
+            gameState.setGameSet(newGameSet);
+          }
+        } else {
+          // Legacy format: userData is just the type string
+          const diceDictionary = gameState.getState("diceDictionary");
+          const index = diceDictionary.findIndex(d => d.title === userData);
+          if (index !== -1) {
+            const existingEntry = currentGameSet.find(item => item.dictionaryIndex === index);
+            if (existingEntry) {
+              const newGameSet = currentGameSet.map(item => 
+                item.dictionaryIndex === index 
+                  ? { ...item, quantity: item.quantity + 1 }
+                  : item
+              );
+              gameState.setGameSet(newGameSet);
+            } else {
+              const newGameSet = [...currentGameSet, { dictionaryIndex: index, quantity: 1 }];
+              gameState.setGameSet(newGameSet);
+            }
+          }
+        }
       }
     };
 
@@ -142,7 +164,8 @@ class DiceSelectorComponent extends HTMLElement {
   show() {
     this.classList.remove("hidden");
     if (this.box) {
-      this.box.draw_selector();
+      const diceDictionary = gameState.getState("diceDictionary");
+      this.box.draw_selector(diceDictionary, isStandardDice);
     }
   }
 

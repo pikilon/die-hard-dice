@@ -124,6 +124,34 @@ export const standart_d100_dice_face_labels = [
   " ", "00", "10", "20", "30", "40", "50", "60", "70", "80", "90",
 ];
 
+/**
+ * Generates default face labels for a dice with n sides.
+ * @param {number} n - Number of sides.
+ * @param {number} [startFrom=1] - Starting number (default 1, use 0 for d10).
+ * @returns {Array<string>} Array of face labels.
+ */
+export function generateDefaultLabels(n, startFrom = 1) {
+  const labels = [" "];
+  for (let i = 0; i < n; i++) {
+    labels.push(String(startFrom + i));
+  }
+  return labels;
+}
+
+/**
+ * Converts a sides array to face labels format.
+ * Note: Geometry adds +1 to materialIndex, so offset varies by dice type:
+ * - d6, d8, d12, d20: face definitions start at materialIndex 1 → need 2 leading spaces
+ * - d10, d100: face definitions start at materialIndex 0 → need 1 leading space
+ * @param {Array<string>} sides - Array of side strings.
+ * @param {number} [offset=2] - Number of leading spaces (2 for d6/d8/d12/d20, 1 for d10/d100).
+ * @returns {Array<string>} Array of face labels.
+ */
+export function sidesToFaceLabels(sides, offset = 2) {
+  const leading = Array(offset).fill(" ");
+  return [...leading, ...sides];
+}
+
 /** @type {Object} Default material options for dice */
 export const material_options = materialOptions;
 
@@ -155,34 +183,40 @@ function calc_texture_size(approx) {
  */
 export function create_dice_materials(face_labels, size, margin) {
   function create_text_texture(text, color, back_color) {
-    if (text == undefined) return null;
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
     const ts = calc_texture_size(size + size * 2 * margin) * 2;
     canvas.width = canvas.height = ts;
-    context.font = ts / (1 + 2 * margin) + "pt Arial";
+    const fontSize = ts / (1 + 2 * margin);
+    context.font = fontSize + "pt 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', Arial, sans-serif";
     context.fillStyle = back_color;
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillStyle = color;
-    context.fillText(text, canvas.width / 2, canvas.height / 2);
-    if (text == "6" || text == "9") {
-      context.fillText("  .", canvas.width / 2, canvas.height / 2);
+    if (text && text.trim()) {
+      context.fillText(text, canvas.width / 2, canvas.height / 2);
+      if (text == "6" || text == "9") {
+        context.fillText("  .", canvas.width / 2, canvas.height / 2);
+      }
     }
     const texture = new THREE.Texture(canvas);
     texture.needsUpdate = true;
     return texture;
   }
   const materials = [];
-  for (let i = 0; i < face_labels.length; ++i)
+  for (let i = 0; i < face_labels.length; ++i) {
+    const texture = create_text_texture(face_labels[i], label_color, dice_color);
     materials.push(
       new THREE.MeshPhongMaterial(
         Object.assign({}, material_options, {
-          map: create_text_texture(face_labels[i], label_color, dice_color),
+          map: texture,
+          transparent: false,
+          opacity: 1.0,
         })
       )
     );
+  }
   return materials;
 }
 
@@ -242,92 +276,158 @@ let dice_material_cache = null;
 /**
  * Creates a d4 die mesh with geometry and materials.
  * Caches geometry and materials for reuse.
+ * @param {Array<string>} [sides] - Optional custom sides array.
  * @returns {THREE.Mesh} The d4 die mesh.
  */
-export function create_d4() {
+export function create_d4(sides) {
   if (!d4_geometry_cache)
     d4_geometry_cache = createD4Geometry(scale * 1.2);
-  if (!d4_material_cache)
-    d4_material_cache = createD4Materials(scale / 2, scale * 2, d4Labels[0]);
-  return new THREE.Mesh(d4_geometry_cache, d4_material_cache);
+  
+  let materials;
+  if (sides && sides.length === 4) {
+    const customLabels = [
+      [[], [0, 0, 0], [sides[1], sides[3], sides[2]], [sides[0], sides[2], sides[3]], [sides[1], sides[0], sides[3]], [sides[0], sides[1], sides[2]]],
+      [[], [0, 0, 0], [sides[1], sides[2], sides[3]], [sides[2], sides[0], sides[3]], [sides[1], sides[3], sides[0]], [sides[2], sides[1], sides[0]]],
+      [[], [0, 0, 0], [sides[3], sides[2], sides[1]], [sides[2], sides[3], sides[0]], [sides[3], sides[1], sides[0]], [sides[2], sides[0], sides[1]]],
+      [[], [0, 0, 0], [sides[3], sides[1], sides[2]], [sides[0], sides[3], sides[2]], [sides[3], sides[0], sides[1]], [sides[0], sides[2], sides[1]]],
+    ];
+    materials = createD4Materials(scale / 2, scale * 2, customLabels[0]);
+  } else {
+    if (!d4_material_cache)
+      d4_material_cache = createD4Materials(scale / 2, scale * 2, d4Labels[0]);
+    materials = d4_material_cache;
+  }
+  return new THREE.Mesh(d4_geometry_cache, materials);
 }
 
 /**
  * Creates a d6 die mesh with geometry and materials.
  * Caches geometry and materials for reuse.
+ * @param {Array<string>} [sides] - Optional custom sides array.
  * @returns {THREE.Mesh} The d6 die mesh.
  */
-export function create_d6() {
+export function create_d6(sides) {
   if (!d6_geometry_cache)
     d6_geometry_cache = createD6Geometry(scale * 0.9);
-  if (!dice_material_cache)
-    dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
-  return new THREE.Mesh(d6_geometry_cache, dice_material_cache);
+  
+  let materials;
+  if (sides && Array.isArray(sides) && sides.length === 6) {
+    // Create custom materials for non-standard sides
+    const faceLabels = sidesToFaceLabels(sides);
+    materials = create_dice_materials(faceLabels, scale / 2, 1.5);
+  } else {
+    if (!dice_material_cache)
+      dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
+    materials = dice_material_cache;
+  }
+  return new THREE.Mesh(d6_geometry_cache, materials);
 }
 
 /**
  * Creates a d8 die mesh with geometry and materials.
  * Caches geometry and materials for reuse.
+ * @param {Array<string>} [sides] - Optional custom sides array.
  * @returns {THREE.Mesh} The d8 die mesh.
  */
-export function create_d8() {
+export function create_d8(sides) {
   if (!d8_geometry_cache)
     d8_geometry_cache = createD8Geometry(scale);
-  if (!dice_material_cache)
-    dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.2);
-  return new THREE.Mesh(d8_geometry_cache, dice_material_cache);
+  
+  let materials;
+  if (sides && sides.length === 8) {
+    materials = create_dice_materials(sidesToFaceLabels(sides), scale / 2, 1.2);
+  } else {
+    if (!dice_material_cache)
+      dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.2);
+    materials = dice_material_cache;
+  }
+  return new THREE.Mesh(d8_geometry_cache, materials);
 }
 
 /**
  * Creates a d10 die mesh with geometry and materials.
  * Caches geometry and materials for reuse.
+ * @param {Array<string>} [sides] - Optional custom sides array.
  * @returns {THREE.Mesh} The d10 die mesh.
  */
-export function create_d10() {
+export function create_d10(sides) {
   if (!d10_geometry_cache)
     d10_geometry_cache = createD10Geometry(scale * 0.9);
-  if (!dice_material_cache)
-    dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
-  return new THREE.Mesh(d10_geometry_cache, dice_material_cache);
+  
+  let materials;
+  if (sides && Array.isArray(sides) && sides.length === 10) {
+    // d10 uses materialIndex 0-9, so needs offset=1
+    materials = create_dice_materials(sidesToFaceLabels(sides, 1), scale / 2, 1.0);
+  } else {
+    if (!dice_material_cache)
+      dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
+    materials = dice_material_cache;
+  }
+  return new THREE.Mesh(d10_geometry_cache, materials);
 }
 
 /**
  * Creates a d12 die mesh with geometry and materials.
  * Caches geometry and materials for reuse.
+ * @param {Array<string>} [sides] - Optional custom sides array.
  * @returns {THREE.Mesh} The d12 die mesh.
  */
-export function create_d12() {
+export function create_d12(sides) {
   if (!d12_geometry_cache)
     d12_geometry_cache = createD12Geometry(scale * 0.9);
-  if (!dice_material_cache)
-    dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
-  return new THREE.Mesh(d12_geometry_cache, dice_material_cache);
+  
+  let materials;
+  if (sides && sides.length === 12) {
+    materials = create_dice_materials(sidesToFaceLabels(sides), scale / 2, 1.0);
+  } else {
+    if (!dice_material_cache)
+      dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
+    materials = dice_material_cache;
+  }
+  return new THREE.Mesh(d12_geometry_cache, materials);
 }
 
 /**
  * Creates a d20 die mesh with geometry and materials.
  * Caches geometry and materials for reuse.
+ * @param {Array<string>} [sides] - Optional custom sides array.
  * @returns {THREE.Mesh} The d20 die mesh.
  */
-export function create_d20() {
+export function create_d20(sides) {
   if (!d20_geometry_cache)
     d20_geometry_cache = createD20Geometry(scale);
-  if (!dice_material_cache)
-    dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
-  return new THREE.Mesh(d20_geometry_cache, dice_material_cache);
+  
+  let materials;
+  if (sides && sides.length === 20) {
+    materials = create_dice_materials(sidesToFaceLabels(sides), scale / 2, 1.0);
+  } else {
+    if (!dice_material_cache)
+      dice_material_cache = create_dice_materials(standart_d20_dice_face_labels, scale / 2, 1.0);
+    materials = dice_material_cache;
+  }
+  return new THREE.Mesh(d20_geometry_cache, materials);
 }
 
 /**
  * Creates a d100 (percentile) die mesh.
  * Uses d10 geometry with special 00-90 face labels.
+ * @param {Array<string>} [sides] - Optional custom sides array.
  * @returns {THREE.Mesh} The d100 die mesh.
  */
-export function create_d100() {
+export function create_d100(sides) {
   if (!d10_geometry_cache)
     d10_geometry_cache = createD10Geometry(scale * 0.9);
-  if (!d100_material_cache)
-    d100_material_cache = create_dice_materials(standart_d100_dice_face_labels, scale / 2, 1.5);
-  return new THREE.Mesh(d10_geometry_cache, d100_material_cache);
+  
+  let materials;
+  if (sides && Array.isArray(sides) && sides.length === 10) {
+    // d100 uses d10 geometry with materialIndex 0-9, so needs offset=1
+    materials = create_dice_materials(sidesToFaceLabels(sides, 1), scale / 2, 1.5);
+  } else {
+    if (!d100_material_cache)
+      d100_material_cache = create_dice_materials(standart_d100_dice_face_labels, scale / 2, 1.5);
+    materials = d100_material_cache;
+  }
+  return new THREE.Mesh(d10_geometry_cache, materials);
 }
 
 /**
@@ -347,12 +447,13 @@ export const dice_factories = {
 /**
  * Creates a die mesh by type string.
  * @param {string} type - The die type (e.g., 'd4', 'd6', 'd20').
+ * @param {Array<string>} [sides] - Optional custom sides array.
  * @returns {THREE.Mesh} The die mesh.
  */
-export function createDiceByType(type) {
+export function createDiceByType(type, sides) {
   const factory = dice_factories[type];
   if (!factory) throw new Error(`Unknown dice type: ${type}`);
-  return factory();
+  return factory(sides);
 }
 
 // ============================================================================
@@ -695,6 +796,10 @@ function make_random_vector(vector) {
 DiceBox.prototype.generate_vectors = function (notation, vector, boost) {
   const vectors = [];
   for (const i in notation.set) {
+    const diceItem = notation.set[i];
+    const diceType = typeof diceItem === 'string' ? diceItem : diceItem.type;
+    const diceSides = typeof diceItem === 'object' ? diceItem.sides : null;
+    
     const vec = make_random_vector(vector);
     const pos = {
       x: this.w * (vec.x > 0 ? -1 : 1) * 0.7,
@@ -706,7 +811,7 @@ DiceBox.prototype.generate_vectors = function (notation, vector, boost) {
     else pos.x *= projector;
     const velvec = make_random_vector(vector);
     const velocity = { x: velvec.x * boost, y: velvec.y * boost, z: -10 };
-    const inertia = dice_inertia[notation.set[i]];
+    const inertia = dice_inertia[diceType];
     const angle = {
       x: -(rnd() * vec.y * 5 + inertia * vec.y),
       y: rnd() * vec.x * 5 + inertia * vec.x,
@@ -714,7 +819,8 @@ DiceBox.prototype.generate_vectors = function (notation, vector, boost) {
     };
     const axis = { x: rnd(), y: rnd(), z: rnd(), a: rnd() };
     vectors.push({
-      set: notation.set[i],
+      set: diceType,
+      sides: diceSides,
       pos: pos,
       velocity: velocity,
       angle: angle,
@@ -731,17 +837,20 @@ DiceBox.prototype.generate_vectors = function (notation, vector, boost) {
    * @param {Object} velocity - Initial velocity {x, y, z}.
    * @param {Object} angle - Initial angular velocity {x, y, z}.
    * @param {Object} axis - Rotation axis and angle {x, y, z, a}.
+   * @param {Array<string>} [sides] - Optional custom sides array.
    */
 DiceBox.prototype.create_dice = function (
     type,
     pos,
     velocity,
     angle,
-    axis
+    axis,
+    sides
   ) {
-    const dice = createDiceByType(type);
+    const dice = createDiceByType(type, sides);
     dice.castShadow = true;
     dice.dice_type = type;
+    dice.dice_sides = sides;
     dice.body = new CANNON.Body({
       mass: dice_mass[type],
       material: this.dice_body_material
@@ -804,7 +913,7 @@ DiceBox.prototype.check_if_throw_finished = function () {
    * Determines the face-up value of a single die based on its orientation.
    * @private
    * @param {THREE.Mesh} dice - The die mesh object.
-   * @returns {number} The value shown on the top face.
+   * @returns {number|string} The value shown on the top face (string if custom sides, number otherwise).
    */
   function get_dice_value(dice) {
     var vector = new THREE.Vector3(
@@ -830,6 +939,17 @@ DiceBox.prototype.check_if_throw_finished = function () {
     }
     if (!closest_face) return 1;
     var matindex = closest_face.materialIndex - 1;
+    
+    // If custom sides are defined, return the actual side value
+    if (dice.dice_sides && dice.dice_sides.length > 0) {
+      // d10/d100 use offset=1, others use offset=2
+      var offset = (dice.dice_type === "d10" || dice.dice_type === "d100") ? 1 : 2;
+      var customIndex = closest_face.materialIndex - offset;
+      if (customIndex >= 0 && customIndex < dice.dice_sides.length) {
+        return dice.dice_sides[customIndex];
+      }
+    }
+    
     if (dice.dice_type == "d100") matindex *= 10;
     if (dice.dice_type == "d10" && matindex == 0) matindex = 10;
     return matindex;
@@ -943,7 +1063,8 @@ DiceBox.prototype.prepare_dices_for_roll = function (vectors) {
         vectors[i].pos,
         vectors[i].velocity,
         vectors[i].angle,
-        vectors[i].axis
+        vectors[i].axis,
+        vectors[i].sides
       );
     }
   };
@@ -1055,10 +1176,18 @@ DiceBox.prototype.search_dice_by_mouse = function (ev) {
   /**
    * Draws the dice type selector display.
    * Shows all available dice types for user selection.
+   * @param {Array} [diceDictionary] - Optional array of dice definitions with title and sides.
+   * @param {Function} [isStandardDiceFn] - Optional function to check if dice has standard sides.
    */
-DiceBox.prototype.draw_selector = function () {
+DiceBox.prototype.draw_selector = function (diceDictionary, isStandardDiceFn) {
     this.clear();
-    var step = this.w / 4.5;
+    
+    // Use custom dictionary if provided, otherwise use standard types
+    const diceList = diceDictionary || known_types.map(type => ({ title: type, sides: null }));
+    const numDice = diceList.length;
+    const step = this.w / Math.max(4.5, (numDice + 1) / 2);
+    const startPos = -(numDice - 1) / 2;
+    
     this.pane = new THREE.Mesh(
       new THREE.PlaneGeometry(this.w * 6, this.h * 6, 1, 1),
       new THREE.MeshPhongMaterial(selector_back_colors)
@@ -1067,11 +1196,26 @@ DiceBox.prototype.draw_selector = function () {
     this.pane.position.set(0, 0, 1);
     this.scene.add(this.pane);
 
-    for (let i = 0, pos = -3; i < known_types.length; ++i, ++pos) {
-      const dice = createDiceByType(known_types[i]);
-      dice.position.set(pos * step, 0, step * 0.5);
+    for (let i = 0; i < numDice; ++i) {
+      const diceInfo = diceList[i];
+      // Use 'type' for geometry, fall back to 'title' for backward compatibility
+      const diceType = typeof diceInfo === 'string' ? diceInfo : (diceInfo.type || diceInfo.title);
+      const diceTitle = typeof diceInfo === 'string' ? diceInfo : diceInfo.title;
+      
+      // Only pass sides for non-standard dice
+      let diceSides = null;
+      if (typeof diceInfo === 'object' && diceInfo.sides) {
+        const isStandard = isStandardDiceFn ? isStandardDiceFn(diceInfo) : false;
+        if (!isStandard) {
+          diceSides = diceInfo.sides;
+        }
+      }
+      
+      const dice = createDiceByType(diceType, diceSides);
+      dice.position.set((startPos + i) * step, 0, step * 0.5);
       dice.castShadow = true;
-      dice.userData = known_types[i];
+      // Store dictionary index, geometry type, title, and sides for selection
+      dice.userData = { dictionaryIndex: i, type: diceType, title: diceTitle, sides: diceSides };
       this.dices.push(dice);
       this.scene.add(dice);
     }

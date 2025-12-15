@@ -85,7 +85,8 @@ class GameState {
       return {
         quantity: item.quantity,
         sides: [...diceDefinition.sides],
-        title: diceDefinition.title
+        title: diceDefinition.title,
+        type: diceDefinition.type || diceDefinition.title
       };
     });
   }

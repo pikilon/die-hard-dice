@@ -78,7 +78,7 @@ export function createD4Materials(size, margin, labels) {
     const context = canvas.getContext("2d");
     const ts = calcTextureSize(size + margin) * 2;
     canvas.width = canvas.height = ts;
-    context.font = (ts - margin) / 1.5 + "pt Arial";
+    context.font = (ts - margin) / 1.5 + "pt 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', Arial, sans-serif";
     context.fillStyle = backColor;
     context.fillRect(0, 0, canvas.width, canvas.height);
     context.textAlign = "center";
