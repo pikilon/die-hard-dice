@@ -19,7 +19,7 @@ export const DEFAULT_DICE = [
   // Custom dice examples
   { title: "d6-custom", type: "d6", sides: ["X", "Y", "Z", ":)", "V", "🙃"] },
   { title: "d4-letter", type: "d4", sides: ["A", "B", "C", "D"] },
-  { title: "d100-d10based", type: "d100", sides: ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"] },
+  { title: "d100-d10based", type: "d10", sides: ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"] },
 ];
 
 /**
