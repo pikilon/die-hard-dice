@@ -907,9 +907,14 @@ DiceBox.prototype.check_if_throw_finished = function () {
       // Check which cap is pointing up (positive Z in world space)
       var localZ = new THREE.Vector3(0, 0, 1);
       localZ.applyQuaternion(dice.body.quaternion);
-      // If local Z points up (positive world Z), top cap (1) is showing
-      // If local Z points down (negative world Z), bottom cap (2) is showing
-      return localZ.z > 0 ? 1 : 2;
+      // If local Z points up (positive world Z), top cap (index 0) is showing
+      // If local Z points down (negative world Z), bottom cap (index 1) is showing
+      var faceIndex = localZ.z > 0 ? 0 : 1;
+      // Return custom side value if defined, otherwise return 1 or 2
+      if (dice.dice_sides && dice.dice_sides.length === 2) {
+        return dice.dice_sides[faceIndex];
+      }
+      return faceIndex + 1;
     }
     
     var vector = new THREE.Vector3(
