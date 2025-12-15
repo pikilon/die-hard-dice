@@ -184,7 +184,7 @@ function calc_texture_size(approx) {
  */
 export function create_dice_materials(face_labels, size, margin) {
   const materials = [];
-  const createTextTextureFace = (faceLabel) => createTextTexture(faceLabel, label_color, dice_color, size, margin);
+  const createTextTextureFace = (text) => createTextTexture(text, label_color, dice_color, size, margin);
   for (let i = 0; i < face_labels.length; ++i) {
     const texture = createTextTextureFace(face_labels[i]);
     materials.push(
