@@ -187,7 +187,13 @@ export function create_dice_materials(face_labels, size, margin) {
     const context = canvas.getContext("2d");
     const ts = calc_texture_size(size + size * 2 * margin) * 2;
     canvas.width = canvas.height = ts;
-    const fontSize = ts / (1 + 2 * margin);
+    let fontSize = ts / (1 + 2 * margin);
+    // Scale font size proportionally based on text length
+    // 1-2 chars: full size, 3+ chars: progressively smaller
+    const textLen = text ? text.trim().length : 0;
+    if (textLen > 2) {
+      fontSize = fontSize * (2 / textLen);
+    }
     context.font = fontSize + "pt 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', Arial, sans-serif";
     context.fillStyle = back_color;
     context.fillRect(0, 0, canvas.width, canvas.height);
