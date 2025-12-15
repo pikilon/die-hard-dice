@@ -120,10 +120,6 @@ export const standart_d20_dice_face_labels = [
   "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
 ];
 
-/** @type {Array<string>} D100 face labels (00-90) */
-export const standart_d100_dice_face_labels = [
-  " ", "00", "10", "20", "30", "40", "50", "60", "70", "80", "90",
-];
 
 /**
  * Generates default face labels for a dice with n sides.
@@ -143,9 +139,9 @@ export function generateDefaultLabels(n, startFrom = 1) {
  * Converts a sides array to face labels format.
  * Note: Geometry adds +1 to materialIndex, so offset varies by dice type:
  * - d6, d8, d12, d20: face definitions start at materialIndex 1 → need 2 leading spaces
- * - d10, d100: face definitions start at materialIndex 0 → need 1 leading space
+ * - d10: face definitions start at materialIndex 0 → need 1 leading space
  * @param {Array<string>} sides - Array of side strings.
- * @param {number} [offset=2] - Number of leading spaces (2 for d6/d8/d12/d20, 1 for d10/d100).
+ * @param {number} [offset=2] - Number of leading spaces (2 for d6/d8/d12/d20, 1 for d10).
  * @returns {Array<string>} Array of face labels.
  */
 export function sidesToFaceLabels(sides, offset = 2) {
@@ -246,7 +242,6 @@ let d10_geometry_cache = null;
 let d12_geometry_cache = null;
 let d20_geometry_cache = null;
 let d4_material_cache = null;
-let d100_material_cache = null;
 let dice_material_cache = null;
 
 // ============================================================================
@@ -388,27 +383,6 @@ export function create_d20(sides) {
   return new THREE.Mesh(d20_geometry_cache, materials);
 }
 
-/**
- * Creates a d100 (percentile) die mesh.
- * Uses d10 geometry with special 00-90 face labels.
- * @param {Array<string>} [sides] - Optional custom sides array.
- * @returns {THREE.Mesh} The d100 die mesh.
- */
-export function create_d100(sides) {
-  if (!d10_geometry_cache)
-    d10_geometry_cache = createD10Geometry(scale * 0.9);
-  
-  let materials;
-  if (sides && Array.isArray(sides) && sides.length === 10) {
-    // d100 uses d10 geometry with materialIndex 0-9, so needs offset=1
-    materials = create_dice_materials(sidesToFaceLabels(sides, 1), scale / 2, 1.5);
-  } else {
-    if (!d100_material_cache)
-      d100_material_cache = create_dice_materials(standart_d100_dice_face_labels, scale / 2, 1.5);
-    materials = d100_material_cache;
-  }
-  return new THREE.Mesh(d10_geometry_cache, materials);
-}
 
 /**
  * Dice factory lookup map for creating dice by type string.
@@ -421,7 +395,6 @@ export const dice_factories = {
   d10: create_d10,
   d12: create_d12,
   d20: create_d20,
-  d100: create_d100,
 };
 
 /**
@@ -922,15 +895,14 @@ DiceBox.prototype.check_if_throw_finished = function () {
     
     // If custom sides are defined, return the actual side value
     if (dice.dice_sides && dice.dice_sides.length > 0) {
-      // d10/d100 use offset=1, others use offset=2
-      var offset = (dice.dice_type === "d10" || dice.dice_type === "d100") ? 1 : 2;
+      // d10 uses offset=1, others use offset=2
+      var offset = (dice.dice_type === "d10") ? 1 : 2;
       var customIndex = closest_face.materialIndex - offset;
       if (customIndex >= 0 && customIndex < dice.dice_sides.length) {
         return dice.dice_sides[customIndex];
       }
     }
     
-    if (dice.dice_type == "d100") matindex *= 10;
     if (dice.dice_type == "d10" && matindex == 0) matindex = 10;
     return matindex;
   }
@@ -1061,7 +1033,6 @@ function shift_dice_faces(dice, value, res) {
   const r = dice_face_range[dice.dice_type];
   if (dice.dice_type == "d10" && value == 10) value = 0;
   if (dice.dice_type == "d10" && res == 10) res = 0;
-  if (dice.dice_type == "d100") res /= 10;
   if (!(value >= r[0] && value <= r[1])) return;
   let num = value - res;
   const geom = dice.geometry.clone();
