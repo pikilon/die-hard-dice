@@ -12,6 +12,9 @@ import {
   labelColor as commonLabelColor,
   diceColor as commonDiceColor,
   // Dice modules
+  createD2 as createCoin,
+  createD2Geometry as createCoinGeometry,
+  createD2Materials as createCoinMaterials,
   createD4Geometry,
   createD4Materials,
   d4Labels,
@@ -38,6 +41,7 @@ export { known_types, dice_face_range, dice_mass, dice_inertia };
 export { d4Labels as d4_labels };
 
 // Re-export geometry functions for backward compatibility
+export { createCoinGeometry as create_coin_geometry };
 export { createD4Geometry as create_d4_geometry };
 export { createD6Geometry as create_d6_geometry };
 export { createD8Geometry as create_d8_geometry };
@@ -235,6 +239,8 @@ export let use_shadows = true;
 export let scale = 50;
 
 // Cached geometry and materials
+let coin_geometry_cache = null;
+let coin_material_cache = null;
 let d4_geometry_cache = null;
 let d6_geometry_cache = null;
 let d8_geometry_cache = null;
@@ -388,7 +394,30 @@ export function create_d20(sides) {
  * Dice factory lookup map for creating dice by type string.
  * @type {Object<string, Function>}
  */
+/**
+ * Creates a coin die mesh with geometry and materials.
+ * Caches geometry and materials for reuse.
+ * @param {Array<string>} [sides] - Optional custom sides array [top, bottom].
+ * @returns {THREE.Mesh} The coin die mesh.
+ */
+export function create_coin(sides) {
+  if (!coin_geometry_cache)
+    coin_geometry_cache = createCoinGeometry(scale);
+  
+  let materials;
+  if (sides && Array.isArray(sides) && sides.length === 2) {
+    // Create fresh materials with custom sides
+    materials = createCoinMaterials(scale / 2, scale * 2, sides);
+  } else {
+    if (!coin_material_cache)
+      coin_material_cache = createCoinMaterials(scale / 2, scale * 2);
+    materials = coin_material_cache;
+  }
+  return new THREE.Mesh(coin_geometry_cache, materials);
+}
+
 export const dice_factories = {
+  coin: create_coin,
   d4: create_d4,
   d6: create_d6,
   d8: create_d8,
@@ -765,10 +794,13 @@ DiceBox.prototype.generate_vectors = function (notation, vector, boost) {
     const velvec = make_random_vector(vector);
     const velocity = { x: velvec.x * boost, y: velvec.y * boost, z: -10 };
     const inertia = dice_inertia[diceType];
+    
+    // Coins get extra flipping rotation for realistic coin flip
+    const flipMultiplier = (diceType === 'coin') ? 6 : 1;
     const angle = {
-      x: -(rnd() * vec.y * 5 + inertia * vec.y),
-      y: rnd() * vec.x * 5 + inertia * vec.x,
-      z: 0,
+      x: -(rnd() * vec.y * 5 + inertia * vec.y) * flipMultiplier + (diceType === 'coin' ? (rnd() * 30 + 20) : 0),
+      y: (rnd() * vec.x * 5 + inertia * vec.x) * flipMultiplier + (diceType === 'coin' ? (rnd() * 30 + 20) : 0),
+      z: (diceType === 'coin') ? (rnd() - 0.5) * 10 : 0,
     };
     const axis = { x: rnd(), y: rnd(), z: rnd(), a: rnd() };
     vectors.push({
@@ -869,6 +901,17 @@ DiceBox.prototype.check_if_throw_finished = function () {
    * @returns {number|string} The value shown on the top face (string if custom sides, number otherwise).
    */
   function get_dice_value(dice) {
+    // Special handling for coin - CylinderGeometry rotated to lie flat
+    if (dice.dice_type === "coin") {
+      // After rotation, the coin's caps face along the Z-axis
+      // Check which cap is pointing up (positive Z in world space)
+      var localZ = new THREE.Vector3(0, 0, 1);
+      localZ.applyQuaternion(dice.body.quaternion);
+      // If local Z points up (positive world Z), top cap (1) is showing
+      // If local Z points down (negative world Z), bottom cap (2) is showing
+      return localZ.z > 0 ? 1 : 2;
+    }
+    
     var vector = new THREE.Vector3(
       0,
       0,

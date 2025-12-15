@@ -8,6 +8,7 @@
 export * from './common.js';
 
 // Re-export individual dice modules
+export * as coin from './d2.js';
 export * as d4 from './d4.js';
 export * as d6 from './d6.js';
 export * as d8 from './d8.js';
@@ -16,6 +17,7 @@ export * as d12 from './d12.js';
 export * as d20 from './d20.js';
 
 // Import for building factories
+import { createD2, createD2Materials, createD2Geometry, config as coinConfig } from './d2.js';
 import { createD4, createD4Materials, createD4Geometry, d4Labels, config as d4Config } from './d4.js';
 import { createD6, createD6Geometry, config as d6Config } from './d6.js';
 import { createD8, createD8Geometry, config as d8Config } from './d8.js';
@@ -24,10 +26,11 @@ import { createD12, createD12Geometry, config as d12Config } from './d12.js';
 import { createD20, createD20Geometry, config as d20Config } from './d20.js';
 
 /** @type {Array<string>} All supported dice types */
-export const knownTypes = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20'];
+export const knownTypes = ['coin', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20'];
 
 /** @type {Object} Face value ranges for each die type */
 export const diceFaceRange = {
+  coin: coinConfig.faceRange,
   d4: d4Config.faceRange,
   d6: d6Config.faceRange,
   d8: d8Config.faceRange,
@@ -38,6 +41,7 @@ export const diceFaceRange = {
 
 /** @type {Object} Mass values for each die type */
 export const diceMass = {
+  coin: coinConfig.mass,
   d4: d4Config.mass,
   d6: d6Config.mass,
   d8: d8Config.mass,
@@ -48,6 +52,7 @@ export const diceMass = {
 
 /** @type {Object} Inertia values for each die type */
 export const diceInertia = {
+  coin: coinConfig.inertia,
   d4: d4Config.inertia,
   d6: d6Config.inertia,
   d8: d8Config.inertia,
@@ -58,6 +63,7 @@ export const diceInertia = {
 
 /** @type {Object} Geometry creation functions by type */
 export const geometryFactories = {
+  coin: createD2Geometry,
   d4: createD4Geometry,
   d6: createD6Geometry,
   d8: createD8Geometry,
@@ -68,6 +74,12 @@ export const geometryFactories = {
 
 // Re-export individual functions for convenience
 export {
+  createD2 as createCoin,
+  createD2Materials as createCoinMaterials,
+  createD2Geometry as createCoinGeometry,
+  createD2,
+  createD2Materials,
+  createD2Geometry,
   createD4,
   createD4Materials,
   createD4Geometry,

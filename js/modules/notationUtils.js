@@ -6,9 +6,10 @@ import { gameState } from './gameState.js';
 
 /**
  * Array de definiciones de dados (debe coincidir con diceDictionary del estado)
- * Índice 0: d4, 1: d6, 2: d8, 3: d10, 4: d12, 5: d20, 6: d100
+ * Índice 0: coin, 1: d4, 2: d6, 3: d8, 4: d10, 5: d12, 6: d20, 7: d100
  */
 export const DEFAULT_DICE = [
+  { title: "coin", type: "coin", sides: ["👑", "⚔️"] },
   { title: "d4", type: "d4", sides: ["1", "2", "3", "4"] },
   { title: "d6", type: "d6", sides: ["1", "2", "3", "4", "5", "6"] },
   { title: "d8", type: "d8", sides: ["1", "2", "3", "4", "5", "6", "7", "8"] },
@@ -185,6 +186,7 @@ export function gameSetToOldFormat(gameSet, diceDictionary = DEFAULT_DICE) {
  */
 export function isStandardDice(dice) {
   const standardSides = {
+    coin: ["1", "2"],
     d4: ["1", "2", "3", "4"],
     d6: ["1", "2", "3", "4", "5", "6"],
     d8: ["1", "2", "3", "4", "5", "6", "7", "8"],
