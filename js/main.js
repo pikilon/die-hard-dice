@@ -12,6 +12,8 @@ import "./modules/DiceThrowerComponent.js";
 import "./modules/DiceResultComponent.js";
 import "./modules/DiceSelectorComponent.js";
 import "./modules/DiceInstructionComponent.js";
+import "./modules/DicePreviewComponent.js";
+import "./modules/DiceDictionaryListComponent.js";
 
 function dice_initialize() {
   document.getElementById("loading_text")?.remove();
