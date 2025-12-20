@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { createDiceByType } from '../dice.js';
+import * as THREE from "three";
+import { createDiceByType } from "../dice.js";
 
 /**
  * Web Component que renderiza un dado individual en un canvas 3D.
@@ -10,15 +10,15 @@ import { createDiceByType } from '../dice.js';
  */
 class DicePreviewComponent extends HTMLElement {
   static get observedAttributes() {
-    return ['type', 'speed', 'size'];
+    return ["type", "speed", "size"];
   }
 
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
-    this.type = this.getAttribute('type') || 'd6';
-    this.size = parseInt(this.getAttribute('size') || '150', 10);
-    this.speed = parseFloat(this.getAttribute('speed') || '0.003');
+    this.attachShadow({ mode: "open" });
+    this.type = this.getAttribute("type") || "d6";
+    this.size = parseInt(this.getAttribute("size") || "150", 10);
+    this.speed = parseFloat(this.getAttribute("speed") || "0.003");
     this.customSides = null;
     this.autoRotate = true;
     this.dragging = false;
@@ -54,26 +54,18 @@ class DicePreviewComponent extends HTMLElement {
 
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue === newValue) return;
-    if (name === 'type') {
-      this.type = newValue || 'd6';
+    if (name === "type") {
+      this.type = newValue || "d6";
       this.resetDie();
-      this.updateLabel();
     }
-    if (name === 'speed') {
+    if (name === "speed") {
       const parsed = parseFloat(newValue);
       this.speed = Number.isFinite(parsed) ? parsed : 0.003;
     }
-    if (name === 'size') {
-      const parsed = parseInt(newValue || '150', 10);
+    if (name === "size") {
+      const parsed = parseInt(newValue || "150", 10);
       this.size = Number.isFinite(parsed) ? parsed : 150;
       this.updateSize();
-    }
-  }
-
-  updateLabel() {
-    const label = this.shadowRoot.querySelector('.label');
-    if (label) {
-      label.textContent = this.type;
     }
   }
 
@@ -84,16 +76,7 @@ class DicePreviewComponent extends HTMLElement {
           display: inline-block;
           width: ${this.size}px;
           height: ${this.size}px;
-        }
-
-        .frame {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          border-radius: 12px;
-          overflow: hidden;
-          background: transparent;
-          box-shadow: none;
+          
         }
 
         canvas {
@@ -106,37 +89,19 @@ class DicePreviewComponent extends HTMLElement {
         canvas:active {
           cursor: grabbing;
         }
-
-        .label {
-          position: absolute;
-          bottom: 8px;
-          right: 10px;
-          padding: 4px 8px;
-          background: rgba(251 0 0 / 0.8);
-          color: #e5e7eb;
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          font-size: 12px;
-          letter-spacing: 0.5px;
-          border-radius: 999px;
-          pointer-events: none;
-          user-select: none;
-        }
       </style>
-      <div class="frame">
-        <div id="viewport"></div>
-        <div class="label">${this.type}</div>
-      </div>
+      <canvas id="viewport"></canvas>
     `;
   }
 
   initThree() {
-    const viewport = this.shadowRoot.getElementById('viewport');
+    const viewport = this.shadowRoot.getElementById("viewport");
     if (!viewport) return;
 
     this.scene = new THREE.Scene();
 
     this.camera = new THREE.PerspectiveCamera(24, 1, 1, 600);
-    this.camera.position.set(0, 0, 220);
+    this.camera.position.set(0, 0, 230);
 
     const ambient = new THREE.AmbientLight(0xffffff, 0.9);
     const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
@@ -145,11 +110,14 @@ class DicePreviewComponent extends HTMLElement {
     fillLight.position.set(-1.2, -0.6, 1.8);
     this.scene.add(ambient, keyLight, fillLight);
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    this.renderer = new THREE.WebGLRenderer({
+      canvas: viewport,
+      antialias: true,
+      alpha: true,
+    });
     this.renderer.setPixelRatio(window.devicePixelRatio || 1);
     this.renderer.setSize(this.size, this.size);
     this.renderer.setClearColor(0x000000, 0);
-    viewport.appendChild(this.renderer.domElement);
 
     this.addDiceMesh();
     this.setupInteractions();
@@ -165,12 +133,15 @@ class DicePreviewComponent extends HTMLElement {
     try {
       this.diceMesh = createDiceByType(this.type, this.customSides);
     } catch (err) {
-      console.warn('DicePreviewComponent: unknown type, falling back to d6', err);
-      this.diceMesh = createDiceByType('d6');
+      console.warn(
+        "DicePreviewComponent: unknown type, falling back to d6",
+        err
+      );
+      this.diceMesh = createDiceByType("d6");
     }
 
     const scaleFactor = this.size / 150;
-    this.diceMesh.scale.setScalar(scaleFactor * 1.2);
+    this.diceMesh.scale.setScalar(scaleFactor * 1.05);
     this.scene.add(this.diceMesh);
   }
 
@@ -197,16 +168,16 @@ class DicePreviewComponent extends HTMLElement {
       this.dragging = false;
     };
 
-    canvas.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', stopDragging);
-    window.addEventListener('pointerleave', stopDragging);
+    canvas.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", stopDragging);
+    window.addEventListener("pointerleave", stopDragging);
 
     this.cleanupInteractions = () => {
-      canvas.removeEventListener('pointerdown', onPointerDown);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', stopDragging);
-      window.removeEventListener('pointerleave', stopDragging);
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", stopDragging);
+      window.removeEventListener("pointerleave", stopDragging);
     };
   }
 
@@ -245,10 +216,10 @@ class DicePreviewComponent extends HTMLElement {
     const hostStyle = this.style;
     hostStyle.width = `${this.size}px`;
     hostStyle.height = `${this.size}px`;
-    const frame = this.shadowRoot.querySelector('.frame');
-    if (frame) {
-      frame.style.width = `${this.size}px`;
-      frame.style.height = `${this.size}px`;
+    const canvas = this.shadowRoot.getElementById("viewport");
+    if (canvas) {
+      canvas.width = this.size;
+      canvas.height = this.size;
     }
     if (this.renderer) {
       this.renderer.setSize(this.size, this.size);
@@ -261,6 +232,6 @@ class DicePreviewComponent extends HTMLElement {
   }
 }
 
-customElements.define('dice-preview', DicePreviewComponent);
+customElements.define("dice-preview", DicePreviewComponent);
 
 export { DicePreviewComponent };
