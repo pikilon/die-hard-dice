@@ -16,10 +16,8 @@ export const DEFAULT_DICE = [
   { title: "d10", type: "d10", sides: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] },
   { title: "d12", type: "d12", sides: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"] },
   { title: "d20", type: "d20", sides: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"] },
+  // d100 represented as d10 with tens
   { title: "d100", type: "d10", sides: ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"] },
-  // Custom dice examples
-  { title: "d6-custom", type: "d6", sides: ["X", "Y", "Z", ":)", "V", "🙃"] },
-  { title: "d4-letter", type: "d4", sides: ["A", "B", "C", "D"] },
 ];
 
 /**
