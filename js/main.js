@@ -10,7 +10,6 @@ import { gameState } from "./modules/gameState.js";
 import "./modules/DiceInputComponent.js";
 import "./modules/DiceThrowerComponent.js";
 import "./modules/DiceResultComponent.js";
-import "./modules/DiceSelectorComponent.js";
 import "./modules/DiceInstructionComponent.js";
 import "./modules/DicePreviewComponent.js";
 import "./modules/DiceDictionaryListComponent.js";

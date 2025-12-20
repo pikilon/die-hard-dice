@@ -112,7 +112,7 @@ class DicePreviewComponent extends HTMLElement {
           bottom: 8px;
           right: 10px;
           padding: 4px 8px;
-          background: rgba(255, 255, 255, 0.1);
+          background: rgba(251 0 0 / 0.8);
           color: #e5e7eb;
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
           font-size: 12px;

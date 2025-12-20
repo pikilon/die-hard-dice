@@ -95,7 +95,7 @@ class DiceDictionaryListComponent extends HTMLElement {
 
     const dictionary = gameState.getState('diceDictionary') || DEFAULT_DICE;
 
-    dictionary.forEach((die) => {
+    dictionary.forEach((die, dictionaryIndex) => {
       const item = document.createElement('div');
       item.className = 'item';
 
@@ -108,10 +108,33 @@ class DiceDictionaryListComponent extends HTMLElement {
       title.className = 'title';
       title.textContent = die.title;
 
+      const handleClick = (ev) => {
+        ev.stopPropagation();
+        this.addDieToGameSet(dictionaryIndex);
+      };
+
+      item.addEventListener('click', handleClick);
+
       item.appendChild(preview);
       item.appendChild(title);
       list.appendChild(item);
     });
+  }
+
+  addDieToGameSet(dictionaryIndex) {
+    const current = gameState.getState('gameSet');
+    const existing = current.find((d) => d.dictionaryIndex === dictionaryIndex);
+    if (existing) {
+      const updated = current.map((d) =>
+        d.dictionaryIndex === dictionaryIndex
+          ? { ...d, quantity: d.quantity + 1 }
+          : d
+      );
+      gameState.setGameSet(updated);
+    } else {
+      const updated = [...current, { dictionaryIndex, quantity: 1 }];
+      gameState.setGameSet(updated);
+    }
   }
 
   toggleVisibility(shouldShow) {

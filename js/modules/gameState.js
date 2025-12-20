@@ -9,7 +9,10 @@ class GameState {
   constructor() {
     this.state = {
       // Diccionario de dados disponibles
-      diceDictionary: DEFAULT_DICE,
+      diceDictionary: [...DEFAULT_DICE,
+        { title: "Custom D6", type: "d6", sides: ["A", "B", "C", "D", "E", "F"] }
+
+      ],
       // Array de dados seleccionados con índice del diccionario y cantidad
       // Ejemplo: [{ dictionaryIndex: 1, quantity: 4 }] (4 d6)
       gameSet: [
