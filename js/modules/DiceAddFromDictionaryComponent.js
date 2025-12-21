@@ -1,6 +1,5 @@
 import { DicePreviewComponent } from "./DicePreviewComponent.js";
 import { gameState } from "./gameState.js";
-import { validateDiceSides } from "./notationUtils.js";
 
 const css = /*css*/ `
 :host {

@@ -100,6 +100,8 @@ function getExpectedFaceCount(diceType) {
   return counts[diceType] || 20;
 }
 
+
+
 /**
  * Ensures dice has valid sides and slices to expected face count
  * - If 0 or 1 sides: defaults to ["1", "2"]
@@ -356,3 +358,7 @@ export function getTitleByIndex(dictionaryIndex) {
 }
 
 export { DEFAULT_DICE as DICE_DICTIONARY };
+export function isCustomDiceIndex(dictionaryIndex = 0) {
+  const index = Number.isInteger(dictionaryIndex) ? dictionaryIndex : -1;
+  return index >= DEFAULT_DICE.length;
+}

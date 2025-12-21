@@ -1,4 +1,5 @@
 import { gameState } from './gameState.js';
+import { isCustomDiceIndex } from './notationUtils.js';
 import './DicePreviewComponent.js';
 
 /**
@@ -178,14 +179,14 @@ class DiceGameCardComponent extends HTMLElement {
     const currentQty = existing ? existing.quantity : 0;
     const nextQty = Math.max(0, currentQty + delta);
 
+    const isCustom = isCustomDiceIndex(this.dictionaryIndex);
+
     if (nextQty === currentQty) return;
 
-    const updated = nextQty === 0
-      ? currentSet.filter((d) => d.dictionaryIndex !== this.dictionaryIndex)
-      : [
-          ...currentSet.filter((d) => d.dictionaryIndex !== this.dictionaryIndex),
-          { dictionaryIndex: this.dictionaryIndex, quantity: nextQty }
-        ];
+    const withoutThis = currentSet.filter((d) => d.dictionaryIndex !== this.dictionaryIndex);
+    const updated = nextQty === 0 && !isCustom
+      ? withoutThis
+      : [...withoutThis, { dictionaryIndex: this.dictionaryIndex, quantity: nextQty }];
 
     gameState.setGameSet(updated);
   }

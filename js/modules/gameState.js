@@ -1,4 +1,8 @@
-import { DEFAULT_DICE, getDiceTypeFromSides, validateDiceSides } from './notationUtils.js';
+import {
+  DEFAULT_DICE,
+  getDiceTypeFromSides,
+  validateDiceSides,
+} from "./notationUtils.js";
 
 /**
  * PubSub State Module for Dice Game
@@ -9,16 +13,10 @@ class GameState {
   constructor() {
     this.state = {
       // Diccionario de dados disponibles
-      diceDictionary: [
-        ...DEFAULT_DICE,
-        { title: "Custom D15", sides: ["😂", "A", "B", "C", "D", "E", "7", "8", "9", "10", "11", "12", "13", "14", "15"] }
-
-      ],
+      diceDictionary: [...DEFAULT_DICE],
       // Array de dados seleccionados con índice del diccionario y cantidad
       // Ejemplo: [{ dictionaryIndex: 1, quantity: 4 }] (4 d6)
-      gameSet: [
-        { dictionaryIndex: 0, quantity: 4 }
-      ],
+      gameSet: [{ dictionaryIndex: 0, quantity: 4 }],
       // Array de resultados como strings
       // Ejemplo: ["3", "4", "5", "2"]
       lastResult: [],
@@ -30,7 +28,7 @@ class GameState {
       // -2: cerrado, -1: creando nuevo, >=0: editando (no implementado aún)
       createEditDiceIndex: -2,
     };
-    
+
     this.subscribers = {
       diceDictionary: [],
       gameSet: [],
@@ -74,13 +72,18 @@ class GameState {
     if (key) {
       return this.state[key];
     }
-    return { 
-      diceDictionary: [...this.state.diceDictionary.map(d => ({...d, sides: [...d.sides]}))],
-      gameSet: [...this.state.gameSet.map(d => ({...d}))],
+    return {
+      diceDictionary: [
+        ...this.state.diceDictionary.map((d) => ({
+          ...d,
+          sides: [...d.sides],
+        })),
+      ],
+      gameSet: [...this.state.gameSet.map((d) => ({ ...d }))],
       lastResult: [...this.state.lastResult],
       sum: this.state.sum,
       isThrowing: this.state.isThrowing,
-      createEditDiceIndex: this.state.createEditDiceIndex
+      createEditDiceIndex: this.state.createEditDiceIndex,
     };
   }
 
@@ -89,7 +92,7 @@ class GameState {
    * @returns {Array} Array de dados expandidos con quantity y sides
    */
   getExpandedGameSet() {
-    return this.state.gameSet.map(item => {
+    return this.state.gameSet.map((item) => {
       const diceDefinition = this.state.diceDictionary[item.dictionaryIndex];
       // Validate sides (0-1 becomes 2)
       const validatedSides = validateDiceSides(diceDefinition.sides);
@@ -99,7 +102,7 @@ class GameState {
         quantity: item.quantity,
         sides: [...validatedSides],
         title: diceDefinition.title,
-        type: type
+        type: type,
       };
     });
   }
@@ -110,21 +113,23 @@ class GameState {
    * @returns {number} índice del nuevo dado en el diccionario
    */
   addDiceToDictionary(diceDef) {
-    const title = String(diceDef?.title ?? '').trim();
-    const sides = Array.isArray(diceDef?.sides) ? diceDef.sides.map(s => String(s).trim()) : [];
+    const title = String(diceDef?.title ?? "").trim();
+    const sides = Array.isArray(diceDef?.sides)
+      ? diceDef.sides.map((s) => String(s).trim())
+      : [];
 
     if (title.length < 2) {
-      throw new Error('Dice title must be at least 2 characters');
+      throw new Error("Dice title must be at least 2 characters");
     }
     if (sides.length < 2) {
-      throw new Error('Dice must have at least 2 sides');
+      throw new Error("Dice must have at least 2 sides");
     }
 
     const newDef = { title, sides: [...sides] };
     this.state.diceDictionary = [...this.state.diceDictionary, newDef];
     const newIndex = this.state.diceDictionary.length - 1;
-    this._notify('diceDictionary', this.state.diceDictionary);
-    this._notify('all', this.state);
+    this._notify("diceDictionary", this.state.diceDictionary);
+    this._notify("all", this.state);
     return newIndex;
   }
 
@@ -134,7 +139,7 @@ class GameState {
    * @param {number} quantity
    */
   addDieToGameSetByIndex(dictionaryIndex, quantity = 1) {
-    const current = this.getState('gameSet');
+    const current = this.getState("gameSet");
     const existing = current.find((d) => d.dictionaryIndex === dictionaryIndex);
     let updated;
     if (existing) {
@@ -156,8 +161,8 @@ class GameState {
   setCreateEditDiceIndex(index) {
     if (this.state.createEditDiceIndex !== index) {
       this.state.createEditDiceIndex = index;
-      this._notify('createEditDiceIndex', this.state.createEditDiceIndex);
-      this._notify('all', this.state);
+      this._notify("createEditDiceIndex", this.state.createEditDiceIndex);
+      this._notify("all", this.state);
     }
   }
 
@@ -167,12 +172,12 @@ class GameState {
    */
   setGameSet(gameSet) {
     if (JSON.stringify(this.state.gameSet) !== JSON.stringify(gameSet)) {
-      this.state.gameSet = gameSet.map(d => ({
+      this.state.gameSet = gameSet.map((d) => ({
         dictionaryIndex: d.dictionaryIndex,
-        quantity: d.quantity
+        quantity: d.quantity,
       }));
-      this._notify('gameSet', this.state.gameSet);
-      this._notify('all', this.state);
+      this._notify("gameSet", this.state.gameSet);
+      this._notify("all", this.state);
     }
   }
 
@@ -184,20 +189,20 @@ class GameState {
     if (JSON.stringify(this.state.lastResult) !== JSON.stringify(result)) {
       this.state.lastResult = [...result];
       this._calculateSum();
-      
+
       // Log del estado en cada lanzamiento
-      console.log('🎲 Lanzamiento realizado:', {
+      console.log("🎲 Lanzamiento realizado:", {
         resultados: this.state.lastResult,
         suma: this.state.sum,
-        dados: this.state.gameSet.map(item => {
+        dados: this.state.gameSet.map((item) => {
           const dice = this.state.diceDictionary[item.dictionaryIndex];
           return `${item.quantity}${dice.title}`;
-        })
+        }),
       });
-      
-      this._notify('lastResult', this.state.lastResult);
-      this._notify('sum', this.state.sum);
-      this._notify('all', this.state);
+
+      this._notify("lastResult", this.state.lastResult);
+      this._notify("sum", this.state.sum);
+      this._notify("all", this.state);
     }
   }
 
@@ -207,28 +212,33 @@ class GameState {
    */
   update(updates) {
     let changed = false;
-    
-    if (updates.gameSet !== undefined && 
-        JSON.stringify(this.state.gameSet) !== JSON.stringify(updates.gameSet)) {
-      this.state.gameSet = updates.gameSet.map(d => ({
+
+    if (
+      updates.gameSet !== undefined &&
+      JSON.stringify(this.state.gameSet) !== JSON.stringify(updates.gameSet)
+    ) {
+      this.state.gameSet = updates.gameSet.map((d) => ({
         dictionaryIndex: d.dictionaryIndex,
-        quantity: d.quantity
+        quantity: d.quantity,
       }));
-      this._notify('gameSet', this.state.gameSet);
+      this._notify("gameSet", this.state.gameSet);
       changed = true;
     }
-    
-    if (updates.lastResult !== undefined && 
-        JSON.stringify(this.state.lastResult) !== JSON.stringify(updates.lastResult)) {
+
+    if (
+      updates.lastResult !== undefined &&
+      JSON.stringify(this.state.lastResult) !==
+        JSON.stringify(updates.lastResult)
+    ) {
       this.state.lastResult = [...updates.lastResult];
       this._calculateSum();
-      this._notify('lastResult', this.state.lastResult);
-      this._notify('sum', this.state.sum);
+      this._notify("lastResult", this.state.lastResult);
+      this._notify("sum", this.state.sum);
       changed = true;
     }
 
     if (changed) {
-      this._notify('all', this.state);
+      this._notify("all", this.state);
     }
   }
 
@@ -239,8 +249,8 @@ class GameState {
   setIsThrowing(isThrowing) {
     if (this.state.isThrowing !== isThrowing) {
       this.state.isThrowing = isThrowing;
-      this._notify('isThrowing', this.state.isThrowing);
-      this._notify('all', this.state);
+      this._notify("isThrowing", this.state.isThrowing);
+      this._notify("all", this.state);
     }
   }
 
@@ -248,17 +258,15 @@ class GameState {
    * Resetear el estado
    */
   reset() {
-    this.state.gameSet = [
-      { dictionaryIndex: 1, quantity: 4 }
-    ];
+    this.state.gameSet = [{ dictionaryIndex: 1, quantity: 4 }];
     this.state.lastResult = [];
     this.state.sum = 0;
     this.state.isThrowing = false;
-    this._notify('gameSet', this.state.gameSet);
-    this._notify('lastResult', this.state.lastResult);
-    this._notify('sum', this.state.sum);
-    this._notify('isThrowing', this.state.isThrowing);
-    this._notify('all', this.state);
+    this._notify("gameSet", this.state.gameSet);
+    this._notify("lastResult", this.state.lastResult);
+    this._notify("sum", this.state.sum);
+    this._notify("isThrowing", this.state.isThrowing);
+    this._notify("all", this.state);
   }
 
   /**
@@ -277,7 +285,7 @@ class GameState {
    * @private
    */
   _notify(key, value) {
-    this.subscribers[key].forEach(callback => {
+    this.subscribers[key].forEach((callback) => {
       try {
         callback(value);
       } catch (error) {
