@@ -28,7 +28,7 @@ class GameState {
       isThrowing: false,
       // Controla la apertura del diálogo de crear/editar dado
       // -2: cerrado, -1: creando nuevo, >=0: editando (no implementado aún)
-      createEditDiceIndex: -1,
+      createEditDiceIndex: -2,
     };
     
     this.subscribers = {
