@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { createDiceByType, dice_face_range } from "../dice.js";
+import { createDiceByType } from "../dice.js";
 import { getDiceTypeFromSides, validateDiceSides } from "./notationUtils.js";
 
 /**
@@ -9,6 +9,71 @@ import { getDiceTypeFromSides, validateDiceSides } from "./notationUtils.js";
  * - Tamaño cuadrado controlado por la prop `size` (px), por defecto 150
  * - Propiedad `sides` (no atributo) para caras custom
  */
+// --- Offscreen shared renderer for snapshots ---
+let previewShared = null;
+
+function getSharedPreview(size) {
+  if (!previewShared) {
+    const canvas = document.createElement("canvas");
+    // Single low-power context used for all snapshots
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      alpha: true,
+      preserveDrawingBuffer: true,
+      powerPreference: "low-power",
+    });
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(24, 1, 1, 600);
+    camera.position.set(0, 0, 230);
+
+    // Lights once, reused
+    const ambient = new THREE.AmbientLight(0xffffff, 0.9);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
+    keyLight.position.set(1.5, 1.4, 2.2);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.35);
+    fillLight.position.set(-1.2, -0.6, 1.8);
+    scene.add(ambient, keyLight, fillLight);
+
+    previewShared = { renderer, scene, camera, canvas };
+  }
+  if (size && previewShared) {
+    previewShared.renderer.setSize(size, size);
+  }
+  return previewShared;
+}
+
+function generateSnapshot(type, sides, size) {
+  const shared = getSharedPreview(size);
+  const { renderer, scene, camera } = shared;
+
+  let diceMesh;
+  try {
+    diceMesh = createDiceByType(type, sides || null);
+  } catch (err) {
+    console.warn("DicePreviewComponent: unknown type for snapshot, fallback d6", err);
+    diceMesh = createDiceByType("d6");
+  }
+
+  const scaleFactor = size / 150;
+  diceMesh.scale.setScalar(scaleFactor * 1.05);
+
+  // Pleasant angle
+  diceMesh.rotation.y = 0.6;
+  diceMesh.rotation.x = 0.35;
+
+  scene.add(diceMesh);
+  renderer.setClearColor(0x000000, 0);
+  renderer.render(scene, camera);
+  const url = renderer.domElement.toDataURL("image/png");
+  scene.remove(diceMesh);
+  // Help GC
+  // Dispose geometry only; materials may be shared/cached elsewhere
+  if (diceMesh.geometry) diceMesh.geometry.dispose?.();
+  return url;
+}
+
 class DicePreviewComponent extends HTMLElement {
   static get observedAttributes() {
     return ["type", "speed", "size"];
@@ -21,14 +86,8 @@ class DicePreviewComponent extends HTMLElement {
     this.size = parseInt(this.getAttribute("size") || "150", 10);
     this.speed = parseFloat(this.getAttribute("speed") || "0.003");
     this.customSides = null;
-    this.autoRotate = true;
-    this.dragging = false;
-    this.lastPointer = { x: 0, y: 0 };
-    this.scene = null;
-    this.camera = null;
-    this.renderer = null;
-    this.diceMesh = null;
-    this.rafId = null;
+    // 2D snapshot mode to avoid multiple WebGL contexts
+    this.imgEl = null;
   }
 
   set sides(value) {
@@ -49,13 +108,11 @@ class DicePreviewComponent extends HTMLElement {
 
   connectedCallback() {
     this.render();
-    this.initThree();
-    this.animate();
+    this.updateSnapshot();
   }
 
   disconnectedCallback() {
-    this.stopAnimation();
-    this.dispose();
+    // Nothing persistent per component anymore
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -67,6 +124,7 @@ class DicePreviewComponent extends HTMLElement {
     if (name === "speed") {
       const parsed = parseFloat(newValue);
       this.speed = Number.isFinite(parsed) ? parsed : 0.003;
+      // No auto-rotation in snapshot mode, ignore
     }
     if (name === "size") {
       const parsed = parseInt(newValue || "150", 10);
@@ -82,159 +140,40 @@ class DicePreviewComponent extends HTMLElement {
           display: inline-block;
           width: ${this.size}px;
           height: ${this.size}px;
-          
         }
-
-        canvas {
+        img {
           width: 100%;
           height: 100%;
           display: block;
-          cursor: grab;
-        }
-
-        canvas:active {
-          cursor: grabbing;
+          object-fit: contain;
+          background: transparent;
         }
       </style>
-      <canvas id="viewport"></canvas>
+      <img id="snapshot" alt="dice preview" />
     `;
+    this.imgEl = this.shadowRoot.getElementById("snapshot");
   }
 
-  initThree() {
-    const viewport = this.shadowRoot.getElementById("viewport");
-    if (!viewport) return;
-
-    this.scene = new THREE.Scene();
-
-    this.camera = new THREE.PerspectiveCamera(24, 1, 1, 600);
-    this.camera.position.set(0, 0, 230);
-
-    const ambient = new THREE.AmbientLight(0xffffff, 0.9);
-    const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
-    keyLight.position.set(1.5, 1.4, 2.2);
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.35);
-    fillLight.position.set(-1.2, -0.6, 1.8);
-    this.scene.add(ambient, keyLight, fillLight);
-
-    this.renderer = new THREE.WebGLRenderer({
-      canvas: viewport,
-      antialias: true,
-      alpha: true,
-    });
-    this.renderer.setPixelRatio(window.devicePixelRatio || 1);
-    this.renderer.setSize(this.size, this.size);
-    this.renderer.setClearColor(0x000000, 0);
-
-    this.addDiceMesh();
-    this.setupInteractions();
-  }
-
-  addDiceMesh() {
-    if (!this.scene) return;
-    if (this.diceMesh) {
-      this.scene.remove(this.diceMesh);
-      this.diceMesh = null;
-    }
-
+  updateSnapshot() {
+    if (!this.imgEl) return;
     try {
-      this.diceMesh = createDiceByType(this.type, this.customSides);
-    } catch (err) {
-      console.warn(
-        "DicePreviewComponent: unknown type, falling back to d6",
-        err
-      );
-      this.diceMesh = createDiceByType("d6");
+      const url = generateSnapshot(this.type, this.customSides, this.size);
+      this.imgEl.src = url;
+    } catch (e) {
+      console.warn("DicePreviewComponent: snapshot generation failed", e);
     }
-
-    const scaleFactor = this.size / 150;
-    this.diceMesh.scale.setScalar(scaleFactor * 1.05);
-    this.scene.add(this.diceMesh);
-  }
-
-  setupInteractions() {
-    if (!this.renderer) return;
-    const canvas = this.renderer.domElement;
-
-    const onPointerDown = (ev) => {
-      this.autoRotate = false;
-      this.dragging = true;
-      this.lastPointer = { x: ev.clientX, y: ev.clientY };
-    };
-
-    const onPointerMove = (ev) => {
-      if (!this.dragging || !this.diceMesh) return;
-      const dx = ev.clientX - this.lastPointer.x;
-      const dy = ev.clientY - this.lastPointer.y;
-      this.lastPointer = { x: ev.clientX, y: ev.clientY };
-      this.diceMesh.rotation.y += dx * 0.01;
-      this.diceMesh.rotation.x += dy * 0.01;
-    };
-
-    const stopDragging = () => {
-      this.dragging = false;
-    };
-
-    canvas.addEventListener("pointerdown", onPointerDown);
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", stopDragging);
-    window.addEventListener("pointerleave", stopDragging);
-
-    this.cleanupInteractions = () => {
-      canvas.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", stopDragging);
-      window.removeEventListener("pointerleave", stopDragging);
-    };
-  }
-
-  animate() {
-    if (!this.renderer || !this.scene || !this.camera) return;
-
-    if (this.autoRotate && this.diceMesh) {
-      this.diceMesh.rotation.y += this.speed;
-      this.diceMesh.rotation.x += this.speed * 0.4;
-    }
-
-    this.renderer.render(this.scene, this.camera);
-    this.rafId = requestAnimationFrame(() => this.animate());
-  }
-
-  stopAnimation() {
-    if (this.rafId) {
-      cancelAnimationFrame(this.rafId);
-      this.rafId = null;
-    }
-  }
-
-  dispose() {
-    this.cleanupInteractions?.();
-    this.stopAnimation();
-    if (this.renderer) {
-      this.renderer.dispose();
-    }
-    this.scene = null;
-    this.camera = null;
-    this.renderer = null;
-    this.diceMesh = null;
   }
 
   updateSize() {
     const hostStyle = this.style;
     hostStyle.width = `${this.size}px`;
     hostStyle.height = `${this.size}px`;
-    const canvas = this.shadowRoot.getElementById("viewport");
-    if (canvas) {
-      canvas.width = this.size;
-      canvas.height = this.size;
-    }
-    if (this.renderer) {
-      this.renderer.setSize(this.size, this.size);
-    }
+    // Re-render at new size
+    this.updateSnapshot();
   }
 
   resetDie() {
-    if (!this.scene) return;
-    this.addDiceMesh();
+    this.updateSnapshot();
   }
 }
 
