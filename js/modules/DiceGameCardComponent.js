@@ -203,7 +203,7 @@ class DiceGameCardComponent extends HTMLElement {
       titleEl.textContent = diceDef.title;
     }
     if (subtitleEl) {
-      subtitleEl.textContent = '';
+      subtitleEl.textContent = `Sides: ${diceDef.sides.length}`;
     }
 
     if (previewEl) {
