@@ -167,6 +167,16 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
             </div>
           </option>
         </template>
+        <template id="diceCreateTpl">
+          <option value="__CREATE__">
+            <div class="custom-option">
+              <div>
+                <div class="title">Create a new dice</div>
+                <div class="subtitle">Add custom sides</div>
+              </div>
+            </div>
+          </option>
+        </template>
     `;
   }
 
@@ -198,12 +208,17 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
     // Build options using templates in shadow DOM
     const optionTpl = this.shadowRoot.getElementById("diceOptionTpl");
     const placeholderTpl = this.shadowRoot.getElementById("dicePlaceholderTpl");
+    const createTpl = this.shadowRoot.getElementById("diceCreateTpl");
     if (!optionTpl || !placeholderTpl) return;
 
     // Remove existing options but keep non-option children (button/selectedcontent)
     select.querySelectorAll("option").forEach((opt) => opt.remove());
     // Add placeholder option first
     select.appendChild(placeholderTpl.content.cloneNode(true));
+    // Add imageless create option under the first
+    if (createTpl) {
+      select.appendChild(createTpl.content.cloneNode(true));
+    }
 
     this.dictionary.forEach((die, index) => {
       const sidesCount = Array.isArray(die.sides) ? die.sides.length : 0;
@@ -241,6 +256,11 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
     const onSelectChange = ({ target }) => {
       if (!target.value) return;
       const { value } = target;
+      if (value === "__CREATE__") {
+        gameState.setCreateEditDiceIndex(-1);
+        target.value = "";
+        return;
+      }
       this._addDieToGameSet(parseInt(value, 10));
       target.value = "";
     };
