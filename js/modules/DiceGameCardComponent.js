@@ -126,6 +126,31 @@ class DiceGameCardComponent extends HTMLElement {
           opacity: 0.6;
           margin: 0;
         }
+
+        .delete-btn {
+          margin-top: 6px;
+          padding: 8px 10px;
+          width: 100%;
+          border-radius: 8px;
+          border: 1px solid rgba(255, 77, 79, 0.4);
+          background: rgba(255, 77, 79, 0.08);
+          color: #b32024;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.12s ease, border 0.12s ease;
+        }
+
+        .delete-btn:disabled {
+          opacity: 0.35;
+          cursor: not-allowed;
+        }
+
+        .delete-btn:not(:disabled):hover {
+          background: rgba(255, 77, 79, 0.16);
+          border-color: rgba(255, 77, 79, 0.6);
+        }
+
+        .hidden { display: none; }
       </style>
       <div class="card">
         <div class="preview-wrapper">
@@ -134,6 +159,7 @@ class DiceGameCardComponent extends HTMLElement {
         <div>
           <div class="title" id="title"></div>
           <p class="subtitle" id="subtitle"></p>
+          <button id="delete" class="delete-btn hidden" aria-label="Delete custom dice">Delete</button>
           <div class="controls">
             <button id="decrease" aria-label="Decrease quantity">-</button>
             <div class="quantity" id="quantity">0</div>
@@ -145,6 +171,7 @@ class DiceGameCardComponent extends HTMLElement {
 
     const dec = this.shadowRoot.getElementById('decrease');
     const inc = this.shadowRoot.getElementById('increase');
+    const del = this.shadowRoot.getElementById('delete');
     dec?.addEventListener('click', (ev) => {
       ev.stopPropagation();
       this._changeQuantity(-1);
@@ -152,6 +179,11 @@ class DiceGameCardComponent extends HTMLElement {
     inc?.addEventListener('click', (ev) => {
       ev.stopPropagation();
       this._changeQuantity(1);
+    });
+    del?.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const ok = window.confirm('If you delete this custom die, you will need to create it again to add it.');
+      if (ok) this._confirmDelete();
     });
   }
 
@@ -199,6 +231,7 @@ class DiceGameCardComponent extends HTMLElement {
     const subtitleEl = this.shadowRoot.getElementById('subtitle');
     const quantityEl = this.shadowRoot.getElementById('quantity');
     const previewEl = this.shadowRoot.getElementById('preview');
+    const deleteBtn = this.shadowRoot.getElementById('delete');
 
     if (titleEl) {
       titleEl.textContent = diceDef.title;
@@ -216,6 +249,17 @@ class DiceGameCardComponent extends HTMLElement {
     if (quantityEl) {
       quantityEl.textContent = String(qty);
     }
+
+    if (deleteBtn) {
+      const isCustom = isCustomDiceIndex(this.dictionaryIndex);
+      deleteBtn.classList.toggle('hidden', !isCustom);
+      deleteBtn.disabled = qty > 0;
+    }
+  }
+
+  _confirmDelete() {
+    if (this.dictionaryIndex == null) return;
+    gameState.removeDiceFromDictionary(this.dictionaryIndex);
   }
 }
 

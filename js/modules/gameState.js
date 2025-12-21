@@ -134,6 +134,42 @@ class GameState {
   }
 
   /**
+   * Remove a custom die from the dictionary by index and update gameSet references.
+   * Default dice (within DEFAULT_DICE) cannot be removed.
+   * @param {number} dictionaryIndex
+   * @returns {boolean} true if removed, false otherwise
+   */
+  removeDiceFromDictionary(dictionaryIndex) {
+    const index = Number.isInteger(dictionaryIndex) ? dictionaryIndex : -1;
+    if (index < DEFAULT_DICE.length) return false;
+    if (index < 0 || index >= this.state.diceDictionary.length) return false;
+
+    const newDictionary = this.state.diceDictionary.filter((_, i) => i !== index);
+
+    const newGameSet = this.state.gameSet
+      .filter((item) => item.dictionaryIndex !== index)
+      .map((item) => ({
+        dictionaryIndex:
+          item.dictionaryIndex > index ? item.dictionaryIndex - 1 : item.dictionaryIndex,
+        quantity: item.quantity,
+      }));
+
+    let newCreateEditIndex = this.state.createEditDiceIndex;
+    if (newCreateEditIndex === index) newCreateEditIndex = -2;
+    else if (newCreateEditIndex > index) newCreateEditIndex -= 1;
+
+    this.state.diceDictionary = newDictionary;
+    this.state.gameSet = newGameSet;
+    this.state.createEditDiceIndex = newCreateEditIndex;
+
+    this._notify("diceDictionary", this.state.diceDictionary);
+    this._notify("gameSet", this.state.gameSet);
+    this._notify("createEditDiceIndex", this.state.createEditDiceIndex);
+    this._notify("all", this.state);
+    return true;
+  }
+
+  /**
    * Añade un dado al gameSet por índice del diccionario (incrementa cantidad si existe)
    * @param {number} dictionaryIndex
    * @param {number} quantity
