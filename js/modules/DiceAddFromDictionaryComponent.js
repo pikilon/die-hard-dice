@@ -2,6 +2,109 @@ import { DicePreviewComponent } from "./DicePreviewComponent.js";
 import { gameState } from "./gameState.js";
 import { validateDiceSides } from "./notationUtils.js";
 
+const css = /*css*/ `
+:host {
+  display: block;
+}
+
+.add-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  z-index: 10;
+
+  .label {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.7);
+  }
+
+  .select {
+    appearance: base-select;
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 0.95);
+    color: #222;
+    font-size: 13px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    --thumb-size: 64px;
+    cursor: pointer;
+    position: relative;
+    z-index: 20;
+
+    &::picker-icon {
+      display: none;
+    }
+
+    button {
+      all: unset;
+      display: block;
+      width: 100%;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+
+    &::picker(select) {
+      appearance: base-select;
+      border: 1px solid rgba(0, 0, 0, 0.18);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+      padding: 3px 0;
+      background: #fff;
+      min-width: 240px;
+
+      option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        cursor: pointer;
+
+        &:hover {
+          background-color: rgba(0, 0, 0, 0.06);
+        }
+      }
+    }
+  }
+
+  .selected-row {
+    display: grid;
+    grid-template-columns: 1fr 24px;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .custom-option {
+    display: grid;
+    grid-template-columns: var(--thumb-size) 1fr;
+    gap: 10px;
+    align-items: center;
+    min-height: calc(var(--thumb-size) + 6px);
+
+    .avatar {
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .title {
+      font-weight: 600;
+    }
+
+    .subtitle {
+      font-size: 11px;
+      color: rgba(0, 0, 0, 0.6);
+    }
+  }
+}
+`;
+
 /**
  * Component that shows a dropdown of available dice (dictionary)
  * and adds the selected die to the current game set.
@@ -40,101 +143,7 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
   render() {
     this.shadowRoot.innerHTML = /*html*/ `
       <style>
-        :host {
-          display: block;
-        }
-
-          .add-card {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            padding: 10px;
-            border-radius: 10px;
-            border: 1px solid rgba(0, 0, 0, 0.12);
-            background: rgba(255, 255, 255, 0.9);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            z-index: 10;
-
-            .label {
-              font-size: 12px;
-              color: rgba(0, 0, 0, 0.7);
-            }
-
-            .select {
-              appearance: base-select;
-              width: 100%;
-              border-radius: 10px;
-              border: 1px solid rgba(0, 0, 0, 0.15);
-              background: rgba(255, 255, 255, 0.95);
-              color: #222;
-              font-size: 13px;
-              box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-              --thumb-size: 64px;
-              cursor: pointer;
-              position: relative;
-              z-index: 20;
-
-              &::picker-icon {
-                display: none;
-              }
-
-              button {
-                all: unset;
-                display: block;
-                width: 100%;
-                padding: 10px 12px;
-                cursor: pointer;
-              }
-
-              &::picker(select) {
-                appearance: base-select;
-                border: 1px solid rgba(0, 0, 0, 0.18);
-                border-radius: 12px;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
-                padding: 3px 0;
-                background: #fff;
-                min-width: 240px;
-
-                option {
-                  display: flex;
-                  align-items: center;
-                  gap: 10px;
-                  padding: 8px 10px;
-                  cursor: pointer;
-
-                  &:hover { background-color: rgba(0, 0, 0, 0.06); }
-                }
-              }
-            }
-
-            .selected-row {
-              display: grid;
-              grid-template-columns: 1fr 24px;
-              align-items: center;
-              gap: 10px;
-            }
-
-            .custom-option {
-              display: grid;
-              grid-template-columns: var(--thumb-size) 1fr;
-              gap: 10px;
-              align-items: center;
-              min-height: calc(var(--thumb-size) + 6px);
-
-              .avatar {
-                border-radius: 8px;
-                background: rgba(0, 0, 0, 0.04);
-              }
-
-              .title { font-weight: 600; }
-
-              .subtitle { font-size: 11px; color: rgba(0, 0, 0, 0.6); }
-            }
-          }
-          }
-        }
+      ${css}
       </style>
       <div class="add-card">
         <span class="label">Add die:</span>
