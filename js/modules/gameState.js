@@ -26,6 +26,9 @@ class GameState {
       sum: 0,
       // Indica si se está lanzando los dados
       isThrowing: false,
+      // Controla la apertura del diálogo de crear/editar dado
+      // -2: cerrado, -1: creando nuevo, >=0: editando (no implementado aún)
+      createEditDiceIndex: -1,
     };
     
     this.subscribers = {
@@ -34,6 +37,7 @@ class GameState {
       lastResult: [],
       sum: [],
       isThrowing: [],
+      createEditDiceIndex: [],
       all: [], // se notifica en cualquier cambio
     };
   }
@@ -75,7 +79,8 @@ class GameState {
       gameSet: [...this.state.gameSet.map(d => ({...d}))],
       lastResult: [...this.state.lastResult],
       sum: this.state.sum,
-      isThrowing: this.state.isThrowing
+      isThrowing: this.state.isThrowing,
+      createEditDiceIndex: this.state.createEditDiceIndex
     };
   }
 
@@ -97,6 +102,63 @@ class GameState {
         type: type
       };
     });
+  }
+
+  /**
+   * Agrega un nuevo dado al diccionario
+   * @param {{title: string, sides: string[]}} diceDef
+   * @returns {number} índice del nuevo dado en el diccionario
+   */
+  addDiceToDictionary(diceDef) {
+    const title = String(diceDef?.title ?? '').trim();
+    const sides = Array.isArray(diceDef?.sides) ? diceDef.sides.map(s => String(s).trim()) : [];
+
+    if (title.length < 2) {
+      throw new Error('Dice title must be at least 2 characters');
+    }
+    if (sides.length < 2) {
+      throw new Error('Dice must have at least 2 sides');
+    }
+
+    const newDef = { title, sides: [...sides] };
+    this.state.diceDictionary = [...this.state.diceDictionary, newDef];
+    const newIndex = this.state.diceDictionary.length - 1;
+    this._notify('diceDictionary', this.state.diceDictionary);
+    this._notify('all', this.state);
+    return newIndex;
+  }
+
+  /**
+   * Añade un dado al gameSet por índice del diccionario (incrementa cantidad si existe)
+   * @param {number} dictionaryIndex
+   * @param {number} quantity
+   */
+  addDieToGameSetByIndex(dictionaryIndex, quantity = 1) {
+    const current = this.getState('gameSet');
+    const existing = current.find((d) => d.dictionaryIndex === dictionaryIndex);
+    let updated;
+    if (existing) {
+      updated = current.map((d) =>
+        d.dictionaryIndex === dictionaryIndex
+          ? { ...d, quantity: d.quantity + quantity }
+          : d
+      );
+    } else {
+      updated = [...current, { dictionaryIndex, quantity }];
+    }
+    this.setGameSet(updated);
+  }
+
+  /**
+   * Establece el índice de creación/edición del dado para el diálogo
+   * @param {number} index
+   */
+  setCreateEditDiceIndex(index) {
+    if (this.state.createEditDiceIndex !== index) {
+      this.state.createEditDiceIndex = index;
+      this._notify('createEditDiceIndex', this.state.createEditDiceIndex);
+      this._notify('all', this.state);
+    }
   }
 
   /**

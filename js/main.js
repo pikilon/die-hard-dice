@@ -12,6 +12,7 @@ import "./modules/DiceResultComponent.js";
 import "./modules/DicePreviewComponent.js";
 import "./modules/DiceGameCardComponent.js";
 import "./modules/DiceGameSetDrawerComponent.js";
+import "./modules/CreateCustomDiceDialogComponent.js";
 
 function dice_initialize() {
   document.getElementById("loading_text")?.remove();
