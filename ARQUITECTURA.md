@@ -13,8 +13,8 @@ js/
     ├── gameState.js                     # Estado centralizado con patrón PubSub
     ├── notationUtils.js                 # Utilidades de conversión de notación
     ├── customDice.js                    # Utilidades para dados customizables
-    ├── DiceInputComponent.js            # Web Component para input de dados
-    └── DiceCanvasComponent.js           # Web Component para canvas de lanzamiento
+  ├── DiceThrowButtonComponent.js      # Web Component para lanzar dados
+  └── DiceThrowerComponent.js          # Web Component para canvas y física de lanzamiento
 ```
 
 ## 1. Módulo de Estado: `gameState.js`
@@ -219,43 +219,40 @@ Para implementar visualización 3D de caras custom se requeriría:
 2. Actualizar el sistema de texturas/materiales
 3. Modificar la detección de cara superior
 
-## 4. Web Component: `<dice-input>`
+## 4. Web Component: `<dice-throw-button>`
 
 ### Descripción
-Componente que gestiona el input de notación de dados y los botones de control.
+Botón que dispara el lanzamiento respetando el estado global `isThrowing`.
 
 ### Características
 - **Shadow DOM**: Encapsulación de estilos y DOM
-- **Sincronización bidireccional** con `gameState`:
-  - Actualiza `gameState` cuando el usuario cambia el input
-  - Se actualiza cuando `gameState` cambia desde otro lugar
-- **Eventos personalizados**: Emite evento `throw-dice` cuando se presiona el botón throw
+- **Suscripción a `gameState.isThrowing`**: Desactiva el botón mientras los dados están en vuelo
+- **Eventos personalizados**: Emite `throw-dice` cuando se hace click/tap o se presiona Enter/Espacio
 
 ### Uso
 ```html
-<dice-input></dice-input>
+<dice-throw-button></dice-throw-button>
 ```
 
 ### Eventos Emitidos
 ```javascript
-// Evento cuando se presiona el botón "throw"
-document.addEventListener('throw-dice', (event) => {
-  console.log('Lanzar dados:', event.detail.gameSet);
+// Evento cuando se solicita un lanzamiento
+document.addEventListener('throw-dice', () => {
+  console.log('Lanzar dados');
 });
 ```
 
 ### Estructura Interna
 ```
-<dice-input>
+<dice-throw-button>
   #shadow-root
-    <div class="input-container">
-      <input id="set" type="text">
-      <button id="clear">clear</button>
-      <button id="throw">throw</button>
-    </div>
+   <div class="button-container">
+    <button id="throw">Throw dice</button>
+    <span class="hint">Lanza el set seleccionado</span>
+   </div>
 ```
 
-## 5. Web Component: `<dice-canvas>`
+## 5. Web Component: `<dice-thrower>`
 
 ### Descripción
 Componente que gestiona el canvas 3D de lanzamiento de dados y la visualización de resultados.
@@ -266,62 +263,59 @@ Componente que gestiona el canvas 3D de lanzamiento de dados y la visualización
 - **Sincronización con gameState**:
   - Lee `gameSet` para determinar qué dados lanzar
   - Actualiza `lastResult` después de cada lanzamiento
+  - Marca `isThrowing` mientras el lanzamiento está activo
 - **Selector de dados**: Permite seleccionar dados clickeando en el canvas
 
 ### Uso
 ```html
-<dice-canvas></dice-canvas>
+<dice-thrower></dice-thrower>
 ```
 
 ### Estructura Interna
 ```
-<dice-canvas>
+<dice-thrower>
   #shadow-root
-    <div id="canvas"></div>        <!-- Canvas 3D -->
-    <div id="selector_div">        <!-- Selector de dados -->
-    <div id="info_div">            <!-- Resultados -->
+   <div id="canvas"></div>        <!-- Canvas 3D -->
 ```
 
 ## 6. Flujo de Datos
 
 ### Lanzamiento de Dados
 ```
-1. Usuario presiona "throw" en <dice-input>
-   ↓
-2. <dice-input> emite evento 'throw-dice'
-   ↓
-3. <dice-canvas> escucha el evento
-   ↓
-4. <dice-canvas> lee gameState.gameSet
-   ↓
+1. Usuario presiona el botón en <dice-throw-button>
+  ↓
+2. <dice-throw-button> emite evento 'throw-dice'
+  ↓
+3. <dice-thrower> escucha el evento
+  ↓
+4. <dice-thrower> lee gameState.gameSet
+  ↓
 5. gameSetToOldFormat() convierte al formato de DiceBox
-   ↓
+  ↓
 6. DiceBox realiza el lanzamiento 3D
-   ↓
+  ↓
 7. Resultados se convierten a strings
-   ↓
-8. <dice-canvas> actualiza gameState.setLastResult(resultStrings)
-   ↓
+  ↓
+8. <dice-thrower> actualiza gameState.setLastResult(resultStrings)
+  ↓
 9. gameState calcula automáticamente la suma
-   ↓
+  ↓
 10. Todos los suscriptores reciben notificación
-   ↓
+  ↓
 11. UI se actualiza automáticamente
 ```
 
-### Cambio de Notación
+### Actualización del set de dados
 ```
-1. Usuario modifica input en <dice-input>
-   ↓
-2. notationToGameSet() parsea el string
-   ↓
-3. <dice-input> llama a gameState.setGameSet(parsedGameSet)
-   ↓
-4. gameState notifica a todos los suscriptores
-   ↓
-5. <dice-input> recibe notificación y actualiza su valor
-   ↓
-6. Estado queda sincronizado en toda la app
+1. Usuario modifica el set en <dice-gameset-drawer> (u otro componente de edición)
+  ↓
+2. El componente llama a gameState.setGameSet(parsedGameSet)
+  ↓
+3. gameState notifica a todos los suscriptores
+  ↓
+4. Los componentes de UI (drawer, botón de lanzamiento, preview/resultados) reaccionan
+  ↓
+5. Estado queda sincronizado en toda la app
 ```
 
 ### Cálculo Automático de Suma
@@ -343,8 +337,8 @@ Componente que gestiona el canvas 3D de lanzamiento de dados y la visualización
 
 ### 1. Separación de Responsabilidades
 - **gameState**: Solo gestiona estado y notificaciones
-- **DiceInputComponent**: Solo gestiona input y controles
-- **DiceCanvasComponent**: Solo gestiona renderizado 3D
+- **DiceThrowButtonComponent**: Solo dispara el lanzamiento respetando `isThrowing`
+- **DiceThrowerComponent**: Solo gestiona renderizado 3D y física del lanzamiento
 
 ### 2. Desacoplamiento
 - Los componentes no se conocen directamente

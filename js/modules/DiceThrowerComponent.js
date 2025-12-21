@@ -92,6 +92,9 @@ class DiceThrowerComponent extends HTMLElement {
       // Actualizar el estado global (esto calculará automáticamente la suma)
       // El componente dice-result se encargará de mostrar el resultado
       gameState.setLastResult(resultStrings);
+
+      // Liberar estado de lanzamiento cuando los dados ya se asentaron
+      gameState.setIsThrowing(false);
     };
 
     // Bind mouse interactions para el lanzamiento

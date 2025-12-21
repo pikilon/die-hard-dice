@@ -75,7 +75,7 @@ gameState.setGameSet([combatDice, fateDice]);
 The app uses a modern architecture with:
 
 - **State Management**: Centralized PubSub state (`gameState`)
-- **Web Components**: `<dice-input>` and `<dice-canvas>`
+- **Web Components**: `<dice-throw-button>` and `<dice-thrower>`
 - **Utilities**: Notation converters and custom dice builders
 - **Modular Design**: Easy to extend and maintain
 
@@ -87,8 +87,8 @@ js/
     ├── gameState.js           # PubSub state manager
     ├── notationUtils.js       # Notation converters
     ├── customDice.js          # Custom dice utilities
-    ├── DiceInputComponent.js  # Input web component
-    └── DiceCanvasComponent.js # Canvas web component
+  ├── DiceThrowButtonComponent.js # Throw-only web component
+  └── DiceThrowerComponent.js     # Canvas/physics web component
 ```
 
 ### 🎯 Use Cases

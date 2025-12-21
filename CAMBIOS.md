@@ -34,11 +34,10 @@
 - ✅ Añadido método privado `_calculateSum()`
 - ✅ Actualizado `getState()` para retornar copias profundas
 
-#### `js/modules/DiceInputComponent.js`
-- ✅ Importadas utilidades de conversión
-- ✅ Actualizado para convertir entre string notation y gameSet
-- ✅ Usa `notationToGameSet()` al actualizar estado
-- ✅ Usa `gameSetToNotation()` al suscribirse a cambios
+#### `js/modules/DiceThrowButtonComponent.js`
+- ✅ Nuevo componente que solo dispara el evento `throw-dice`
+- ✅ Respeta el flag global `isThrowing` para desactivar el botón durante un lanzamiento
+- ✅ Incluye accesibilidad básica (teclas Enter/Espacio)
 
 #### `js/modules/DiceCanvasComponent.js`
 - ✅ Importadas utilidades de conversión
