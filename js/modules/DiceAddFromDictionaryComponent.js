@@ -45,18 +45,23 @@ const css = /*css*/ `
       background: #fff;
       min-width: 240px;
 
-      option {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 10px;
-        cursor: pointer;
+    }
+    option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
 
-        &:hover {
-          background-color: rgba(0, 0, 0, 0.06);
-        }
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.06);
+      }
+      /* Hide the default selected-option checkmark inside the picker */
+      &::checkmark {
+        display: none;
       }
     }
+
   }
 
   .selected-row {
