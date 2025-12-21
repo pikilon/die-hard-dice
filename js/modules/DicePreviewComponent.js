@@ -11,6 +11,12 @@ import { getDiceTypeFromSides, validateDiceSides } from "./notationUtils.js";
  */
 // --- Offscreen shared renderer for snapshots ---
 let previewShared = null;
+const snapshotCache = new Map();
+
+function snapshotKey(type, sides, size) {
+  const s = Array.isArray(sides) ? sides.join("|") : "";
+  return `${type}|${size}|${s}`;
+}
 
 function getSharedPreview(size) {
   if (!previewShared) {
@@ -71,6 +77,21 @@ function generateSnapshot(type, sides, size) {
   // Help GC
   // Dispose geometry only; materials may be shared/cached elsewhere
   if (diceMesh.geometry) diceMesh.geometry.dispose?.();
+  return url;
+}
+
+function getOrCreateSnapshot(type, sides, size) {
+  const key = snapshotKey(type, sides, size);
+  const cached = snapshotCache.get(key);
+  if (cached) return cached;
+  const url = generateSnapshot(type, sides, size);
+  snapshotCache.set(key, url);
+  // simple cap to avoid unbounded growth
+  const MAX_CACHE = 64;
+  if (snapshotCache.size > MAX_CACHE) {
+    const first = snapshotCache.keys().next().value;
+    snapshotCache.delete(first);
+  }
   return url;
 }
 
@@ -157,7 +178,7 @@ class DicePreviewComponent extends HTMLElement {
   updateSnapshot() {
     if (!this.imgEl) return;
     try {
-      const url = generateSnapshot(this.type, this.customSides, this.size);
+      const url = getOrCreateSnapshot(this.type, this.customSides, this.size);
       this.imgEl.src = url;
     } catch (e) {
       console.warn("DicePreviewComponent: snapshot generation failed", e);
