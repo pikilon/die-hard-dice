@@ -42,6 +42,20 @@ class DiceResultComponent extends HTMLElement {
     });
   }
 
+  /**
+   * Check if all results are numeric
+   */
+  allResultsAreNumeric(results) {
+    return results.every((r) => !isNaN(parseFloat(r)));
+  }
+
+  /**
+   * Check if there are any numeric results
+   */
+  hasNumericResults(results) {
+    return results.some((r) => !isNaN(parseFloat(r)));
+  }
+
   disconnectedCallback() {
     if (this.unsubscribeResult) {
       this.unsubscribeResult();
@@ -92,10 +106,27 @@ class DiceResultComponent extends HTMLElement {
           border-radius: 8px;
         }
 
-        #label {
+        #sides-label {
           font-size: 24pt;
           font-weight: bold;
           color: rgba(21, 26, 26, 0.9);
+          display: block;
+          margin-bottom: 10px;
+        }
+
+        #sides-label.hidden {
+          display: none;
+        }
+
+        #sum-label {
+          font-size: 24pt;
+          font-weight: bold;
+          color: rgba(21, 26, 26, 0.9);
+          display: block;
+        }
+
+        #sum-label.hidden {
+          display: none;
         }
 
 
@@ -104,18 +135,37 @@ class DiceResultComponent extends HTMLElement {
 
       <div id="info_div" class="hidden">
         <div class="center_field">
-          <span id="label"></span>
+          <span id="sides-label" class="hidden"></span>
+          <span id="sum-label" class="hidden"></span>
         </div>
       </div>
     `;
   }
 
   updateDisplay(result) {
-    const label = this.shadowRoot.getElementById("label");
+    const sidesLabel = this.shadowRoot.getElementById("sides-label");
+    const sumLabel = this.shadowRoot.getElementById("sum-label");
 
     if (result && result.length > 0) {
       const sum = gameState.getState("sum");
-      label.innerHTML = resultsToString(result, sum);
+
+      // Show sides content only if not all results are numbers
+      if (!this.allResultsAreNumeric(result)) {
+        sidesLabel.textContent = result.join(", ");
+        sidesLabel.classList.remove("hidden");
+      } else {
+        sidesLabel.classList.add("hidden");
+      }
+
+      // Show sum content only if there are numeric results
+      if (this.hasNumericResults(result)) {
+        const numericResults = result.filter((r) => !isNaN(parseFloat(r)));
+        sumLabel.textContent = numericResults.join(" + ") + " = " + sum;
+        sumLabel.classList.remove("hidden");
+      } else {
+        sumLabel.classList.add("hidden");
+      }
+
       this.show();
     }
   }
