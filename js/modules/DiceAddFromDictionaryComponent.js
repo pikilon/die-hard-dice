@@ -5,25 +5,10 @@ import { validateDiceSides } from "./notationUtils.js";
 const css = /*css*/ `
 :host {
   display: block;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
-.add-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  z-index: 10;
 
-  .label {
-    font-size: 12px;
-    color: rgba(0, 0, 0, 0.7);
-  }
 
   .select {
     appearance: base-select;
@@ -102,7 +87,7 @@ const css = /*css*/ `
       color: rgba(0, 0, 0, 0.6);
     }
   }
-}
+
 `;
 
 /**
@@ -145,8 +130,6 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
       <style>
       ${css}
       </style>
-      <div class="add-card">
-        <span class="label">Add die:</span>
         <select id="diceSelect" class="select" aria-label="Add die to game" autocomplete="off">
           <button>
             <div class="selected-row">
@@ -179,7 +162,6 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
             </div>
           </option>
         </template>
-      </div>
     `;
   }
 
