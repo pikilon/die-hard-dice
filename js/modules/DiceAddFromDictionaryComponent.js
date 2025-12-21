@@ -251,26 +251,14 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
     const select = this.shadowRoot.getElementById("diceSelect");
     if (!select) return;
 
-    this._onChange = (ev) => {
-      const target = ev.target;
-      if (!(target instanceof HTMLSelectElement)) return;
-      const idx = parseInt(target.value || "-1", 10);
-      if (Number.isFinite(idx) && idx >= 0) {
-        this._addDieToGameSet(idx);
-        target.value = "";
-      }
+    const onSelectChange = ({ target }) => {
+      if (!target.value) return;
+      const { value } = target;
+      this._addDieToGameSet(parseInt(value, 10));
+      target.value = "";
     };
 
-    this._onPointerDown = () => {
-      if (typeof select.showPicker === "function") {
-        try {
-          select.showPicker();
-        } catch {}
-      }
-    };
-
-    select.addEventListener("change", this._onChange);
-    select.addEventListener("pointerdown", this._onPointerDown);
+    select.addEventListener("change", onSelectChange);
   }
 
   _unbindEvents() {
