@@ -1,5 +1,5 @@
-import { gameState } from './gameState.js';
-import { resultsToString } from './notationUtils.js';
+import { gameState } from "./gameState.js";
+import { resultsToString } from "./notationUtils.js";
 
 /**
  * Web Component para mostrar el resultado del lanzamiento de dados
@@ -7,7 +7,7 @@ import { resultsToString } from './notationUtils.js';
 class DiceResultComponent extends HTMLElement {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
+    this.attachShadow({ mode: "open" });
     this.unsubscribeResult = null;
     this.unsubscribeSum = null;
     this.unsubscribeIsThrowing = null;
@@ -15,26 +15,29 @@ class DiceResultComponent extends HTMLElement {
 
   connectedCallback() {
     this.render();
-    
+
     // Suscribirse a cambios en el resultado
-    this.unsubscribeResult = gameState.subscribe('lastResult', (result) => {
+    this.unsubscribeResult = gameState.subscribe("lastResult", (result) => {
       this.updateDisplay(result);
     });
 
     // Suscribirse a cambios en la suma
-    this.unsubscribeSum = gameState.subscribe('sum', (sum) => {
-      this.updateDisplay(gameState.getState('lastResult'));
+    this.unsubscribeSum = gameState.subscribe("sum", (sum) => {
+      this.updateDisplay(gameState.getState("lastResult"));
     });
 
-    // Suscribirse a cambios en isThrowing para ocultar cuando se muestre el selector
-    this.unsubscribeIsThrowing = gameState.subscribe('isThrowing', (isThrowing) => {
-      if (!isThrowing) {
-        this.hide();
+    // Suscribirse a cambios en isThrowing para ocultar cuando se inicie nuevo lanzamiento
+    this.unsubscribeIsThrowing = gameState.subscribe(
+      "isThrowing",
+      (isThrowing) => {
+        if (isThrowing) {
+          this.hide();
+        }
       }
-    });
+    );
 
     // Manejar click para ocultar resultado y mostrar selector
-    this.shadowRoot.getElementById('info_div').addEventListener('click', () => {
+    this.shadowRoot.getElementById("info_div").addEventListener("click", () => {
       gameState.setIsThrowing(false);
     });
   }
@@ -67,10 +70,14 @@ class DiceResultComponent extends HTMLElement {
           box-sizing: border-box;
           pointer-events: none;
           transition: opacity 0.3s ease;
+          z-index: 1;
+          display: block;
+          opacity: 1;
         }
 
         #info_div.hidden {
           display: none;
+          opacity: 0;
         }
 
         #info_div.visible {
@@ -91,56 +98,46 @@ class DiceResultComponent extends HTMLElement {
           color: rgba(21, 26, 26, 0.9);
         }
 
-        .bottom_field {
-          margin-top: 10px;
-        }
 
-        #labelhelp {
-          font-size: 12pt;
-          color: rgba(21, 26, 26, 0.6);
-        }
+
       </style>
 
       <div id="info_div" class="hidden">
         <div class="center_field">
           <span id="label"></span>
         </div>
-        <div class="center_field">
-          <div class="bottom_field">
-            <span id="labelhelp">click to continue or tap and drag again</span>
-          </div>
-        </div>
       </div>
     `;
   }
 
   updateDisplay(result) {
-    const label = this.shadowRoot.getElementById('label');
-    const infoDiv = this.shadowRoot.getElementById('info_div');
-    
+    const label = this.shadowRoot.getElementById("label");
+
     if (result && result.length > 0) {
-      const sum = gameState.getState('sum');
+      const sum = gameState.getState("sum");
       label.innerHTML = resultsToString(result, sum);
       this.show();
     }
   }
 
   show() {
-    const params = Object.fromEntries(new URLSearchParams(window.location.search));
+    const params = Object.fromEntries(
+      new URLSearchParams(window.location.search)
+    );
     if (params.chromakey || params.noresult) return;
 
-    const infoDiv = this.shadowRoot.getElementById('info_div');
-    infoDiv.classList.remove('hidden');
-    infoDiv.classList.add('visible');
+    const infoDiv = this.shadowRoot.getElementById("info_div");
+    infoDiv.classList.remove("hidden");
+    infoDiv.classList.add("visible");
   }
 
   hide() {
-    const infoDiv = this.shadowRoot.getElementById('info_div');
-    infoDiv.classList.add('hidden');
-    infoDiv.classList.remove('visible');
+    const infoDiv = this.shadowRoot.getElementById("info_div");
+    infoDiv.classList.add("hidden");
+    infoDiv.classList.remove("visible");
   }
 }
 
-customElements.define('dice-result', DiceResultComponent);
+customElements.define("dice-result", DiceResultComponent);
 
 export { DiceResultComponent };
