@@ -9,7 +9,6 @@ import { gameState } from "./modules/gameState.js";
 import "./modules/DiceThrowerComponent.js";
 import "./modules/DiceThrowButtonComponent.js";
 import "./modules/DiceResultComponent.js";
-import "./modules/DiceInstructionComponent.js";
 import "./modules/DicePreviewComponent.js";
 import "./modules/DiceGameCardComponent.js";
 import "./modules/DiceGameSetDrawerComponent.js";
