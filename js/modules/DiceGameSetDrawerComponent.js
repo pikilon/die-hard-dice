@@ -1,5 +1,6 @@
 import { gameState } from "./gameState.js";
 import "./DiceGameCardComponent.js";
+import "./DiceAddFromDictionaryComponent.js";
 
 /**
  * Drawer that lists the current game set as interactive cards.
@@ -120,6 +121,8 @@ class DiceGameSetDrawerComponent extends HTMLElement {
           text-align: center;
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+
+        /* add-card styles are encapsulated within the component */
       </style>
       <div class="drawer" id="drawer">
         <div class="header">
@@ -164,6 +167,10 @@ class DiceGameSetDrawerComponent extends HTMLElement {
     const state = gameState.getState();
     const { gameSet, diceDictionary } = state;
 
+    // Add component for selecting and adding dice from dictionary
+    const addComponent = document.createElement("dice-add-from-dictionary");
+    cardsContainer.appendChild(addComponent);
+
     const sortedSet = [...gameSet].sort(
       (a, b) => a.dictionaryIndex - b.dictionaryIndex
     );
@@ -187,6 +194,8 @@ class DiceGameSetDrawerComponent extends HTMLElement {
       cardsContainer.appendChild(empty);
     }
   }
+
+  // Add logic now lives in dice-add-from-dictionary component
 }
 
 customElements.define("dice-gameset-drawer", DiceGameSetDrawerComponent);
