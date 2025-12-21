@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { createDiceByType } from "../dice.js";
+import { createDiceByType, dice_face_range } from "../dice.js";
+import { getDiceTypeFromSides, validateDiceSides } from "./notationUtils.js";
 
 /**
  * Web Component que renderiza un dado individual en un canvas 3D.
@@ -32,7 +33,12 @@ class DicePreviewComponent extends HTMLElement {
 
   set sides(value) {
     if (Array.isArray(value)) {
-      this.customSides = [...value];
+      // Validate sides (0-1 becomes 2) and slice to expected face count
+      const validatedSides = validateDiceSides(value);
+      // Get type from sides length
+      this.type = getDiceTypeFromSides(validatedSides);
+      // Store validated/sliced sides
+      this.customSides = [...validatedSides];
       this.resetDie();
     }
   }

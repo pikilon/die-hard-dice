@@ -100,7 +100,7 @@ class DiceDictionaryListComponent extends HTMLElement {
       item.className = 'item';
 
       const preview = document.createElement('dice-preview');
-      preview.setAttribute('type', die.type || die.title);
+      preview.setAttribute('type', die.title);
       preview.setAttribute('size', String(this.previewSize));
       preview.sides = die.sides;
 
@@ -113,7 +113,9 @@ class DiceDictionaryListComponent extends HTMLElement {
         this.addDieToGameSet(dictionaryIndex);
       };
 
+      // Bind both on the container and on the preview to ensure it fires
       item.addEventListener('click', handleClick);
+      preview.addEventListener('click', handleClick);
 
       item.appendChild(preview);
       item.appendChild(title);

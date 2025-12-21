@@ -943,11 +943,24 @@ DiceBox.prototype.check_if_throw_finished = function () {
     
     // If custom sides are defined, return the actual side value
     if (dice.dice_sides && dice.dice_sides.length > 0) {
-      // d10 uses offset=1, others use offset=2
+      // Determine expected face count for current geometry type
+      var range = dice_face_range[dice.dice_type];
+      var expectedCount = Array.isArray(range) ? range[1] : 20;
       var offset = (dice.dice_type === "d10") ? 1 : 2;
       var customIndex = closest_face.materialIndex - offset;
-      if (customIndex >= 0 && customIndex < dice.dice_sides.length) {
-        return dice.dice_sides[customIndex];
+
+      if (dice.dice_sides.length > expectedCount) {
+        // Select a random consecutive slice that matches the expected count
+        var maxOffset = dice.dice_sides.length - expectedCount;
+        var randomOffset = Math.floor(Math.random() * (maxOffset + 1));
+        var slicedSides = dice.dice_sides.slice(randomOffset, randomOffset + expectedCount);
+        if (customIndex >= 0 && customIndex < slicedSides.length) {
+          return slicedSides[customIndex];
+        }
+      } else {
+        if (customIndex >= 0 && customIndex < dice.dice_sides.length) {
+          return dice.dice_sides[customIndex];
+        }
       }
     }
     

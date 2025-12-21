@@ -1,4 +1,4 @@
-import { DEFAULT_DICE } from './notationUtils.js';
+import { DEFAULT_DICE, getDiceTypeFromSides, validateDiceSides } from './notationUtils.js';
 
 /**
  * PubSub State Module for Dice Game
@@ -9,8 +9,9 @@ class GameState {
   constructor() {
     this.state = {
       // Diccionario de dados disponibles
-      diceDictionary: [...DEFAULT_DICE,
-        { title: "Custom D6", type: "d6", sides: ["A", "B", "C", "D", "E", "F"] }
+      diceDictionary: [
+        ...DEFAULT_DICE,
+        { title: "Custom D15", sides: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"] }
 
       ],
       // Array de dados seleccionados con índice del diccionario y cantidad
@@ -85,11 +86,15 @@ class GameState {
   getExpandedGameSet() {
     return this.state.gameSet.map(item => {
       const diceDefinition = this.state.diceDictionary[item.dictionaryIndex];
+      // Validate sides (0-1 becomes 2)
+      const validatedSides = validateDiceSides(diceDefinition.sides);
+      // Derive type from sides length
+      const type = getDiceTypeFromSides(validatedSides);
       return {
         quantity: item.quantity,
-        sides: [...diceDefinition.sides],
+        sides: [...validatedSides],
         title: diceDefinition.title,
-        type: diceDefinition.type || diceDefinition.title
+        type: type
       };
     });
   }

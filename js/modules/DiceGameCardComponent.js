@@ -199,11 +199,15 @@ class DiceGameCardComponent extends HTMLElement {
     const quantityEl = this.shadowRoot.getElementById('quantity');
     const previewEl = this.shadowRoot.getElementById('preview');
 
-    titleEl.textContent = diceDef.title;
-    subtitleEl.textContent = diceDef.type ? `Type: ${diceDef.type}` : '';
+    if (titleEl) {
+      titleEl.textContent = diceDef.title;
+    }
+    if (subtitleEl) {
+      subtitleEl.textContent = '';
+    }
 
     if (previewEl) {
-      previewEl.setAttribute('type', diceDef.type || diceDef.title);
+      previewEl.setAttribute('type', diceDef.title);
       previewEl.sides = diceDef.sides;
     }
 
