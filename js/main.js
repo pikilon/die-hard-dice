@@ -13,6 +13,8 @@ import "./modules/DiceResultComponent.js";
 import "./modules/DiceInstructionComponent.js";
 import "./modules/DicePreviewComponent.js";
 import "./modules/DiceDictionaryListComponent.js";
+import "./modules/DiceGameCardComponent.js";
+import "./modules/DiceGameSetDrawerComponent.js";
 
 function dice_initialize() {
   document.getElementById("loading_text")?.remove();

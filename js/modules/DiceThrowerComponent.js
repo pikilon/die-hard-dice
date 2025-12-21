@@ -32,6 +32,7 @@ class DiceThrowerComponent extends HTMLElement {
           position: absolute;
           top: 0;
           left: 0;
+          z-index: 1;
         }
 
         #canvas {
