@@ -78,7 +78,7 @@ class DiceGameSetDrawerComponent extends HTMLElement {
           border-radius: 0 12px 12px 0;
           overflow: hidden;
           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-          transition: width 0.22s ease;
+          transition: width 0.22s ease, overflow 0.12s ease;
           interpolate-size: allow-keywords;
           display: flex;
           flex-direction: column;
@@ -87,6 +87,8 @@ class DiceGameSetDrawerComponent extends HTMLElement {
 
         .drawer.open {
           width: auto;
+          /* Let native select popup escape the drawer when open */
+          overflow: visible;
         }
 
         .header {
@@ -108,7 +110,9 @@ class DiceGameSetDrawerComponent extends HTMLElement {
 
         .cards {
           padding: 10px;
-          overflow-y: auto;
+          /* Allow stylable select popup to escape while still scrolling */
+          overflow: visible;
+          max-height: calc(100dvh - 70px);
           display: flex;
           flex-direction: column;
           gap: 10px;

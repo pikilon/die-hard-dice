@@ -97,8 +97,8 @@ class DiceThrowerComponent extends HTMLElement {
       gameState.setIsThrowing(false);
     };
 
-    // Bind mouse interactions para el lanzamiento
-    this.box.bind_mouse(document.body, notation_getter, before_roll, after_roll);
+    // Bind mouse interactions sólo al canvas para no interceptar UI (select, etc.)
+    this.box.bind_mouse(canvas, notation_getter, before_roll, after_roll);
 
     // Manejar clicks para volver a mostrar el selector después del lanzamiento
     const handleCanvasClick = (ev) => {

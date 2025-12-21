@@ -1,4 +1,6 @@
-import { gameState } from './gameState.js';
+import { DicePreviewComponent } from "./DicePreviewComponent.js";
+import { gameState } from "./gameState.js";
+import { validateDiceSides } from "./notationUtils.js";
 
 /**
  * Component that shows a dropdown of available dice (dictionary)
@@ -7,21 +9,27 @@ import { gameState } from './gameState.js';
 class DiceAddFromDictionaryComponent extends HTMLElement {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
+    this.attachShadow({ mode: "open" });
     this.unsubscribeDictionary = null;
-    this.isOpen = false;
-    this.dictionary = gameState.getState('diceDictionary') || [];
+    this.dictionary = gameState.getState("diceDictionary") || [];
+    this.previewCache = new Map();
   }
 
   connectedCallback() {
     this.render();
     this._bindEvents();
+    this._buildPreviews();
+    this._renderOptions();
 
     // Subscribe to dice dictionary updates
-    this.unsubscribeDictionary = gameState.subscribe('diceDictionary', (dict) => {
-      this.dictionary = dict || [];
-      this._renderOptions();
-    });
+    this.unsubscribeDictionary = gameState.subscribe(
+      "diceDictionary",
+      (dict) => {
+        this.dictionary = dict || [];
+        this._buildPreviews();
+        this._renderOptions();
+      }
+    );
   }
 
   disconnectedCallback() {
@@ -34,6 +42,7 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
       <style>
         :host { display: block; }
         .add-card {
+          position: relative;
           display: flex;
           flex-direction: column;
           gap: 8px;
@@ -43,117 +52,219 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
           background: rgba(255, 255, 255, 0.9);
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          z-index: 10;
         }
 
         .label { font-size: 12px; color: rgba(0,0,0,0.7); }
 
-        .trigger {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 8px 10px;
-          border-radius: 8px;
+        .select {
+          appearance: base-select;
+          width: 100%;
+          border-radius: 10px;
           border: 1px solid rgba(0,0,0,0.15);
           background: rgba(255,255,255,0.95);
-          color: #333;
+          color: #222;
           font-size: 13px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+          --thumb-size: 64px;
           cursor: pointer;
-          user-select: none;
-        }
-
-        .options {
-          display: none;
           position: relative;
-          border: 1px solid rgba(0,0,0,0.12);
-          border-radius: 8px;
-          background: #fff;
-          box-shadow: 0 6px 18px rgba(0,0,0,0.12);
-          max-height: 200px;
-          overflow-y: auto;
+          z-index: 20;
         }
 
-        .options.open { display: block; }
-
-        .option {
-          padding: 8px 10px;
-          font-size: 13px;
-          color: #333;
+        .select button {
+          all: unset;
+          display: block;
+          width: 100%;
+          padding: 10px 12px;
           cursor: pointer;
         }
 
-        .option:hover { background: rgba(0,0,0,0.06); }
+        .selected-row {
+          display: grid;
+          grid-template-columns: 1fr 24px;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .select::picker(select) {
+          appearance: base-select;
+          border: 1px solid rgba(0,0,0,0.18);
+          border-radius: 12px;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+          padding: 6px 0;
+          background: #fff;
+          min-width: 240px;
+        }
+
+        .select::picker(select) option { padding: 6px 10px; }
+        .select::picker(select) option:hover { background-color: rgba(0,0,0,0.06); }
+
+        /* Option layout inside customizable picker */
+        .select::picker(select) option {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 10px;
+          cursor: pointer;
+        }
+
+        .custom-option {
+          display: grid;
+          grid-template-columns: var(--thumb-size) 1fr;
+          gap: 10px;
+          align-items: center;
+          min-height: calc(var(--thumb-size) + 6px);
+          .avatar {
+
+            border-radius: 8px;
+            background: rgba(0,0,0,0.04);
+
+          }
+            .title { font-weight: 600; }
+            .subtitle { font-size: 11px; color: rgba(0,0,0,0.6); }
+        }
+
+
       </style>
       <div class="add-card">
         <span class="label">Add die:</span>
-        <div class="trigger" id="trigger">
-          <span id="current">Select a die to add</span>
-          <span aria-hidden="true">▾</span>
-        </div>
-        <div class="options" id="options" aria-expanded="false"></div>
+        <select id="diceSelect" class="select" aria-label="Add die to game" autocomplete="off">
+          <button>
+            <div class="selected-row">
+              <selectedcontent></selectedcontent>
+              <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="m7 10l5 5l5-5z"/>
+              </svg>
+            </div>
+          </button>
+        </select>
+        <!-- Templates for building options -->
+        <template id="diceOptionTpl">
+          <option value="__INDEX__">
+            <div class="custom-option">
+              <span class="avatar"><dice-preview size="64"></dice-preview></span>
+              <div>
+                <div class="title">__TITLE__</div>
+                <div class="subtitle">__SIDES__ sides</div>
+              </div>
+            </div>
+          </option>
+        </template>
+        <template id="dicePlaceholderTpl">
+          <option value="" selected>
+            <div class="custom-option">
+              <div>
+                <div class="title">Select a die to add</div>
+                <div class="subtitle"></div>
+              </div>
+            </div>
+          </option>
+        </template>
       </div>
     `;
-
-    this._renderOptions();
   }
 
-  _renderOptions() {
-    const options = this.shadowRoot.getElementById('options');
-    if (!options) return;
-    options.innerHTML = '';
+  _buildPreviews() {
+    this.previewCache.clear();
+    const size = 56;
     this.dictionary.forEach((die, index) => {
-      const item = document.createElement('div');
-      item.className = 'option';
-      item.textContent = die.title;
-      item.dataset.index = String(index);
-      item.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        const idx = parseInt(item.dataset.index || '-1', 10);
-        if (Number.isFinite(idx) && idx >= 0) {
-          this._addDieToGameSet(idx);
-          // Reset UI
-          const current = this.shadowRoot.getElementById('current');
-          if (current) current.textContent = 'Select a die to add';
-          this._toggle(false);
-        }
-      });
-      options.appendChild(item);
+      try {
+        const preview = new DicePreviewComponent();
+        preview.size = size;
+        preview.sides = die.sides;
+        preview.render?.();
+        preview.updateSnapshot?.();
+        const imgEl = preview.shadowRoot?.getElementById("snapshot");
+        const src = imgEl?.src || imgEl?.getAttribute("src");
+        if (src) this.previewCache.set(index, src);
+      } catch (err) {
+        console.warn(
+          "DiceAddFromDictionaryComponent: preview generation failed",
+          err
+        );
+      }
     });
   }
 
+  _renderOptions() {
+    const select = this.shadowRoot.getElementById("diceSelect");
+    if (!select) return;
+    // Build options using templates in shadow DOM
+    const optionTpl = this.shadowRoot.getElementById("diceOptionTpl");
+    const placeholderTpl = this.shadowRoot.getElementById("dicePlaceholderTpl");
+    if (!optionTpl || !placeholderTpl) return;
+
+    // Remove existing options but keep non-option children (button/selectedcontent)
+    select.querySelectorAll("option").forEach((opt) => opt.remove());
+    // Add placeholder option first
+    select.appendChild(placeholderTpl.content.cloneNode(true));
+
+    this.dictionary.forEach((die, index) => {
+      const sidesCount = Array.isArray(die.sides) ? die.sides.length : 0;
+      const safeTitle = String(die.title);
+
+      const frag = optionTpl.content.cloneNode(true);
+      const optEl = frag.querySelector("option");
+      const titleEl = frag.querySelector(".title");
+      const subEl = frag.querySelector(".subtitle");
+
+      if (optEl) optEl.value = String(index);
+      if (titleEl) titleEl.textContent = safeTitle;
+      if (subEl) subEl.textContent = `${sidesCount} sides`;
+
+      // Append first, then configure dice-preview to ensure it has a shadow DOM
+      select.appendChild(frag);
+      const appendedOption = select.querySelector("option:last-of-type");
+      const previewEl = appendedOption?.querySelector("dice-preview");
+      if (previewEl) {
+        previewEl.sides = Array.isArray(die.sides) ? [...die.sides] : [];
+        // Ensure snapshot is generated even if connectedCallback timing differs
+        previewEl.render?.();
+        previewEl.updateSnapshot?.();
+      }
+    });
+
+    // Keep placeholder selected; selectedcontent always shows it
+    select.value = "";
+  }
+
   _bindEvents() {
-    const trigger = this.shadowRoot.getElementById('trigger');
-    const options = this.shadowRoot.getElementById('options');
-    if (!trigger || !options) return;
+    const select = this.shadowRoot.getElementById("diceSelect");
+    if (!select) return;
 
-    this._onTriggerClick = (ev) => {
-      ev.stopPropagation();
-      this._toggle(!this.isOpen);
+    this._onChange = (ev) => {
+      const target = ev.target;
+      if (!(target instanceof HTMLSelectElement)) return;
+      const idx = parseInt(target.value || "-1", 10);
+      if (Number.isFinite(idx) && idx >= 0) {
+        this._addDieToGameSet(idx);
+        target.value = "";
+      }
     };
-    trigger.addEventListener('click', this._onTriggerClick);
 
-    this._onDocClick = () => {
-      if (this.isOpen) this._toggle(false);
+    this._onPointerDown = () => {
+      if (typeof select.showPicker === "function") {
+        try {
+          select.showPicker();
+        } catch {}
+      }
     };
-    // Close when clicking outside the component
-    document.addEventListener('click', this._onDocClick);
+
+    select.addEventListener("change", this._onChange);
+    select.addEventListener("pointerdown", this._onPointerDown);
   }
 
   _unbindEvents() {
-    const trigger = this.shadowRoot.getElementById('trigger');
-    if (trigger && this._onTriggerClick) trigger.removeEventListener('click', this._onTriggerClick);
-    if (this._onDocClick) document.removeEventListener('click', this._onDocClick);
-  }
-
-  _toggle(open) {
-    const options = this.shadowRoot.getElementById('options');
-    if (!options) return;
-    this.isOpen = !!open;
-    options.classList.toggle('open', this.isOpen);
-    options.setAttribute('aria-expanded', String(this.isOpen));
+    const select = this.shadowRoot.getElementById("diceSelect");
+    if (select && this._onChange)
+      select.removeEventListener("change", this._onChange);
+    if (select && this._onPointerDown)
+      select.removeEventListener("pointerdown", this._onPointerDown);
   }
 
   _addDieToGameSet(dictionaryIndex) {
-    const current = gameState.getState('gameSet');
+    const current = gameState.getState("gameSet");
     const existing = current.find((d) => d.dictionaryIndex === dictionaryIndex);
     if (existing) {
       const updated = current.map((d) =>
@@ -169,6 +280,9 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
   }
 }
 
-customElements.define('dice-add-from-dictionary', DiceAddFromDictionaryComponent);
+customElements.define(
+  "dice-add-from-dictionary",
+  DiceAddFromDictionaryComponent
+);
 
 export { DiceAddFromDictionaryComponent };
