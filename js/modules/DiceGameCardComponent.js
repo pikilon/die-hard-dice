@@ -169,11 +169,16 @@ class DiceGameCardComponent extends HTMLElement {
       </div>
     `;
 
-    const dec = this.shadowRoot.getElementById('decrease');
+    const decreaseButton = this.shadowRoot.getElementById('decrease');
     const inc = this.shadowRoot.getElementById('increase');
     const del = this.shadowRoot.getElementById('delete');
-    dec?.addEventListener('click', (ev) => {
+    decreaseButton?.addEventListener('click', (ev) => {
       ev.stopPropagation();
+      const gameSetState = gameState.getState('gameSet') || [];
+      const [firstDice] = gameSetState
+      const onlyOneDieLeft = gameSetState && gameSetState.length <= 1 && firstDice.quantity <= 1;
+      if (onlyOneDieLeft) return;
+
       this._changeQuantity(-1);
     });
     inc?.addEventListener('click', (ev) => {
