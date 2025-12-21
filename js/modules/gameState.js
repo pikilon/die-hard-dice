@@ -17,7 +17,7 @@ class GameState {
       // Array de dados seleccionados con índice del diccionario y cantidad
       // Ejemplo: [{ dictionaryIndex: 1, quantity: 4 }] (4 d6)
       gameSet: [
-        { dictionaryIndex: 1, quantity: 4 }
+        { dictionaryIndex: 0, quantity: 4 }
       ],
       // Array de resultados como strings
       // Ejemplo: ["3", "4", "5", "2"]

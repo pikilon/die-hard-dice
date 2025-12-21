@@ -69,15 +69,8 @@ export const DEFAULT_DICE = [
  */
 export function getDiceTypeFromSides(sides) {
   // Normalize input
-  let sidesArray = Array.isArray(sides) ? sides : [];
-  let length = sidesArray.length;
-
-  // Handle edge cases: 0 or 1 sides default to 2
-  if (length <= 1) {
-    if (length === 0 || length === 1) {
-      return "d2";
-    }
-  }
+  const sidesArray = Array.isArray(sides) ? sides : [];
+  const length = sidesArray.length;
 
   if (length >= 20) return "d20";
   if (length >= 12) return "d12";
@@ -282,7 +275,8 @@ export function gameSetToOldFormat(gameSet, diceDictionary = DEFAULT_DICE) {
       const geometryType = getDiceTypeFromSides(validatedSides);
 
       for (let i = 0; i < item.quantity; i++) {
-        if (isCustomSides) {
+        // Always pass sides for coins so faces and results use emoji
+        if (geometryType === "coin" || isCustomSides) {
           result.push({ type: geometryType, sides: validatedSides });
         } else {
           result.push(geometryType);
