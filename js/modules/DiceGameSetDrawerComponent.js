@@ -1,6 +1,7 @@
 import { gameState } from "./gameState.js";
 import "./DiceGameCardComponent.js";
 import "./DiceAddFromDictionaryComponent.js";
+import "./DiceGameSetHeaderComponent.js";
 
 /**
  * Drawer that lists the current game set as interactive cards.
@@ -37,7 +38,7 @@ class DiceGameSetDrawerComponent extends HTMLElement {
   }
 
   render() {
-    this.shadowRoot.innerHTML = `
+    this.shadowRoot.innerHTML = /*html*/ `
       <style>
         :host {
           position: fixed;
@@ -91,23 +92,6 @@ class DiceGameSetDrawerComponent extends HTMLElement {
           overflow: visible;
         }
 
-        .header {
-          padding: 12px 14px;
-          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-          color: #333;
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          letter-spacing: 0.3px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          min-width: 240px;
-        }
-
-        .header span {
-          font-size: 14px;
-          opacity: 0.7;
-        }
-
         .cards {
           padding: 10px;
           /* Allow stylable select popup to escape while still scrolling */
@@ -129,10 +113,7 @@ class DiceGameSetDrawerComponent extends HTMLElement {
         /* add-card styles are encapsulated within the component */
       </style>
       <div class="drawer" id="drawer">
-        <div class="header">
-          <div>Game Set</div>
-          <span id="count">0 dice</span>
-        </div>
+        <dice-gameset-header></dice-gameset-header>
         <div class="cards" id="cards"></div>
       </div>
       <button class="toggle" id="toggle" aria-label="Toggle game set drawer">☰</button>
@@ -163,8 +144,7 @@ class DiceGameSetDrawerComponent extends HTMLElement {
 
   _renderCards() {
     const cardsContainer = this.shadowRoot.getElementById("cards");
-    const counter = this.shadowRoot.getElementById("count");
-    if (!cardsContainer || !counter) return;
+    if (!cardsContainer) return;
 
     cardsContainer.innerHTML = "";
 
@@ -178,18 +158,14 @@ class DiceGameSetDrawerComponent extends HTMLElement {
     const sortedSet = [...gameSet].sort(
       (a, b) => a.dictionaryIndex - b.dictionaryIndex
     );
-    let totalDice = 0;
 
     sortedSet.forEach((entry) => {
       const diceDef = diceDictionary[entry.dictionaryIndex];
       if (!diceDef) return;
-      totalDice += entry.quantity;
       const card = document.createElement("dice-game-card");
       card.setAttribute("dictionary-index", String(entry.dictionaryIndex));
       cardsContainer.appendChild(card);
     });
-
-    counter.textContent = `${totalDice} dice`;
 
     if (sortedSet.length === 0) {
       const empty = document.createElement("div");

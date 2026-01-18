@@ -31,6 +31,7 @@ class GameState {
     };
 
     this.subscribers = {
+      title: [],
       diceDictionary: [],
       gameSet: [],
       lastResult: [],
@@ -43,7 +44,7 @@ class GameState {
 
   /**
    * Suscribirse a cambios en el estado
-   * @param {string} key - 'gameSet', 'lastResult', 'sum', 'isThrowing', o 'all'
+   * @param {string} key - 'title', 'gameSet', 'lastResult', 'sum', 'isThrowing', 'createEditDiceIndex', o 'all'
    * @param {Function} callback - función que se ejecuta cuando cambia el estado
    * @returns {Function} función para desuscribirse
    */
@@ -256,6 +257,7 @@ class GameState {
     const normalizedTitle = String(title ?? "").trim();
     if (this.state.title !== normalizedTitle) {
       this.state.title = normalizedTitle;
+      this._notify("title", this.state.title);
       this._notify("all", this.state);
     }
   }
