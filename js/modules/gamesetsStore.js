@@ -17,6 +17,19 @@ const SYSTEM_GAMESETS = [
     gameSet: [{ dictionaryIndex: 2, quantity: 2 }], // 2d6
     isSystem: true,
   },
+  {
+    id: `${SYSTEM_GAMESET_PREFIX}kok`,
+    title: "King of Kyoto",
+    diceDictionary: [
+      ...DEFAULT_DICE,
+      {
+        title: "King of kyoto",
+        sides: ["1", "2", "3", "💖", "⚔️", "⚡"],
+      },
+    ],
+    gameSet: [{ dictionaryIndex: 8, quantity: 4 }],
+    isSystem: true,
+  },
 ];
 
 class GamesetsStore {
@@ -102,7 +115,9 @@ class GamesetsStore {
    * @returns {string} new gameset ID
    */
   createCustomGameset({ title, diceDictionary, gameSet }) {
-    const id = `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const id = `custom_${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
     const newGameset = {
       id,
       title: String(title || "New Gameset").trim(),
@@ -110,7 +125,10 @@ class GamesetsStore {
         ? diceDictionary.map((d) => ({ title: d.title, sides: [...d.sides] }))
         : [...DEFAULT_DICE],
       gameSet: gameSet
-        ? gameSet.map((d) => ({ dictionaryIndex: d.dictionaryIndex, quantity: d.quantity }))
+        ? gameSet.map((d) => ({
+            dictionaryIndex: d.dictionaryIndex,
+            quantity: d.quantity,
+          }))
         : [],
       isSystem: false,
     };
@@ -159,9 +177,10 @@ class GamesetsStore {
       if (!source) return gamesetId;
 
       // If title is not being explicitly updated, add " (custom)" suffix to distinguish from system
-      const newTitle = updates.title !== undefined 
-        ? updates.title 
-        : `${source.title} (custom)`;
+      const newTitle =
+        updates.title !== undefined
+          ? updates.title
+          : `${source.title} (custom)`;
 
       const newId = this.createCustomGameset({
         title: newTitle,
@@ -169,7 +188,8 @@ class GamesetsStore {
           updates.diceDictionary !== undefined
             ? updates.diceDictionary
             : source.diceDictionary,
-        gameSet: updates.gameSet !== undefined ? updates.gameSet : source.gameSet,
+        gameSet:
+          updates.gameSet !== undefined ? updates.gameSet : source.gameSet,
       });
 
       // Switch to the new custom gameset
