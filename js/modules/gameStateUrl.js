@@ -123,6 +123,7 @@ export function decodeGameStateFromUrl(search = "") {
     result.customDice = sanitizeCustomDice(parsed.customDice);
   }
 
+  console.log('result', result);
   return result;
 }
 

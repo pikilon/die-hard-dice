@@ -1,8 +1,9 @@
-import { DEFAULT_DICE } from "./notationUtils.js";
+import { DEFAULT_DICE, isCustomDiceIndex } from "./notationUtils.js";
 
 /**
  * Gamesets Store Module
  * Manages multiple gamesets (system and custom) with localStorage persistence
+ * Stores only customDice (not DEFAULT_DICE) to match gameStateUrl structure
  */
 
 const STORAGE_KEY = "die-hard-dice-custom-gamesets";
@@ -13,21 +14,32 @@ const SYSTEM_GAMESETS = [
   {
     id: `${SYSTEM_GAMESET_PREFIX}settlers`,
     title: "Settlers of Catan",
-    diceDictionary: [...DEFAULT_DICE],
-    gameSet: [{ dictionaryIndex: 2, quantity: 2 }], // 2d6
+    customDice: [], // 2d6 only (from DEFAULT_DICE)
+    gameSet: [{ dictionaryIndex: 2, quantity: 2 }],
     isSystem: true,
   },
   {
     id: `${SYSTEM_GAMESET_PREFIX}kok`,
     title: "King of Kyoto",
-    diceDictionary: [
-      ...DEFAULT_DICE,
+    customDice: [
       {
         title: "King of kyoto",
         sides: ["1", "2", "3", "💖", "⚔️", "⚡"],
       },
     ],
     gameSet: [{ dictionaryIndex: 8, quantity: 4 }],
+    isSystem: true,
+  },
+  {
+    id: `${SYSTEM_GAMESET_PREFIX}hiroqest_combat`,
+    title: "Hiro Qest - combat",
+    gameSet: [{ dictionaryIndex: 8, quantity: 3 }],
+    customDice: [
+      {
+        title: "Hiro Qest - Combat",
+        sides: ["💀", "💀", "💀", "🛡", "🛡", "⬛"],
+      },
+    ],
     isSystem: true,
   },
 ];
@@ -38,6 +50,27 @@ class GamesetsStore {
     this.currentGamesetId = SYSTEM_GAMESETS[0].id;
     this.subscribers = [];
     this._loadFromStorage();
+  }
+
+  /**
+   * Build full diceDictionary from customDice
+   * @private
+   */
+  _buildDiceDictionary(customDice = []) {
+    return [...DEFAULT_DICE, ...customDice];
+  }
+
+  /**
+   * Extract customDice from full diceDictionary
+   * @private
+   */
+  _extractCustomDice(diceDictionary = []) {
+    return diceDictionary
+      .map((dice, index) => {
+        if (!isCustomDiceIndex(index)) return null;
+        return { title: dice.title, sides: [...dice.sides] };
+      })
+      .filter((dice) => dice !== null);
   }
 
   /**
@@ -60,7 +93,10 @@ class GamesetsStore {
    * @returns {Array}
    */
   getAllGamesets() {
-    return [...SYSTEM_GAMESETS, ...this.customGamesets];
+    return [...SYSTEM_GAMESETS, ...this.customGamesets].map((gs) => ({
+      ...gs,
+      diceDictionary: this._buildDiceDictionary(gs.customDice),
+    }));
   }
 
   /**
@@ -70,7 +106,7 @@ class GamesetsStore {
   getCurrentGameset() {
     const all = this.getAllGamesets();
     const current = all.find((gs) => gs.id === this.currentGamesetId);
-    return current || SYSTEM_GAMESETS[0];
+    return current || this._buildFullGameset(SYSTEM_GAMESETS[0]);
   }
 
   /**
@@ -81,6 +117,17 @@ class GamesetsStore {
   getGamesetById(id) {
     const all = this.getAllGamesets();
     return all.find((gs) => gs.id === id) || null;
+  }
+
+  /**
+   * Build full gameset with diceDictionary from internal format
+   * @private
+   */
+  _buildFullGameset(gameset) {
+    return {
+      ...gameset,
+      diceDictionary: this._buildDiceDictionary(gameset.customDice),
+    };
   }
 
   /**
@@ -111,19 +158,26 @@ class GamesetsStore {
 
   /**
    * Create a new custom gameset
-   * @param {Object} gameset - { title, diceDictionary, gameSet }
+   * @param {Object} gameset - { title, diceDictionary, gameSet } or { title, customDice, gameSet }
    * @returns {string} new gameset ID
    */
-  createCustomGameset({ title, diceDictionary, gameSet }) {
+  createCustomGameset({ title, diceDictionary, customDice, gameSet }) {
     const id = `custom_${Date.now()}_${Math.random()
       .toString(36)
       .substr(2, 9)}`;
+
+    // Extract customDice from diceDictionary if provided
+    const finalCustomDice =
+      customDice !== undefined
+        ? customDice.map((d) => ({ title: d.title, sides: [...d.sides] }))
+        : diceDictionary !== undefined
+        ? this._extractCustomDice(diceDictionary)
+        : [];
+
     const newGameset = {
       id,
       title: String(title || "New Gameset").trim(),
-      diceDictionary: diceDictionary
-        ? diceDictionary.map((d) => ({ title: d.title, sides: [...d.sides] }))
-        : [...DEFAULT_DICE],
+      customDice: finalCustomDice,
       gameSet: gameSet
         ? gameSet.map((d) => ({
             dictionaryIndex: d.dictionaryIndex,
@@ -154,7 +208,7 @@ class GamesetsStore {
     const newTitle = `${source.title} (copy)`;
     const newId = this.createCustomGameset({
       title: newTitle,
-      diceDictionary: source.diceDictionary,
+      customDice: source.customDice,
       gameSet: source.gameSet,
     });
 
@@ -176,6 +230,12 @@ class GamesetsStore {
       const source = this.getGamesetById(gamesetId);
       if (!source) return gamesetId;
 
+      // Extract customDice from diceDictionary
+      const customDice =
+        updates.diceDictionary !== undefined
+          ? this._extractCustomDice(updates.diceDictionary)
+          : source.customDice;
+
       // If title is not being explicitly updated, add " (custom)" suffix to distinguish from system
       const newTitle =
         updates.title !== undefined
@@ -184,10 +244,7 @@ class GamesetsStore {
 
       const newId = this.createCustomGameset({
         title: newTitle,
-        diceDictionary:
-          updates.diceDictionary !== undefined
-            ? updates.diceDictionary
-            : source.diceDictionary,
+        customDice,
         gameSet:
           updates.gameSet !== undefined ? updates.gameSet : source.gameSet,
       });
@@ -208,10 +265,7 @@ class GamesetsStore {
       gameset.title = String(updates.title).trim();
     }
     if (updates.diceDictionary !== undefined) {
-      gameset.diceDictionary = updates.diceDictionary.map((d) => ({
-        title: d.title,
-        sides: [...d.sides],
-      }));
+      gameset.customDice = this._extractCustomDice(updates.diceDictionary);
     }
     if (updates.gameSet !== undefined) {
       gameset.gameSet = updates.gameSet.map((d) => ({
@@ -268,12 +322,12 @@ class GamesetsStore {
         this.customGamesets = data.customGamesets.map((gs) => ({
           id: gs.id,
           title: String(gs.title || "Untitled"),
-          diceDictionary: Array.isArray(gs.diceDictionary)
-            ? gs.diceDictionary.map((d) => ({
+          customDice: Array.isArray(gs.customDice)
+            ? gs.customDice.map((d) => ({
                 title: d.title,
                 sides: Array.isArray(d.sides) ? [...d.sides] : [],
               }))
-            : [...DEFAULT_DICE],
+            : [],
           gameSet: Array.isArray(gs.gameSet)
             ? gs.gameSet.map((d) => ({
                 dictionaryIndex: d.dictionaryIndex,
