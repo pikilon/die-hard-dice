@@ -3,6 +3,7 @@ import {
   getDiceTypeFromSides,
   validateDiceSides,
 } from "./notationUtils.js";
+import { gamesetsStore } from "./gamesetsStore.js";
 
 /**
  * PubSub State Module for Dice Game
@@ -11,13 +12,22 @@ import {
 
 class GameState {
   constructor() {
+    // Initialize state from the current gameset
+    const currentGameset = gamesetsStore.getCurrentGameset();
+    
     this.state = {
-      title: "Settlers of Catan",
+      title: currentGameset.title,
       // Diccionario de dados disponibles
-      diceDictionary: [...DEFAULT_DICE],
+      diceDictionary: currentGameset.diceDictionary.map((d) => ({
+        title: d.title,
+        sides: [...d.sides],
+      })),
       // Array de dados seleccionados con índice del diccionario y cantidad
       // Ejemplo: [{ dictionaryIndex: 1, quantity: 4 }] (4 d6)
-      gameSet: [{ dictionaryIndex: 2, quantity: 2 }],
+      gameSet: currentGameset.gameSet.map((d) => ({
+        dictionaryIndex: d.dictionaryIndex,
+        quantity: d.quantity,
+      })),
       // Array de resultados como strings
       // Ejemplo: ["3", "4", "5", "2"]
       lastResult: [],
@@ -40,6 +50,11 @@ class GameState {
       createEditDiceIndex: [],
       all: [], // se notifica en cualquier cambio
     };
+
+    // Subscribe to gameset store changes
+    this.unsubscribeGamesetsStore = gamesetsStore.subscribe(() => {
+      this._loadCurrentGameset();
+    });
   }
 
   /**
@@ -136,6 +151,8 @@ class GameState {
     const newIndex = this.state.diceDictionary.length - 1;
     this._notify("diceDictionary", this.state.diceDictionary);
     this._notify("all", this.state);
+    // Update the gameset in the store
+    this._syncToGamesetsStore();
     return newIndex;
   }
 
@@ -225,6 +242,8 @@ class GameState {
     this._notify("gameSet", this.state.gameSet);
     this._notify("createEditDiceIndex", this.state.createEditDiceIndex);
     this._notify("all", this.state);
+    // Update the gameset in the store
+    this._syncToGamesetsStore();
     return true;
   }
 
@@ -259,6 +278,8 @@ class GameState {
       this.state.title = normalizedTitle;
       this._notify("title", this.state.title);
       this._notify("all", this.state);
+      // Update the gameset in the store
+      this._syncToGamesetsStore();
     }
   }
 
@@ -286,6 +307,8 @@ class GameState {
       }));
       this._notify("gameSet", this.state.gameSet);
       this._notify("all", this.state);
+      // Update the gameset in the store
+      this._syncToGamesetsStore();
     }
   }
 
@@ -424,6 +447,54 @@ class GameState {
     }
 
     return true;
+  }
+
+  /**
+   * Load the current gameset from the gamesetsStore
+   * @private
+   */
+  _loadCurrentGameset() {
+    const currentGameset = gamesetsStore.getCurrentGameset();
+    
+    this.state.title = currentGameset.title;
+    this.state.diceDictionary = currentGameset.diceDictionary.map((d) => ({
+      title: d.title,
+      sides: [...d.sides],
+    }));
+    this.state.gameSet = currentGameset.gameSet.map((d) => ({
+      dictionaryIndex: d.dictionaryIndex,
+      quantity: d.quantity,
+    }));
+    
+    // Reset roll results when switching gamesets
+    this.state.lastResult = [];
+    this.state.sum = 0;
+    this.state.isThrowing = false;
+    this.state.createEditDiceIndex = -2;
+
+    // Notify all subscribers
+    this._notify("title", this.state.title);
+    this._notify("diceDictionary", this.state.diceDictionary);
+    this._notify("gameSet", this.state.gameSet);
+    this._notify("lastResult", this.state.lastResult);
+    this._notify("sum", this.state.sum);
+    this._notify("isThrowing", this.state.isThrowing);
+    this._notify("createEditDiceIndex", this.state.createEditDiceIndex);
+    this._notify("all", this.state);
+  }
+
+  /**
+   * Sync the current state to the gamesetsStore
+   * If modifying a system gameset, it will create a new custom one
+   * @private
+   */
+  _syncToGamesetsStore() {
+    const currentGamesetId = gamesetsStore.currentGamesetId;
+    gamesetsStore.updateGameset(currentGamesetId, {
+      title: this.state.title,
+      diceDictionary: this.state.diceDictionary,
+      gameSet: this.state.gameSet,
+    });
   }
 }
 

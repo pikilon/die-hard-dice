@@ -2,6 +2,7 @@ import { gameState } from "./gameState.js";
 import "./DiceGameCardComponent.js";
 import "./DiceAddFromDictionaryComponent.js";
 import "./DiceGameSetHeaderComponent.js";
+import "./GamesetSelectorComponent.js";
 
 /**
  * Drawer that lists the current game set as interactive cards.
@@ -113,6 +114,7 @@ class DiceGameSetDrawerComponent extends HTMLElement {
         /* add-card styles are encapsulated within the component */
       </style>
       <div class="drawer" id="drawer">
+        <gameset-selector></gameset-selector>
         <dice-gameset-header></dice-gameset-header>
         <div class="cards" id="cards"></div>
       </div>

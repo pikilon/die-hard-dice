@@ -4,6 +4,10 @@ An app to create and manage dice sets for tabletop games with **customizable dic
 
 This is an all-in-browser app, no build required.
 
+### 🌐 Live Demo
+
+- GitHub Pages: https://pikilon.github.io/die-hard-dice/
+
 ### ✨ New Features
 
 - **🎲 Customizable Dice Faces**: Create dice with arbitrary values (text, symbols, numbers)
@@ -13,6 +17,12 @@ This is an all-in-browser app, no build required.
 - **🎯 Presets**: Built-in presets for Fudge/FATE, directions, yes/no, and more
 
 ### 🚀 Quick Start
+
+Option A — Open the live demo:
+
+- Visit https://pikilon.github.io/die-hard-dice/
+
+Option B — Run locally:
 
 ```bash
 # Run a local server
@@ -140,3 +150,11 @@ The 3D visualization currently only supports standard numeric faces. Custom dice
 ### 🤝 Credits
 
 Based on the original dice roller by [teal](https://paypal.me/teal/5?locale.x=en_EN&country.x=US).
+
+### 🚢 Deployment (GitHub Pages)
+
+- Hosting: GitHub Pages serves directly from the `master` branch, root folder.
+- Entry point: [index.html](./index.html) at the repository root.
+- Live URL: https://pikilon.github.io/die-hard-dice/
+- Update cycle: Push changes to `master` and Pages will deploy automatically.
+- Custom domain: Not configured; site is available under the `github.io` subdomain.
