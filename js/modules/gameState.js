@@ -12,11 +12,12 @@ import {
 class GameState {
   constructor() {
     this.state = {
+      title: "Settlers of Catan",
       // Diccionario de dados disponibles
       diceDictionary: [...DEFAULT_DICE],
       // Array de dados seleccionados con índice del diccionario y cantidad
       // Ejemplo: [{ dictionaryIndex: 1, quantity: 4 }] (4 d6)
-      gameSet: [{ dictionaryIndex: 0, quantity: 4 }],
+      gameSet: [{ dictionaryIndex: 2, quantity: 2 }],
       // Array de resultados como strings
       // Ejemplo: ["3", "4", "5", "2"]
       lastResult: [],
@@ -70,9 +71,13 @@ class GameState {
    */
   getState(key) {
     if (key) {
+      if (key === "title") {
+        return this.state.title;
+      }
       return this.state[key];
     }
     return {
+      title: this.state.title,
       diceDictionary: [
         ...this.state.diceDictionary.map((d) => ({
           ...d,
@@ -134,6 +139,59 @@ class GameState {
   }
 
   /**
+   * Reemplaza el diccionario de dados con los dados por defecto y los personalizados.
+   * @param {Array<{title: string, sides: string[]}>} customDice
+   */
+  setCustomDiceDictionary(customDice = []) {
+    const normalizedCustomDice = Array.isArray(customDice)
+      ? customDice
+          .map((dice) => {
+            const title = String(dice?.title ?? "").trim();
+            if (title.length < 2) {
+              return null;
+            }
+            const rawSides = Array.isArray(dice?.sides)
+              ? dice.sides
+                  .map((side) => String(side ?? "").trim())
+                  .filter((side) => side.length > 0)
+              : [];
+            const sides = validateDiceSides(rawSides);
+            if (sides.length < 2) {
+              return null;
+            }
+            return { title, sides: [...sides] };
+          })
+          .filter((dice) => dice !== null)
+      : [];
+
+    const nextDictionary = [
+      ...DEFAULT_DICE.map((dice) => ({ title: dice.title, sides: [...dice.sides] })),
+      ...normalizedCustomDice,
+    ];
+
+    const dictionaryChanged = !this._areDiceDictionariesEqual(
+      this.state.diceDictionary,
+      nextDictionary
+    );
+
+    if (dictionaryChanged) {
+      this.state.diceDictionary = nextDictionary;
+      this._notify("diceDictionary", this.state.diceDictionary);
+    }
+
+    let changed = dictionaryChanged;
+    if (this.state.createEditDiceIndex !== -2) {
+      this.state.createEditDiceIndex = -2;
+      this._notify("createEditDiceIndex", this.state.createEditDiceIndex);
+      changed = true;
+    }
+
+    if (changed) {
+      this._notify("all", this.state);
+    }
+  }
+
+  /**
    * Remove a custom die from the dictionary by index and update gameSet references.
    * Default dice (within DEFAULT_DICE) cannot be removed.
    * @param {number} dictionaryIndex
@@ -188,6 +246,18 @@ class GameState {
       updated = [...current, { dictionaryIndex, quantity }];
     }
     this.setGameSet(updated);
+  }
+
+  /**
+   * Actualiza el título del juego en el estado
+   * @param {string} title
+   */
+  setTitle(title) {
+    const normalizedTitle = String(title ?? "").trim();
+    if (this.state.title !== normalizedTitle) {
+      this.state.title = normalizedTitle;
+      this._notify("all", this.state);
+    }
   }
 
   /**
@@ -328,6 +398,30 @@ class GameState {
         console.error(`Error in subscriber callback for ${key}:`, error);
       }
     });
+  }
+
+  _areDiceDictionariesEqual(a, b) {
+    if (a === b) return true;
+    if (!Array.isArray(a) || !Array.isArray(b)) return false;
+    if (a.length !== b.length) return false;
+
+    for (let i = 0; i < a.length; i += 1) {
+      const diceA = a[i];
+      const diceB = b[i];
+      if (diceA.title !== diceB.title) {
+        return false;
+      }
+      if (diceA.sides.length !== diceB.sides.length) {
+        return false;
+      }
+      for (let j = 0; j < diceA.sides.length; j += 1) {
+        if (diceA.sides[j] !== diceB.sides[j]) {
+          return false;
+        }
+      }
+    }
+
+    return true;
   }
 }
 

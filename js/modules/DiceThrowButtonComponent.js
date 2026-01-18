@@ -1,4 +1,4 @@
-import { gameState } from './gameState.js';
+import { gameState } from "./gameState.js";
 
 /**
  * Web Component que expone solo el botón de lanzamiento.
@@ -7,18 +7,18 @@ import { gameState } from './gameState.js';
 class DiceThrowButtonComponent extends HTMLElement {
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
+    this.attachShadow({ mode: "open" });
     this.unsubscribe = null;
     this.button = null;
   }
 
   connectedCallback() {
     this.render();
-    this.button = this.shadowRoot.querySelector('button');
+    this.button = this.shadowRoot.querySelector("button");
     this.setupEventListeners();
-    this.updateButtonState(gameState.getState('isThrowing'));
+    this.updateButtonState(gameState.getState("isThrowing"));
 
-    this.unsubscribe = gameState.subscribe('isThrowing', (isThrowing) => {
+    this.unsubscribe = gameState.subscribe("isThrowing", (isThrowing) => {
       this.updateButtonState(isThrowing);
     });
   }
@@ -36,12 +36,7 @@ class DiceThrowButtonComponent extends HTMLElement {
           display: block;
         }
 
-        .button-container {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 6px;
-        }
+
 
         button {
           font-size: 14pt;
@@ -51,32 +46,27 @@ class DiceThrowButtonComponent extends HTMLElement {
           border-radius: 4px;
           cursor: pointer;
           transition: all 0.2s;
+
+          &:hover:enabled {
+            background: rgba(255, 255, 255, 1);
+            border-color: rgba(21, 26, 26, 0.8);
+          }
+  
+          &:active:enabled {
+            transform: scale(0.97);
+          }
+  
+          &:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+          }
         }
 
-        button:hover:enabled {
-          background: rgba(255, 255, 255, 1);
-          border-color: rgba(21, 26, 26, 0.8);
-        }
-
-        button:active:enabled {
-          transform: scale(0.97);
-        }
-
-        button:disabled {
-          cursor: not-allowed;
-          opacity: 0.6;
-        }
-
-        .hint {
-          font-size: 10pt;
-          color: rgba(21, 26, 26, 0.6);
-        }
       </style>
 
-      <div class="button-container">
-        <button type="button">Throw dice</button>
-        <span class="hint">Lanza el set seleccionado</span>
-      </div>
+
+        <button type="button">Throw</button>
+
     `;
   }
 
@@ -89,24 +79,26 @@ class DiceThrowButtonComponent extends HTMLElement {
         return;
       }
 
-      const isThrowing = gameState.getState('isThrowing');
+      const isThrowing = gameState.getState("isThrowing");
       if (isThrowing) {
         this.updateButtonState(true);
         return;
       }
 
-      this.dispatchEvent(new CustomEvent('throw-dice', {
-        bubbles: true,
-        composed: true,
-      }));
+      this.dispatchEvent(
+        new CustomEvent("throw-dice", {
+          bubbles: true,
+          composed: true,
+        })
+      );
     };
 
-    ['mouseup', 'touchend'].forEach((evt) => {
+    ["mouseup", "touchend"].forEach((evt) => {
       this.button.addEventListener(evt, handleThrow);
     });
 
-    this.button.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') {
+    this.button.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") {
         ev.preventDefault();
         handleThrow(ev);
       }
@@ -117,11 +109,11 @@ class DiceThrowButtonComponent extends HTMLElement {
     if (!this.button) return;
 
     this.button.disabled = isThrowing;
-    this.button.textContent = isThrowing ? 'Throwing...' : 'Throw dice';
-    this.button.setAttribute('aria-busy', String(isThrowing));
+    this.button.textContent = isThrowing ? "Throwing..." : "Throw dice";
+    this.button.setAttribute("aria-busy", String(isThrowing));
   }
 }
 
-customElements.define('dice-throw-button', DiceThrowButtonComponent);
+customElements.define("dice-throw-button", DiceThrowButtonComponent);
 
 export { DiceThrowButtonComponent };

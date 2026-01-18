@@ -2,8 +2,6 @@
  * Utilidades para convertir entre notación de dados y el formato de estado
  */
 
-import { gameState } from "./gameState.js";
-
 /**
  * Array de definiciones de dados (debe coincidir con diceDictionary del estado)
  * Índice 0: coin, 1: d4, 2: d6, 3: d8, 4: d10, 5: d12, 6: d20, 7: d100
@@ -357,7 +355,7 @@ export function getTitleByIndex(dictionaryIndex) {
   return dice ? dice.title : "";
 }
 
-export { DEFAULT_DICE as DICE_DICTIONARY };
+
 export function isCustomDiceIndex(dictionaryIndex = 0) {
   const index = Number.isInteger(dictionaryIndex) ? dictionaryIndex : -1;
   return index >= DEFAULT_DICE.length;

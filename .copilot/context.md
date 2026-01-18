@@ -25,7 +25,7 @@ This file orients agents to the Die Hard Dice app so they can answer precisely.
 - 3D view currently renders numeric faces only; custom faces are logic-only.
 
 ## How to run
-- Assumie the Quick server: `npx live-server` is already running to test the results.
+- Assume the Quick server: `npx live-server` is already running to test the results.
 - No build step; ES modules load directly in the browser.
 - Terminal: Bash on Windows.
 
