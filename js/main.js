@@ -43,11 +43,21 @@ function dice_initialize() {
   restoreStateFromUrl();
   syncUrlWithGameState(gameState.getState());
 
+  // Sincronizar el título de la página con el gameState
+  const updatePageTitle = (state) => {
+    const title = state.title?.trim() || "die hard die";
+    document.title = title;
+  };
+
+  // Actualizar el título de la página con el estado actual
+  updatePageTitle(gameState.getState());
+
   // Los web components se encargan de todo
   // Suscribirse a cambios para logging (opcional)
   gameState.subscribe("all", (state) => {
     console.log("Game state updated:", state);
     syncUrlWithGameState(state);
+    updatePageTitle(state);
   });
 
   // Aplicar clase noselect al body por defecto
