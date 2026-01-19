@@ -73,9 +73,25 @@ export function createD2Geometry(radius) {
  * @param {Array<string>} [sides] - Optional custom sides array [top, bottom].
  * @returns {Array<THREE.MeshPhongMaterial>} Array of materials for each face.
  */
-export function createD2Materials(size, margin, sides) {
+export function createD2Materials(size, margin, sides, backgroundColor) {
   const topText = (sides && sides[0]) || "1";
   const bottomText = (sides && sides[1]) || "2";
+  
+  // Helper to calculate text color based on background luminance
+  const getTextColorForBg = (hex) => {
+    if (!hex || typeof hex !== 'string') return labelColor;
+    const h = hex.replace('#', '').toLowerCase();
+    if (!/^[0-9a-f]{6}$/.test(h)) return labelColor;
+    const r = parseInt(h.substring(0, 2), 16);
+    const g = parseInt(h.substring(2, 4), 16);
+    const b = parseInt(h.substring(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? '#000000' : '#ffffff';
+  };
+
+  const bgColor = backgroundColor || diceColor;
+  const textColor = getTextColorForBg(bgColor);
+
   function createD2Texture(text) {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
@@ -83,20 +99,20 @@ export function createD2Materials(size, margin, sides) {
     canvas.width = canvas.height = ts;
     
     // Fill background
-    context.fillStyle = diceColor;
+    context.fillStyle = bgColor;
     context.fillRect(0, 0, canvas.width, canvas.height);
     
     // Draw circular coin shape
     context.beginPath();
     context.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2 - 4, 0, Math.PI * 2);
-    context.fillStyle = diceColor;
+    context.fillStyle = bgColor;
     context.fill();
     
     // Draw text
     context.font = `bold ${ts / 2}px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', Arial, sans-serif`;
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillStyle = labelColor;
+    context.fillStyle = textColor;
     context.fillText(text, canvas.width / 2, canvas.height / 2);
     
     const texture = new THREE.Texture(canvas);
@@ -106,7 +122,7 @@ export function createD2Materials(size, margin, sides) {
 
   // CylinderGeometry has materials: [side, top cap, bottom cap]
   const sideMaterial = new THREE.MeshPhongMaterial(
-    Object.assign({}, materialOptions, { color: diceColor })
+    Object.assign({}, materialOptions, { color: bgColor })
   );
   
   const topMaterial = new THREE.MeshPhongMaterial(

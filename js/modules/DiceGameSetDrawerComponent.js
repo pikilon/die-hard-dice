@@ -157,7 +157,7 @@ class DiceGameSetDrawerComponent extends HTMLElement {
     const addComponent = document.createElement("dice-add-from-dictionary");
     cardsContainer.appendChild(addComponent);
 
-    const sortedSet = [...gameSet].sort(
+    const sortedSet = [...gameSet].map((entry, index) => ({ ...entry, _index: index })).sort(
       (a, b) => a.dictionaryIndex - b.dictionaryIndex
     );
 
@@ -166,6 +166,7 @@ class DiceGameSetDrawerComponent extends HTMLElement {
       if (!diceDef) return;
       const card = document.createElement("dice-game-card");
       card.setAttribute("dictionary-index", String(entry.dictionaryIndex));
+      card.setAttribute("gameset-index", String(entry._index));
       cardsContainer.appendChild(card);
     });
 

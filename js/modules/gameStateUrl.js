@@ -15,10 +15,17 @@ function sanitizeGameSet(gameSet) {
   }
 
   return gameSet
-    .map((item) => ({
-      dictionaryIndex: Number(item?.dictionaryIndex),
-      quantity: Number(item?.quantity),
-    }))
+    .map((item) => {
+      const entry = {
+        dictionaryIndex: Number(item?.dictionaryIndex),
+        quantity: Number(item?.quantity),
+      };
+      // Include color if provided and valid (hex color format)
+      if (item?.color && typeof item.color === 'string' && /^#[0-9a-f]{6}$/i.test(item.color)) {
+        entry.color = item.color.toLowerCase();
+      }
+      return entry;
+    })
     .filter(
       ({ dictionaryIndex, quantity }) =>
         Number.isInteger(dictionaryIndex) &&

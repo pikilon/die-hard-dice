@@ -72,7 +72,7 @@ export function createD4Geometry(radius) {
  * @param {Array} labels - Array of label arrays for each face.
  * @returns {Array<THREE.MeshPhongMaterial>} Array of materials for each face.
  */
-export function createD4Materials(size, margin, labels) {
+export function createD4Materials(size, margin, labels, backgroundColor) {
   function createD4Text(text, color, backColor) {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
@@ -95,12 +95,27 @@ export function createD4Materials(size, margin, labels) {
     return texture;
   }
 
+  // Helper to calculate text color based on background luminance
+  const getTextColorForBg = (hex) => {
+    if (!hex || typeof hex !== 'string') return labelColor;
+    const h = hex.replace('#', '').toLowerCase();
+    if (!/^[0-9a-f]{6}$/.test(h)) return labelColor;
+    const r = parseInt(h.substring(0, 2), 16);
+    const g = parseInt(h.substring(2, 4), 16);
+    const b = parseInt(h.substring(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? '#000000' : '#ffffff';
+  };
+
+  const bgColor = backgroundColor || diceColor;
+  const textColor = getTextColorForBg(bgColor);
+
   const materials = [];
   for (let i = 0; i < labels.length; ++i) {
     materials.push(
       new THREE.MeshPhongMaterial(
         Object.assign({}, materialOptions, {
-          map: createD4Text(labels[i], labelColor, diceColor),
+          map: createD4Text(labels[i], textColor, bgColor),
         })
       )
     );

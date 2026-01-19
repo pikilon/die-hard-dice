@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { createTextTexture } from './modules/createTextTexture.js';
+import { getContrastTextColor } from './modules/notationUtils.js';
 
 // ============================================================================
 // DICE MODULE IMPORTS
@@ -180,11 +181,14 @@ function calc_texture_size(approx) {
  * @param {Array<string>} face_labels - Array of labels for each face.
  * @param {number} size - Base size for texture calculations.
  * @param {number} margin - Margin around the text.
+ * @param {string} [backgroundColor] - Optional background color in hex format (e.g., '#ff0000'). Defaults to dice_color.
  * @returns {Array<THREE.MeshPhongMaterial>} Array of materials for each face.
  */
-export function create_dice_materials(face_labels, size, margin) {
+export function create_dice_materials(face_labels, size, margin, backgroundColor) {
   const materials = [];
-  const createTextTextureFace = (text) => createTextTexture(text, label_color, dice_color, size, margin);
+  const bgColor = backgroundColor || dice_color;
+  const textColor = getContrastTextColor(bgColor);
+  const createTextTextureFace = (text) => createTextTexture(text, textColor, bgColor, size, margin);
   for (let i = 0; i < face_labels.length; ++i) {
     const texture = createTextTextureFace(face_labels[i]);
     materials.push(
@@ -237,6 +241,59 @@ export let use_shadows = true;
 
 /** @type {number} Scale factor for dice sizing */
 export let scale = 50;
+
+// ============================================================================
+// HELPER FUNCTIONS FOR COLORED DICE
+// ============================================================================
+
+/**
+ * Creates materials for a dice type with a specific color.
+ * @param {string} type - The dice type (e.g., 'd6', 'd20').
+ * @param {Array<string>} [sides] - Optional custom sides array.
+ * @param {string} [color] - Optional background color in hex format.
+ * @returns {Array<THREE.MeshPhongMaterial>} The materials array.
+ * @private
+ */
+function createMaterialsForDiceType(type, sides, color) {
+  // Helper to calculate text color based on background luminance
+  const getTextColorForBg = (hex) => {
+    if (!hex || typeof hex !== 'string') return label_color;
+    const h = hex.replace('#', '').toLowerCase();
+    if (!/^[0-9a-f]{6}$/.test(h)) return label_color;
+    const r = parseInt(h.substring(0, 2), 16);
+    const g = parseInt(h.substring(2, 4), 16);
+    const b = parseInt(h.substring(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? '#000000' : '#ffffff';
+  };
+
+  const bgColor = color || dice_color;
+  const textColor = getTextColorForBg(bgColor);
+
+  switch (type) {
+    case 'coin':
+      return createCoinMaterials(scale / 2, scale * 2, sides, bgColor);
+    case 'd4':
+      return createD4Materials(scale / 2, 1.5, d4Labels, bgColor);
+    case 'd6':
+      const d6Labels = sides ? sidesToFaceLabels(sides) : generateDefaultLabels(6);
+      return create_dice_materials(d6Labels, scale / 2, 1.2, bgColor);
+    case 'd8':
+      const d8Labels = sides ? sidesToFaceLabels(sides) : generateDefaultLabels(8);
+      return create_dice_materials(d8Labels, scale / 2, 1.2, bgColor);
+    case 'd10':
+      const d10Labels = sides ? sidesToFaceLabels(sides, 1) : generateDefaultLabels(10, 0);
+      return create_dice_materials(d10Labels, scale / 2, 1.0, bgColor);
+    case 'd12':
+      const d12Labels = sides ? sidesToFaceLabels(sides) : generateDefaultLabels(12);
+      return create_dice_materials(d12Labels, scale / 2, 1.0, bgColor);
+    case 'd20':
+      const d20Labels = sides ? sidesToFaceLabels(sides) : standart_d20_dice_face_labels;
+      return create_dice_materials(d20Labels, scale / 2, 1.0, bgColor);
+    default:
+      return [];
+  }
+}
 
 // Cached geometry and materials
 let coin_geometry_cache = null;
@@ -781,6 +838,7 @@ DiceBox.prototype.generate_vectors = function (notation, vector, boost) {
     const diceItem = notation.set[i];
     const diceType = typeof diceItem === 'string' ? diceItem : diceItem.type;
     const diceSides = typeof diceItem === 'object' ? diceItem.sides : null;
+    const diceColor = typeof diceItem === 'object' ? diceItem.color : null;
     
     const vec = make_random_vector(vector);
     const pos = {
@@ -806,6 +864,7 @@ DiceBox.prototype.generate_vectors = function (notation, vector, boost) {
     vectors.push({
       set: diceType,
       sides: diceSides,
+      color: diceColor,
       pos: pos,
       velocity: velocity,
       angle: angle,
@@ -823,6 +882,7 @@ DiceBox.prototype.generate_vectors = function (notation, vector, boost) {
    * @param {Object} angle - Initial angular velocity {x, y, z}.
    * @param {Object} axis - Rotation axis and angle {x, y, z, a}.
    * @param {Array<string>} [sides] - Optional custom sides array.
+   * @param {string} [color] - Optional color in hex format (e.g., '#ff0000').
    */
 DiceBox.prototype.create_dice = function (
     type,
@@ -830,9 +890,17 @@ DiceBox.prototype.create_dice = function (
     velocity,
     angle,
     axis,
-    sides
+    sides,
+    color
   ) {
-    const dice = createDiceByType(type, sides);
+    let dice = createDiceByType(type, sides);
+    
+    // If color is specified, we need to recreate the dice with new materials
+    if (color && typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)) {
+      // Re-create with colored materials
+      dice = this._createDiceWithColor(type, sides, color);
+    }
+    
     dice.castShadow = true;
     dice.dice_type = type;
     dice.dice_sides = sides;
@@ -855,6 +923,50 @@ DiceBox.prototype.create_dice = function (
     this.scene.add(dice);
     this.dices.push(dice);
     this.world.addBody(dice.body);
+  };
+
+  /**
+   * Creates a dice with custom colored materials.
+   * @private
+   * @param {string} type - The die type.
+   * @param {Array<string>} [sides] - Optional custom sides array.
+   * @param {string} color - The background color in hex format.
+   * @returns {THREE.Mesh} The colored die mesh.
+   */
+DiceBox.prototype._createDiceWithColor = function (type, sides, color) {
+    const diceFactory = dice_factories[type];
+    if (!diceFactory) return null;
+    
+    // Create dice with standard geometry
+    let geometry;
+    switch (type) {
+      case 'coin':
+        geometry = createCoinGeometry(scale);
+        break;
+      case 'd4':
+        geometry = createD4Geometry(scale);
+        break;
+      case 'd6':
+        geometry = createD6Geometry(scale);
+        break;
+      case 'd8':
+        geometry = createD8Geometry(scale);
+        break;
+      case 'd10':
+        geometry = getD10Geometry(scale);
+        break;
+      case 'd12':
+        geometry = createD12Geometry(scale);
+        break;
+      case 'd20':
+        geometry = createD20Geometry(scale);
+        break;
+      default:
+        return createDiceByType(type, sides);
+    }
+    
+    const materials = createMaterialsForDiceType(type, sides, color);
+    return new THREE.Mesh(geometry, materials);
   };
 
   /**
@@ -1077,7 +1189,8 @@ DiceBox.prototype.prepare_dices_for_roll = function (vectors) {
         vectors[i].velocity,
         vectors[i].angle,
         vectors[i].axis,
-        vectors[i].sides
+        vectors[i].sides,
+        vectors[i].color
       );
     }
   };

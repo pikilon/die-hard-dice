@@ -9,19 +9,21 @@ import './DicePreviewComponent.js';
  */
 class DiceGameCardComponent extends HTMLElement {
   static get observedAttributes() {
-    return ['dictionary-index'];
+    return ['dictionary-index', 'gameset-index'];
   }
 
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
     this.dictionaryIndex = null;
+    this.gamesetIndex = null;
     this.unsubscribeGameSet = null;
     this.unsubscribeDictionary = null;
   }
 
   connectedCallback() {
     this.dictionaryIndex = this._parseIndex(this.getAttribute('dictionary-index'));
+    this.gamesetIndex = this._parseIndex(this.getAttribute('gameset-index'));
     this.render();
     this._syncFromState();
 
@@ -44,6 +46,12 @@ class DiceGameCardComponent extends HTMLElement {
       const parsed = this._parseIndex(newValue);
       if (parsed !== this.dictionaryIndex) {
         this.dictionaryIndex = parsed;
+        this._syncFromState();
+      }
+    } else if (name === 'gameset-index') {
+      const parsed = this._parseIndex(newValue);
+      if (parsed !== this.gamesetIndex) {
+        this.gamesetIndex = parsed;
         this._syncFromState();
       }
     }
@@ -127,6 +135,19 @@ class DiceGameCardComponent extends HTMLElement {
           margin: 0;
         }
 
+        .color-picker {
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
+          border: 2px solid rgba(0, 0, 0, 0.1);
+          cursor: pointer;
+          padding: 2px;
+        }
+
+        .color-picker:hover {
+          border-color: rgba(0, 0, 0, 0.3);
+        }
+
         .delete-btn {
           margin-top: 6px;
           padding: 8px 10px;
@@ -164,6 +185,7 @@ class DiceGameCardComponent extends HTMLElement {
             <button id="decrease" aria-label="Decrease quantity">-</button>
             <div class="quantity" id="quantity">0</div>
             <button id="increase" aria-label="Increase quantity">+</button>
+            <input type="color" id="colorPicker" class="color-picker" aria-label="Change dice color" title="Change dice color">
           </div>
         </div>
       </div>
@@ -172,6 +194,7 @@ class DiceGameCardComponent extends HTMLElement {
     const decreaseButton = this.shadowRoot.getElementById('decrease');
     const inc = this.shadowRoot.getElementById('increase');
     const del = this.shadowRoot.getElementById('delete');
+    const colorPicker = this.shadowRoot.getElementById('colorPicker');
     decreaseButton?.addEventListener('click', (ev) => {
       ev.stopPropagation();
       const gameSetState = gameState.getState('gameSet') || [];
@@ -190,6 +213,10 @@ class DiceGameCardComponent extends HTMLElement {
       const ok = window.confirm('If you delete this custom die, you will need to create it again to add it.');
       if (ok) this._confirmDelete();
     });
+    colorPicker?.addEventListener('change', (ev) => {
+      ev.stopPropagation();
+      this._changeColor(ev.target.value);
+    });
   }
 
   _parseIndex(value) {
@@ -205,6 +232,9 @@ class DiceGameCardComponent extends HTMLElement {
 
   _getQuantityFromState() {
     const gameSet = gameState.getState('gameSet');
+    if (this.gamesetIndex !== null && gameSet[this.gamesetIndex]) {
+      return gameSet[this.gamesetIndex].quantity;
+    }
     const entry = gameSet.find((item) => item.dictionaryIndex === this.dictionaryIndex);
     return entry ? entry.quantity : 0;
   }
@@ -212,7 +242,16 @@ class DiceGameCardComponent extends HTMLElement {
   _changeQuantity(delta) {
     if (this.dictionaryIndex == null) return;
     const currentSet = gameState.getState('gameSet');
-    const existing = currentSet.find((d) => d.dictionaryIndex === this.dictionaryIndex);
+    
+    let existing, existingIndex;
+    if (this.gamesetIndex !== null) {
+      existingIndex = this.gamesetIndex;
+      existing = currentSet[existingIndex];
+    } else {
+      existingIndex = currentSet.findIndex((d) => d.dictionaryIndex === this.dictionaryIndex);
+      existing = currentSet[existingIndex];
+    }
+
     const currentQty = existing ? existing.quantity : 0;
     const nextQty = Math.max(0, currentQty + delta);
 
@@ -220,10 +259,39 @@ class DiceGameCardComponent extends HTMLElement {
 
     if (nextQty === currentQty) return;
 
-    const withoutThis = currentSet.filter((d) => d.dictionaryIndex !== this.dictionaryIndex);
-    const updated = nextQty === 0 && !isCustom
-      ? withoutThis
-      : [...withoutThis, { dictionaryIndex: this.dictionaryIndex, quantity: nextQty }];
+    if (nextQty === 0 && !isCustom) {
+      // Remove entry
+      const updated = currentSet.filter((_, idx) => idx !== existingIndex);
+      gameState.setGameSet(updated);
+    } else {
+      // Update entry
+      const updated = currentSet.map((d, idx) =>
+        idx === existingIndex
+          ? { ...d, quantity: nextQty }
+          : d
+      );
+      gameState.setGameSet(updated);
+    }
+  }
+
+  _changeColor(color) {
+    if (this.dictionaryIndex == null || !color) return;
+    const currentSet = gameState.getState('gameSet');
+    
+    let existingIndex;
+    if (this.gamesetIndex !== null) {
+      existingIndex = this.gamesetIndex;
+    } else {
+      existingIndex = currentSet.findIndex((d) => d.dictionaryIndex === this.dictionaryIndex);
+    }
+
+    if (existingIndex === -1) return;
+
+    const updated = currentSet.map((d, idx) =>
+      idx === existingIndex
+        ? { ...d, color: color }
+        : d
+    );
 
     gameState.setGameSet(updated);
   }
@@ -237,6 +305,7 @@ class DiceGameCardComponent extends HTMLElement {
     const quantityEl = this.shadowRoot.getElementById('quantity');
     const previewEl = this.shadowRoot.getElementById('preview');
     const deleteBtn = this.shadowRoot.getElementById('delete');
+    const colorPicker = this.shadowRoot.getElementById('colorPicker');
 
     if (titleEl) {
       titleEl.textContent = diceDef.title;
@@ -253,6 +322,19 @@ class DiceGameCardComponent extends HTMLElement {
     const qty = this._getQuantityFromState();
     if (quantityEl) {
       quantityEl.textContent = String(qty);
+    }
+
+    // Set color picker value from gameSet entry
+    if (colorPicker) {
+      let color = '#202020'; // Default to dark color
+      const gameSet = gameState.getState('gameSet');
+      if (this.gamesetIndex !== null && gameSet[this.gamesetIndex]) {
+        color = gameSet[this.gamesetIndex].color || '#202020';
+      } else {
+        const entry = gameSet.find((item) => item.dictionaryIndex === this.dictionaryIndex);
+        color = entry?.color || '#202020';
+      }
+      colorPicker.value = color;
     }
 
     if (deleteBtn) {

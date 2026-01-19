@@ -277,9 +277,20 @@ export function gameSetToOldFormat(gameSet, diceDictionary = DEFAULT_DICE) {
       for (let i = 0; i < item.quantity; i++) {
         // Always pass sides for coins so faces and results use emoji
         if (geometryType === "coin" || isCustomSides) {
-          result.push({ type: geometryType, sides: validatedSides });
+          const entry = { type: geometryType, sides: validatedSides };
+          // Include color if provided
+          if (item.color) {
+            entry.color = item.color;
+          }
+          result.push(entry);
         } else {
-          result.push(geometryType);
+          const entry = geometryType;
+          // For simple strings, we need to include color in object form
+          if (item.color) {
+            result.push({ type: geometryType, color: item.color });
+          } else {
+            result.push(entry);
+          }
         }
       }
     }
@@ -287,6 +298,7 @@ export function gameSetToOldFormat(gameSet, diceDictionary = DEFAULT_DICE) {
 
   return result;
 }
+
 
 /**
  * Checks if a dice definition has standard sides (numeric 1-n or 0-9 for d10)
@@ -359,4 +371,36 @@ export function getTitleByIndex(dictionaryIndex) {
 export function isCustomDiceIndex(dictionaryIndex = 0) {
   const index = Number.isInteger(dictionaryIndex) ? dictionaryIndex : -1;
   return index >= DEFAULT_DICE.length;
+}
+
+/**
+ * Determines the best text color (black or white) based on the background color's luminance.
+ * Uses the relative luminance formula from WCAG.
+ * @param {string} hexColor - The background color in hex format (e.g., '#ff0000')
+ * @returns {string} '#000000' for black text or '#ffffff' for white text
+ */
+export function getContrastTextColor(hexColor) {
+  // Default to light text for dark backgrounds
+  if (!hexColor || typeof hexColor !== 'string') {
+    return '#aaaaaa';
+  }
+
+  // Remove '#' if present
+  const hex = hexColor.replace('#', '').toLowerCase();
+  
+  // Validate hex color
+  if (!/^[0-9a-f]{6}$/.test(hex)) {
+    return '#aaaaaa';
+  }
+
+  // Convert hex to RGB
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+
+  // Calculate relative luminance using WCAG formula
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+  // Return black text for bright backgrounds, white text for dark backgrounds
+  return luminance > 0.5 ? '#000000' : '#ffffff';
 }

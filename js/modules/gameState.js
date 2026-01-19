@@ -23,11 +23,18 @@ class GameState {
         sides: [...d.sides],
       })),
       // Array de dados seleccionados con índice del diccionario y cantidad
-      // Ejemplo: [{ dictionaryIndex: 1, quantity: 4 }] (4 d6)
-      gameSet: currentGameset.gameSet.map((d) => ({
-        dictionaryIndex: d.dictionaryIndex,
-        quantity: d.quantity,
-      })),
+      // Ejemplo: [{ dictionaryIndex: 1, quantity: 4, color: "#ff0000" }] (4 red d6)
+      gameSet: currentGameset.gameSet.map((d) => {
+        const entry = {
+          dictionaryIndex: d.dictionaryIndex,
+          quantity: d.quantity,
+        };
+        // Preserve color if provided
+        if (d.color) {
+          entry.color = d.color;
+        }
+        return entry;
+      }),
       // Array de resultados como strings
       // Ejemplo: ["3", "4", "5", "2"]
       lastResult: [],
@@ -301,10 +308,17 @@ class GameState {
    */
   setGameSet(gameSet) {
     if (JSON.stringify(this.state.gameSet) !== JSON.stringify(gameSet)) {
-      this.state.gameSet = gameSet.map((d) => ({
-        dictionaryIndex: d.dictionaryIndex,
-        quantity: d.quantity,
-      }));
+      this.state.gameSet = gameSet.map((d) => {
+        const entry = {
+          dictionaryIndex: d.dictionaryIndex,
+          quantity: d.quantity,
+        };
+        // Preserve color if provided
+        if (d.color) {
+          entry.color = d.color;
+        }
+        return entry;
+      });
       this._notify("gameSet", this.state.gameSet);
       this._notify("all", this.state);
       // Update the gameset in the store
@@ -461,10 +475,17 @@ class GameState {
       title: d.title,
       sides: [...d.sides],
     }));
-    this.state.gameSet = currentGameset.gameSet.map((d) => ({
-      dictionaryIndex: d.dictionaryIndex,
-      quantity: d.quantity,
-    }));
+    this.state.gameSet = currentGameset.gameSet.map((d) => {
+      const entry = {
+        dictionaryIndex: d.dictionaryIndex,
+        quantity: d.quantity,
+      };
+      // Preserve color if provided
+      if (d.color) {
+        entry.color = d.color;
+      }
+      return entry;
+    });
     
     // Reset roll results when switching gamesets
     this.state.lastResult = [];

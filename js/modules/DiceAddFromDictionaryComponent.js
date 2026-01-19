@@ -277,15 +277,23 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
 
   _addDieToGameSet(dictionaryIndex) {
     const current = gameState.getState("gameSet");
-    const existing = current.find((d) => d.dictionaryIndex === dictionaryIndex);
-    if (existing) {
+    
+    // Look for an entry with the same dictionaryIndex that has no explicit color set
+    // (i.e., uses the default color)
+    const existingDefault = current.find(
+      (d) => d.dictionaryIndex === dictionaryIndex && !d.color
+    );
+    
+    if (existingDefault) {
+      // Merge with the default color entry by increasing quantity
       const updated = current.map((d) =>
-        d.dictionaryIndex === dictionaryIndex
+        d.dictionaryIndex === dictionaryIndex && !d.color
           ? { ...d, quantity: d.quantity + 1 }
           : d
       );
       gameState.setGameSet(updated);
     } else {
+      // Create a new entry (either because no entry exists, or all existing entries have colors)
       const updated = [...current, { dictionaryIndex, quantity: 1 }];
       gameState.setGameSet(updated);
     }

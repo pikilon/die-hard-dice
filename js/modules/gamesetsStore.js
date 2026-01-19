@@ -15,7 +15,7 @@ const SYSTEM_GAMESETS = [
     id: `${SYSTEM_GAMESET_PREFIX}settlers`,
     title: "Settlers of Catan",
     customDice: [], // 2d6 only (from DEFAULT_DICE)
-    gameSet: [{ dictionaryIndex: 2, quantity: 2 }],
+    gameSet: [{ dictionaryIndex: 2, quantity: 2, color: "#ff0000" }],
     isSystem: true,
   },
   {
@@ -179,10 +179,17 @@ class GamesetsStore {
       title: String(title || "New Gameset").trim(),
       customDice: finalCustomDice,
       gameSet: gameSet
-        ? gameSet.map((d) => ({
-            dictionaryIndex: d.dictionaryIndex,
-            quantity: d.quantity,
-          }))
+        ? gameSet.map((d) => {
+            const entry = {
+              dictionaryIndex: d.dictionaryIndex,
+              quantity: d.quantity,
+            };
+            // Preserve color if provided
+            if (d.color && typeof d.color === 'string' && /^#[0-9a-f]{6}$/i.test(d.color)) {
+              entry.color = d.color.toLowerCase();
+            }
+            return entry;
+          })
         : [],
       isSystem: false,
     };
@@ -268,10 +275,17 @@ class GamesetsStore {
       gameset.customDice = this._extractCustomDice(updates.diceDictionary);
     }
     if (updates.gameSet !== undefined) {
-      gameset.gameSet = updates.gameSet.map((d) => ({
-        dictionaryIndex: d.dictionaryIndex,
-        quantity: d.quantity,
-      }));
+      gameset.gameSet = updates.gameSet.map((d) => {
+        const entry = {
+          dictionaryIndex: d.dictionaryIndex,
+          quantity: d.quantity,
+        };
+        // Preserve color if provided
+        if (d.color && typeof d.color === 'string' && /^#[0-9a-f]{6}$/i.test(d.color)) {
+          entry.color = d.color.toLowerCase();
+        }
+        return entry;
+      });
     }
 
     this._saveToStorage();
@@ -329,10 +343,17 @@ class GamesetsStore {
               }))
             : [],
           gameSet: Array.isArray(gs.gameSet)
-            ? gs.gameSet.map((d) => ({
-                dictionaryIndex: d.dictionaryIndex,
-                quantity: d.quantity,
-              }))
+            ? gs.gameSet.map((d) => {
+                const entry = {
+                  dictionaryIndex: d.dictionaryIndex,
+                  quantity: d.quantity,
+                };
+                // Preserve color if provided and valid
+                if (d.color && typeof d.color === 'string' && /^#[0-9a-f]{6}$/i.test(d.color)) {
+                  entry.color = d.color.toLowerCase();
+                }
+                return entry;
+              })
             : [],
           isSystem: false,
         }));
