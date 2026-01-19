@@ -132,8 +132,8 @@ export const standart_d20_dice_face_labels = [
  * @param {number} [startFrom=1] - Starting number (default 1, use 0 for d10).
  * @returns {Array<string>} Array of face labels.
  */
-export function generateDefaultLabels(n, startFrom = 1) {
-  const labels = [" "];
+export function generateDefaultLabels(n, startFrom = 1, leadingSpaces = 1) {
+  const labels = Array(leadingSpaces).fill(" ");
   for (let i = 0; i < n; i++) {
     labels.push(String(startFrom + i));
   }
@@ -276,19 +276,25 @@ function createMaterialsForDiceType(type, sides, color) {
     case 'd4':
       return createD4Materials(scale / 2, 1.5, d4Labels, bgColor);
     case 'd6':
-      const d6Labels = sides ? sidesToFaceLabels(sides) : generateDefaultLabels(6);
+      // d6 faces use materialIndex values 1..6 which become 2..7 in geometry
+      // so we need two leading spaces in the label array
+      const d6Labels = sides ? sidesToFaceLabels(sides) : generateDefaultLabels(6, 1, 2);
       return create_dice_materials(d6Labels, scale / 2, 1.2, bgColor);
     case 'd8':
-      const d8Labels = sides ? sidesToFaceLabels(sides) : generateDefaultLabels(8);
+      // d8 also requires two leading spaces for correct material indices
+      const d8Labels = sides ? sidesToFaceLabels(sides) : generateDefaultLabels(8, 1, 2);
       return create_dice_materials(d8Labels, scale / 2, 1.2, bgColor);
     case 'd10':
-      const d10Labels = sides ? sidesToFaceLabels(sides, 1) : generateDefaultLabels(10, 0);
+      // d10 uses materialIndex 0..9 in geometry, so only one leading space
+      const d10Labels = sides ? sidesToFaceLabels(sides, 1) : generateDefaultLabels(10, 0, 1);
       return create_dice_materials(d10Labels, scale / 2, 1.0, bgColor);
     case 'd12':
-      const d12Labels = sides ? sidesToFaceLabels(sides) : generateDefaultLabels(12);
+      // d12 requires two leading spaces
+      const d12Labels = sides ? sidesToFaceLabels(sides) : generateDefaultLabels(12, 1, 2);
       return create_dice_materials(d12Labels, scale / 2, 1.0, bgColor);
     case 'd20':
-      const d20Labels = sides ? sidesToFaceLabels(sides) : standart_d20_dice_face_labels;
+      // d20 requires two leading spaces; for default use generated labels
+      const d20Labels = sides ? sidesToFaceLabels(sides) : generateDefaultLabels(20, 1, 2);
       return create_dice_materials(d20Labels, scale / 2, 1.0, bgColor);
     default:
       return [];
