@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { createTextTexture } from './modules/createTextTexture.js';
 import { getContrastTextColor } from './modules/notationUtils.js';
+import { LOG_THROWING, addThrowLog, clearThrowLogs, logThrowData } from './modules/diceThrowLogger.js';
 
 // ============================================================================
 // DICE MODULE IMPORTS
@@ -38,6 +39,7 @@ const dice_face_range = diceFaceRange;
 const dice_mass = diceMass;
 const dice_inertia = diceInertia;
 const BARRIERS_VISIBLE = false;
+
 export { known_types, dice_face_range, dice_mass, dice_inertia };
 export { d4Labels as d4_labels };
 
@@ -915,6 +917,14 @@ function make_random_vector(vector) {
  * @returns {Array} Array of vector objects for each die.
  */
 DiceBox.prototype.generate_vectors = function (notation, vector, boost) {
+  // Log the dice info passed
+  addThrowLog('DICE_INFO_PASSED', {
+    notation: notation,
+    vector: vector,
+    boost: boost,
+    totalDice: notation.set.length
+  });
+
   const vectors = [];
   for (const i in notation.set) {
     const diceItem = notation.set[i];
@@ -982,6 +992,28 @@ DiceBox.prototype.create_dice = function (
       // Re-create with colored materials
       dice = this._createDiceWithColor(type, sides, color);
     }
+    
+    // Log 3D dice creation information
+    addThrowLog('3D_DICE_CREATION', {
+      type: type,
+      position: pos,
+      velocity: velocity,
+      angle: angle,
+      axis: axis,
+      sides: sides,
+      color: color,
+      geometry: dice.geometry ? {
+        type: dice.geometry.type,
+        vertices: dice.geometry.attributes ? dice.geometry.attributes.position.count : 'N/A',
+        faces: dice.geometry.faces ? dice.geometry.faces.length : 'N/A'
+      } : 'N/A',
+      materials: dice.material ? {
+        count: Array.isArray(dice.material) ? dice.material.length : 1,
+        firstMaterialType: Array.isArray(dice.material) ? dice.material[0].type : dice.material.type
+      } : 'N/A',
+      mass: dice_mass[type],
+      inertia: dice_inertia[type]
+    });
     
     dice.castShadow = true;
     dice.dice_type = type;
@@ -1219,6 +1251,57 @@ DiceBox.prototype.__animate = function (threadid) {
     this.renderer.render(this.scene, this.camera);
     this.last_time = this.last_time ? time : new Date().getTime();
     if (this.running == threadid && this.check_if_throw_finished()) {
+      // Log launch time stop and dice final info
+      const launchStopTime = new Date().getTime();
+      const finalDiceInfo = [];
+      for (let i = 0; i < this.dices.length; i++) {
+        const dice = this.dices[i];
+        if (dice && dice.body) {
+          finalDiceInfo.push({
+            index: i,
+            type: dice.dice_type,
+            sides: dice.dice_sides,
+            finalPosition: {
+              x: dice.body.position.x,
+              y: dice.body.position.y,
+              z: dice.body.position.z
+            },
+            finalVelocity: {
+              x: dice.body.velocity.x,
+              y: dice.body.velocity.y,
+              z: dice.body.velocity.z
+            },
+            finalAngularVelocity: {
+              x: dice.body.angularVelocity.x,
+              y: dice.body.angularVelocity.y,
+              z: dice.body.angularVelocity.z
+            },
+            finalQuaternion: {
+              x: dice.body.quaternion.x,
+              y: dice.body.quaternion.y,
+              z: dice.body.quaternion.z,
+              w: dice.body.quaternion.w
+            },
+            value: get_dice_value(dice)
+          });
+        }
+      }
+      
+      addThrowLog('LAUNCH_TIME_STOP', {
+        stopTime: launchStopTime,
+        totalIterations: this.iteration,
+        finalDiceInfo: finalDiceInfo
+      });
+      
+      // Clear position tracking interval
+      if (this.positionTrackingInterval) {
+        clearInterval(this.positionTrackingInterval);
+        this.positionTrackingInterval = null;
+      }
+      
+      // Log all data when throw is complete
+      logThrowData();
+      
       this.running = false;
       if (this.callback) this.callback.call(this, get_dice_values(this.dices));
     }
@@ -1244,6 +1327,13 @@ DiceBox.prototype.__animate = function (threadid) {
    */
 DiceBox.prototype.clear = function () {
     this.running = false;
+    
+    // Clear position tracking interval if active
+    if (this.positionTrackingInterval) {
+      clearInterval(this.positionTrackingInterval);
+      this.positionTrackingInterval = null;
+    }
+    
     var dice;
     while ((dice = this.dices.pop())) {
       this.scene.remove(dice);
@@ -1314,6 +1404,14 @@ function shift_dice_faces(dice, value, res) {
    * @param {Function} [callback] - Callback function called with results when roll completes.
    */
 DiceBox.prototype.roll = function (vectors, values, callback) {
+    // Log launch time start
+    const launchStartTime = new Date().getTime();
+    addThrowLog('LAUNCH_TIME_START', {
+      startTime: launchStartTime,
+      vectorsCount: vectors.length,
+      hasPredeterminedValues: values != undefined && values.length
+    });
+
     this.prepare_dices_for_roll(vectors);
     if (values != undefined && values.length) {
       this.use_adapvite_timestep = false;
@@ -1324,6 +1422,49 @@ DiceBox.prototype.roll = function (vectors, values, callback) {
     this.callback = callback;
     this.running = new Date().getTime();
     this.last_time = 0;
+    
+    // Set up position tracking every 0.5 seconds
+    if (LOG_THROWING) {
+      this.positionTrackingInterval = setInterval(() => {
+        const positions = [];
+        for (let i = 0; i < this.dices.length; i++) {
+          const dice = this.dices[i];
+          if (dice && dice.body) {
+            positions.push({
+              index: i,
+              type: dice.dice_type,
+              position: {
+                x: dice.body.position.x,
+                y: dice.body.position.y,
+                z: dice.body.position.z
+              },
+              velocity: {
+                x: dice.body.velocity.x,
+                y: dice.body.velocity.y,
+                z: dice.body.velocity.z
+              },
+              angularVelocity: {
+                x: dice.body.angularVelocity.x,
+                y: dice.body.angularVelocity.y,
+                z: dice.body.angularVelocity.z
+              },
+              quaternion: {
+                x: dice.body.quaternion.x,
+                y: dice.body.quaternion.y,
+                z: dice.body.quaternion.z,
+                w: dice.body.quaternion.w
+              }
+            });
+          }
+        }
+        addThrowLog('DICE_POSITIONS', {
+          timestamp: new Date().getTime(),
+          positions: positions,
+          iteration: this.iteration
+        });
+      }, 500); // Every 0.5 seconds
+    }
+    
     this.__animate(this.running);
   };
 
@@ -1455,6 +1596,25 @@ DiceBox.prototype.draw_selector = function (diceDictionary, isStandardDiceFn) {
     after_roll
   ) {
     const uat = box.use_adapvite_timestep;
+    
+    // Clear logs at the beginning of each throw
+    clearThrowLogs();
+    
+    // Log cannon position, direction, speed, and launch time
+    const launchTime = new Date().getTime();
+    addThrowLog('CANNON_LAUNCH_INFO', {
+      position: { x: 0, y: 0, z: 0 }, // Cannon position (origin)
+      direction: {
+        x: vector.x / dist,
+        y: vector.y / dist,
+        z: 0
+      },
+      speed: boost,
+      distance: dist,
+      launchTime: launchTime,
+      useAdaptiveTimestep: uat
+    });
+    
     function roll(request_results) {
       if (after_roll) {
         box.clear();
