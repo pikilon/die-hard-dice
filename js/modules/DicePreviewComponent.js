@@ -18,6 +18,10 @@ function snapshotKey(type, sides, size) {
   return `${type}|${size}|${s}`;
 }
 
+function isMobileDevice() {
+  return window.innerWidth <= 768;
+}
+
 function getSharedPreview(size) {
   if (!previewShared) {
     const canvas = document.createElement("canvas");
@@ -32,7 +36,8 @@ function getSharedPreview(size) {
     renderer.setPixelRatio(window.devicePixelRatio || 1);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(24, 1, 1, 600);
-    camera.position.set(0, 0, 230);
+    const cameraZ = isMobileDevice() ? 400 : 150;
+    camera.position.set(0, 0, cameraZ);
 
     // Lights once, reused
     const ambient = new THREE.AmbientLight(0xffffff, 0.9);

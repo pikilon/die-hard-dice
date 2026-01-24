@@ -65,7 +65,7 @@ const css = /*css*/ `
       border-radius: 12px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
       background: #fff;
-      width: 90%;
+      width: anchor-size(width);
       box-sizing: border-box;
       
     }
