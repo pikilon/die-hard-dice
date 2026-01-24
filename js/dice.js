@@ -1237,7 +1237,10 @@ DiceBox.prototype.__animate = function (threadid) {
         this.world.step(frame_rate);
         time_diff -= frame_rate;
       }
-      this.world.step(time_diff);
+      // Skip world.step if time_diff is 0 or too small - cannon-es corrupts bodies with step(0)
+      if (time_diff > 0.0001) {
+        this.world.step(time_diff);
+      }
     } else {
       this.world.step(frame_rate);
     }
