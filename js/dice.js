@@ -37,7 +37,7 @@ const known_types = knownTypes;
 const dice_face_range = diceFaceRange;
 const dice_mass = diceMass;
 const dice_inertia = diceInertia;
-
+const BARRIERS_VISIBLE = false;
 export { known_types, dice_face_range, dice_mass, dice_inertia };
 export { d4Labels as d4_labels };
 
@@ -687,6 +687,56 @@ function createBarrier(world, barrier_material, axis, angle, position) {
 }
 
 /**
+ * Creates visual debug barriers (colored planes) to visualize barrier positions.
+ * @param {THREE.Scene} scene - The Three.js scene.
+ * @param {number} width - Half-width of the dice box.
+ * @param {number} height - Half-height of the dice box.
+ * @returns {Array<THREE.Mesh>} Array of debug barrier meshes.
+ */
+function createDebugBarriers(scene, width, height) {
+  const stripWidth = 20; // Width of colored strip
+  const debugBarriers = [];
+  
+  // Top barrier - Red (horizontal strip at top edge)
+  const topGeom = new THREE.PlaneGeometry(width * 2, stripWidth);
+  const topMat = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide, depthTest: false });
+  const topMesh = new THREE.Mesh(topGeom, topMat);
+  topMesh.position.set(0, height - stripWidth / 2, 1);
+  topMesh.renderOrder = 1;
+  scene.add(topMesh);
+  debugBarriers.push(topMesh);
+  
+  // Bottom barrier - Blue (horizontal strip at bottom edge)
+  const bottomGeom = new THREE.PlaneGeometry(width * 2, stripWidth);
+  const bottomMat = new THREE.MeshBasicMaterial({ color: 0x0000ff, side: THREE.DoubleSide, depthTest: false });
+  const bottomMesh = new THREE.Mesh(bottomGeom, bottomMat);
+  bottomMesh.position.set(0, -height + stripWidth / 2, 1);
+  bottomMesh.renderOrder = 1;
+  scene.add(bottomMesh);
+  debugBarriers.push(bottomMesh);
+  
+  // Right barrier - Green (vertical strip at right edge)
+  const rightGeom = new THREE.PlaneGeometry(stripWidth, height * 2);
+  const rightMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide, depthTest: false });
+  const rightMesh = new THREE.Mesh(rightGeom, rightMat);
+  rightMesh.position.set(width - stripWidth / 2, 0, 1);
+  rightMesh.renderOrder = 2;
+  scene.add(rightMesh);
+  debugBarriers.push(rightMesh);
+  
+  // Left barrier - Yellow (vertical strip at left edge)
+  const leftGeom = new THREE.PlaneGeometry(stripWidth, height * 2);
+  const leftMat = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide, depthTest: false });
+  const leftMesh = new THREE.Mesh(leftGeom, leftMat);
+  leftMesh.position.set(-width + stripWidth / 2, 0, 1);
+  leftMesh.renderOrder = 2;
+  scene.add(leftMesh);
+  debugBarriers.push(leftMesh);
+  
+  return debugBarriers;
+}
+
+/**
  * Creates all four boundary walls (barriers) around the dice rolling area.
  * @param {CANNON.World} world - The physics world.
  * @param {CANNON.Material} barrier_material - The barrier body material.
@@ -698,25 +748,25 @@ function createAllBarriers(world, barrier_material, width, height) {
   createBarrier(
     world, barrier_material,
     new CANNON.Vec3(1, 0, 0), Math.PI / 2,
-    { x: 0, y: height * 0.85, z: 0 }
+    { x: 0, y: height, z: 0 }
   );
   // Bottom barrier
   createBarrier(
     world, barrier_material,
     new CANNON.Vec3(1, 0, 0), -Math.PI / 2,
-    { x: 0, y: -height * 0.85, z: 0 }
+    { x: 0, y: -height, z: 0 }
   );
   // Right barrier
   createBarrier(
     world, barrier_material,
     new CANNON.Vec3(0, 1, 0), -Math.PI / 2,
-    { x: width * 0.85, y: 0, z: 0 }
+    { x: width, y: 0, z: 0 }
   );
   // Left barrier
   createBarrier(
     world, barrier_material,
     new CANNON.Vec3(0, 1, 0), Math.PI / 2,
-    { x: -width * 0.85, y: 0, z: 0 }
+    { x: -width, y: 0, z: 0 }
   );
 }
 
@@ -761,7 +811,18 @@ export function DiceBox(container, dimentions) {
 
   // Create ground and barriers
   createGround(this.world, materials.desk);
-  createAllBarriers(this.world, materials.barrier, this.w, this.h);
+  
+  // Calculate visible area based on camera frustum
+  const fovRad = (20 * Math.PI) / 180; // 20 degrees FOV
+  const visibleHalfHeight = Math.tan(fovRad / 2) * this.wh;
+  const visibleHalfWidth = visibleHalfHeight * (this.cw / this.ch);
+  
+  createAllBarriers(this.world, materials.barrier, visibleHalfWidth, visibleHalfHeight);
+  
+  // DEBUG: Visual barriers (set BARRIERS_VISIBLE = true to enable)
+  if (BARRIERS_VISIBLE) {
+    createDebugBarriers(this.scene, visibleHalfWidth, visibleHalfHeight);
+  }
 
   // Initialize state
   this.last_time = 0;
