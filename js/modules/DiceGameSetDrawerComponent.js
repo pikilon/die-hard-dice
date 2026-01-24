@@ -116,10 +116,6 @@ class DiceGameSetDrawerComponent extends HTMLElement {
           display: none;
         }
 
-        .mobile-header-selector {
-          display: none;
-        }
-
         .desktop-selector {
           display: block;
         }
