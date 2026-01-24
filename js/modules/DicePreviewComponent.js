@@ -70,10 +70,6 @@ function generateSnapshot(type, sides, size) {
   const scaleFactor = size / 150;
   diceMesh.scale.setScalar(scaleFactor * 1.05);
 
-  // Pleasant angle
-  diceMesh.rotation.y = 0.6;
-  diceMesh.rotation.x = 0.35;
-
   scene.add(diceMesh);
   renderer.setClearColor(0x000000, 0);
   renderer.render(scene, camera);

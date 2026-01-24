@@ -108,12 +108,16 @@ export function createD2Materials(size, margin, sides, backgroundColor) {
     context.fillStyle = bgColor;
     context.fill();
     
-    // Draw text
+    // Draw text with 90° counterclockwise rotation
+    context.save();
+    context.translate(canvas.width / 2, canvas.height / 2);
+    context.rotate(-Math.PI / 2);
     context.font = `bold ${ts / 2}px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', Arial, sans-serif`;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillStyle = textColor;
-    context.fillText(text, canvas.width / 2, canvas.height / 2);
+    context.fillText(text, 0, 0);
+    context.restore();
     
     const texture = new THREE.Texture(canvas);
     texture.needsUpdate = true;
@@ -158,7 +162,11 @@ export function createD2(scale, sides) {
     materials = materialCache;
   }
   if (scale) currentScale = scale;
-  return new THREE.Mesh(geometryCache, materials);
+  const mesh = new THREE.Mesh(geometryCache, materials);
+  mesh.rotation.x = 0;
+  mesh.rotation.y = 0;
+  mesh.rotation.z = 0;
+  return mesh;
 }
 
 /** @type {Object} Coin configuration */
