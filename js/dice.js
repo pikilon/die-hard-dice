@@ -239,6 +239,21 @@ export const desk_color = 0xdfdfdf;
 /** @type {boolean} Whether to render shadows */
 export let use_shadows = true;
 
+/** @type {number} Multiplier for dice size on mobile devices */
+export const DICE_SIZE_MULTIPLIER_MOBILE = 3;
+
+/** @type {number} Multiplier for dice size on desktop devices */
+export const DICE_SIZE_MULTIPLIER_DESKTOP = 1;
+
+/** 
+ * Returns the appropriate dice size multiplier based on device type.
+ * @returns {number} The size multiplier (3 for mobile, 1 for desktop).
+ */
+export function getDiceSizeMultiplier() {
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  return isMobile ? DICE_SIZE_MULTIPLIER_MOBILE : DICE_SIZE_MULTIPLIER_DESKTOP;
+}
+
 /** @type {number} Scale factor for dice sizing */
 export let scale = 50;
 
@@ -775,7 +790,7 @@ DiceBox.prototype.reinit = function (container, dimentions) {
     this.h = this.ch;
   }
   this.aspect = Math.min(this.cw / this.w, this.ch / this.h);
-  scale = Math.sqrt(this.w * this.w + this.h * this.h) / 13;
+  scale = Math.sqrt(this.w * this.w + this.h * this.h) / 13 * getDiceSizeMultiplier();
 
   this.renderer.setSize(this.cw * 2, this.ch * 2);
 
