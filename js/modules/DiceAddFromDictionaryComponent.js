@@ -5,6 +5,7 @@ const css = /*css*/ `
 :host {
   display: block;
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    width: 100%;
 }
 
 
@@ -29,28 +30,53 @@ const css = /*css*/ `
 
     button {
       all: unset;
-      display: block;
+      display: flex;
+    justify-content: space-between;
+    align-items: center;
       width: 100%;
-      padding: 10px 12px;
+      padding: 6px 12px;
       cursor: pointer;
     }
+
+    .close-dropdown {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: space-between;
+      width: 100%;
+
+      & + .option-text {
+        display: none;
+      }
+      button & {
+        display: none;
+        & + .option-text {
+          display: block;
+        }
+      }
+
+    }
+
 
     &::picker(select) {
       appearance: base-select;
       border: 1px solid rgba(0, 0, 0, 0.18);
       border-radius: 12px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
-      padding: 3px 0;
       background: #fff;
-      min-width: 240px;
-
+      width: 90%;
+      box-sizing: border-box;
+      
     }
     option {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 8px 10px;
+      padding: 6px 10px;
       cursor: pointer;
+      min-width: 0;
+
 
       &:hover {
         background-color: rgba(0, 0, 0, 0.06);
@@ -59,38 +85,27 @@ const css = /*css*/ `
       &::checkmark {
         display: none;
       }
+      .avatar {
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.04);
+      }
+
+      .option-text {
+        min-width: 0;
+      }
+
+      .title {
+        font-weight: 600;
+      }
+
+      .subtitle {
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.6);
+      }
     }
 
   }
 
-  .selected-row {
-    display: grid;
-    grid-template-columns: 1fr 24px;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .custom-option {
-    display: grid;
-    grid-template-columns: var(--thumb-size) 1fr;
-    gap: 10px;
-    align-items: center;
-    min-height: calc(var(--thumb-size) + 6px);
-
-    .avatar {
-      border-radius: 8px;
-      background: rgba(0, 0, 0, 0.04);
-    }
-
-    .title {
-      font-weight: 600;
-    }
-
-    .subtitle {
-      font-size: 11px;
-      color: rgba(0, 0, 0, 0.6);
-    }
-  }
 
 `;
 
@@ -120,7 +135,7 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
         this.dictionary = dict || [];
         this._buildPreviews();
         this._renderOptions();
-      }
+      },
     );
   }
 
@@ -136,43 +151,41 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
       </style>
         <select id="diceSelect" class="select" aria-label="Add die to game" autocomplete="off">
           <button>
-            <div class="selected-row">
+
               <selectedcontent></selectedcontent>
               <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="currentColor" d="m7 10l5 5l5-5z"/>
               </svg>
-            </div>
+
           </button>
         </select>
         <!-- Templates for building options -->
         <template id="diceOptionTpl">
           <option value="__INDEX__">
-            <div class="custom-option">
-              <span class="avatar"><dice-preview size="64"></dice-preview></span>
-              <div>
-                <div class="title">__TITLE__</div>
-                <div class="subtitle">__SIDES__ sides</div>
-              </div>
+            <span class="avatar"><dice-preview size="64"></dice-preview></span>
+            <div class="option-text">
+              <div class="title">__TITLE__</div>
+              <div class="subtitle">__SIDES__ sides</div>
             </div>
           </option>
         </template>
         <template id="dicePlaceholderTpl">
           <option value="" selected>
-            <div class="custom-option">
-              <div>
-                <div class="title">Select a die to add</div>
-                <div class="subtitle"></div>
-              </div>
+          <div class="close-dropdown">
+            <span>Cancel</span>
+            <span>×</span>
+          </div>
+            <div class="option-text">
+              <div class="title">Select a die to add</div>
+              <div class="subtitle"></div>
             </div>
           </option>
         </template>
         <template id="diceCreateTpl">
           <option value="__CREATE__">
-            <div class="custom-option">
-              <div>
-                <div class="title">Create a new dice</div>
-                <div class="subtitle">Add custom sides</div>
-              </div>
+            <div class="option-text">
+              <div class="title">Create a new dice</div>
+              <div class="subtitle">Add custom sides</div>
             </div>
           </option>
         </template>
@@ -195,7 +208,7 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
       } catch (err) {
         console.warn(
           "DiceAddFromDictionaryComponent: preview generation failed",
-          err
+          err,
         );
       }
     });
@@ -277,19 +290,19 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
 
   _addDieToGameSet(dictionaryIndex) {
     const current = gameState.getState("gameSet");
-    
+
     // Look for an entry with the same dictionaryIndex that has no explicit color set
     // (i.e., uses the default color)
     const existingDefault = current.find(
-      (d) => d.dictionaryIndex === dictionaryIndex && !d.color
+      (d) => d.dictionaryIndex === dictionaryIndex && !d.color,
     );
-    
+
     if (existingDefault) {
       // Merge with the default color entry by increasing quantity
       const updated = current.map((d) =>
         d.dictionaryIndex === dictionaryIndex && !d.color
           ? { ...d, quantity: d.quantity + 1 }
-          : d
+          : d,
       );
       gameState.setGameSet(updated);
     } else {
@@ -302,7 +315,7 @@ class DiceAddFromDictionaryComponent extends HTMLElement {
 
 customElements.define(
   "dice-add-from-dictionary",
-  DiceAddFromDictionaryComponent
+  DiceAddFromDictionaryComponent,
 );
 
 export { DiceAddFromDictionaryComponent };
