@@ -68,6 +68,29 @@ form {
 .button.secondary { background: #e5e7eb; color: #111; }
 
 .add-side { margin-top: 8px; flex-shrink: 0; }
+
+@media (max-width: 768px) {
+  .dialog {
+    width: 95vw;
+    max-width: 400px;
+    max-height: 95vh;
+  }
+
+  form { padding: 1.5em; }
+
+  .header h2 { font-size: 20px; }
+
+  .label { font-size: 14px; }
+  .input { padding: 14px 16px; font-size: 16px; }
+
+  .side-input { padding: 14px 12px; font-size: 16px; }
+  .side-remove { height: 44px; width: 44px; font-size: 18px; }
+
+  .button { padding: 14px 20px; font-size: 16px; }
+
+  .sides { gap: 10px; }
+  .side-row { grid-template-columns: 1fr 44px; gap: 10px; }
+}
 `;
 
 class CreateCustomDiceDialogComponent extends HTMLElement {
@@ -101,7 +124,7 @@ class CreateCustomDiceDialogComponent extends HTMLElement {
   render() {
     this.shadowRoot.innerHTML = /*html*/ `
       <style>${css}</style>
-      <dialog class="dialog" id="dialog">
+      <dialog class="dialog" id="dialog" closedBy="any">
         <form id="diceForm" novalidate>
           <div class="header">
             <h2>Create Custom Dice</h2>

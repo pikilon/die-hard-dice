@@ -26,6 +26,7 @@ class GamesetSelectorComponent extends HTMLElement {
     const currentGameset = gamesetsStore.getCurrentGameset();
     const allGamesets = gamesetsStore.getAllGamesets();
     const isSystem = gamesetsStore.isSystemGameset(currentGameset.id);
+    const hideLabel = this.hasAttribute("hide-label");
 
     this.shadowRoot.innerHTML = /*html*/ `
       <style>
@@ -164,20 +165,10 @@ class GamesetSelectorComponent extends HTMLElement {
 
       <div class="container">
         <div class="select-row">
-          <label for="gameset-select">Gameset:</label>
+        
           <select id="gameset-select">
             ${this._renderOptions(allGamesets, currentGameset.id)}
           </select>
-        </div>
-        <div class="actions">
-          <button class="clone" id="clone-btn" title="Clone this gameset">
-            📋 Clone
-          </button>
-          <button class="remove" id="remove-btn" ${isSystem ? "disabled" : ""} title="${
-      isSystem ? "System gamesets cannot be removed" : "Remove this gameset"
-    }">
-            🗑️ Remove
-          </button>
         </div>
       </div>
     `;
@@ -237,7 +228,7 @@ class GamesetSelectorComponent extends HTMLElement {
       }
 
       const confirmed = confirm(
-        `Are you sure you want to remove "${currentGameset.title}"?`
+        `Are you sure you want to remove "${currentGameset.title}"?`,
       );
       if (confirmed) {
         gamesetsStore.removeGameset(currentGameset.id);

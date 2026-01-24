@@ -95,9 +95,10 @@ class DiceGameSetDrawerComponent extends HTMLElement {
 
         .cards {
           padding: 10px;
-          /* Allow stylable select popup to escape while still scrolling */
-          overflow: visible;
-          max-height: calc(100dvh - 70px);
+          overflow-y: auto;
+          overflow-x: hidden;
+          flex: 1;
+          min-height: 0;
           display: flex;
           flex-direction: column;
           gap: 10px;
@@ -111,11 +112,113 @@ class DiceGameSetDrawerComponent extends HTMLElement {
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
+        .close-btn {
+          display: none;
+        }
+
+        .mobile-header-selector {
+          display: none;
+        }
+
+        .desktop-selector {
+          display: block;
+        }
+
+        .add-dice-container {
+          flex-shrink: 0;
+          padding: 10px;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        @media (max-width: 768px) {
+          .add-dice-container {
+            padding: 12px;
+          }
+          .toggle {
+            width: 48px;
+            height: 48px;
+            font-size: 24px;
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            right: auto;
+          }
+
+          .drawer.open ~ .toggle {
+            display: none;
+          }
+
+          .drawer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100dvh;
+            max-height: 100dvh;
+            border-radius: 0;
+          }
+
+          .drawer.open {
+            width: 100vw;
+            max-width: 100vw;
+          }
+
+          .close-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+          }
+
+          .mobile-header-selector {
+            display: block;
+            flex: 1;
+            margin-right: 12px;
+          }
+
+          .desktop-selector {
+            display: none;
+          }
+
+          .close-btn button {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.05);
+            color: #333;
+            font-size: 24px;
+            cursor: pointer;
+            flex-shrink: 0;
+          }
+
+          .cards {
+            padding: 12px;
+            gap: 12px;
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+          }
+
+          .empty {
+            font-size: 16px;
+            padding: 18px;
+          }
+        }
+
         /* add-card styles are encapsulated within the component */
       </style>
       <div class="drawer" id="drawer">
-        <gameset-selector></gameset-selector>
+        <div class="close-btn">
+          <div class="mobile-header-selector">
+            <gameset-selector hide-label></gameset-selector>
+          </div>
+          <button id="closeBtn" aria-label="Close drawer">×</button>
+        </div>
+        <gameset-selector class="desktop-selector"></gameset-selector>
         <dice-gameset-header></dice-gameset-header>
+        <div class="add-dice-container" id="addDiceContainer"></div>
         <div class="cards" id="cards"></div>
       </div>
       <button class="toggle" id="toggle" aria-label="Toggle game set drawer">☰</button>
@@ -141,21 +244,33 @@ class DiceGameSetDrawerComponent extends HTMLElement {
       applyState();
     });
 
+    const closeBtn = this.shadowRoot.getElementById("closeBtn");
+    closeBtn?.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      this.isOpen = false;
+      applyState();
+    });
+
     applyState();
   }
 
   _renderCards() {
     const cardsContainer = this.shadowRoot.getElementById("cards");
+    const addDiceContainer = this.shadowRoot.getElementById("addDiceContainer");
+    const mobileTitle = this.shadowRoot.getElementById("mobileTitle");
     if (!cardsContainer) return;
 
     cardsContainer.innerHTML = "";
 
     const state = gameState.getState();
-    const { gameSet, diceDictionary } = state;
+    const { gameSet, diceDictionary, title } = state;
 
-    // Add component for selecting and adding dice from dictionary
-    const addComponent = document.createElement("dice-add-from-dictionary");
-    cardsContainer.appendChild(addComponent);
+    
+    // Add component for selecting and adding dice from dictionary (outside scroll)
+    if (addDiceContainer && !addDiceContainer.querySelector("dice-add-from-dictionary")) {
+      const addComponent = document.createElement("dice-add-from-dictionary");
+      addDiceContainer.appendChild(addComponent);
+    }
 
     const sortedSet = [...gameSet].map((entry, index) => ({ ...entry, _index: index })).sort(
       (a, b) => a.dictionaryIndex - b.dictionaryIndex

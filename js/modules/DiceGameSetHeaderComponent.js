@@ -1,4 +1,5 @@
 import { gameState } from "./gameState.js";
+import { gamesetsStore } from "./gamesetsStore.js";
 
 /**
  * Header for the game set drawer.
@@ -42,7 +43,6 @@ class DiceGameSetHeaderComponent extends HTMLElement {
 
         .header {
           padding: 12px 14px;
-          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
           color: #333;
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
           letter-spacing: 0.3px;
@@ -92,6 +92,59 @@ class DiceGameSetHeaderComponent extends HTMLElement {
           white-space: nowrap;
         }
 
+        .actions {
+          display: flex;
+          gap: 6px;
+          padding: 0 14px 12px 14px;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .actions button {
+          flex: 1;
+          padding: 7px 12px;
+          border: 1px solid rgba(0, 0, 0, 0.2);
+          border-radius: 6px;
+          background: white;
+          color: rgba(0, 0, 0, 0.8);
+          font-size: 13px;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          font-weight: 500;
+        }
+
+        .actions button:hover {
+          background: rgba(0, 0, 0, 0.05);
+          border-color: rgba(0, 0, 0, 0.3);
+        }
+
+        .actions button:active {
+          transform: scale(0.98);
+        }
+
+        .actions button:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        .actions button.clone {
+          color: #0066cc;
+          border-color: #0066cc;
+        }
+
+        .actions button.clone:hover:not(:disabled) {
+          background: rgba(0, 102, 204, 0.1);
+        }
+
+        .actions button.remove {
+          color: #d32f2f;
+          border-color: #d32f2f;
+        }
+
+        .actions button.remove:hover:not(:disabled) {
+          background: rgba(211, 47, 47, 0.1);
+        }
+
         .sr-only {
           position: absolute;
           width: 1px;
@@ -119,6 +172,10 @@ class DiceGameSetHeaderComponent extends HTMLElement {
         </div>
         <span id="count" class="count">0 dice</span>
       </header>
+      <div class="actions">
+        <button class="clone" id="clone-btn" title="Clone this gameset">📋 Clone</button>
+        <button class="remove" id="remove-btn" title="Remove this gameset">🗑️ Remove</button>
+      </div>
     `;
   }
 
@@ -141,6 +198,40 @@ class DiceGameSetHeaderComponent extends HTMLElement {
     input.addEventListener("blur", () => {
       this._commitTitle();
     });
+
+    // Clone/Remove buttons
+    const cloneBtn = this.shadowRoot.getElementById("clone-btn");
+    const removeBtn = this.shadowRoot.getElementById("remove-btn");
+
+    cloneBtn?.addEventListener("click", () => {
+      const currentGameset = gamesetsStore.getCurrentGameset();
+      const newId = gamesetsStore.cloneGameset(currentGameset.id);
+      if (newId) {
+        gamesetsStore.switchGameset(newId);
+      }
+    });
+
+    removeBtn?.addEventListener("click", () => {
+      const currentGameset = gamesetsStore.getCurrentGameset();
+      if (gamesetsStore.isSystemGameset(currentGameset.id)) {
+        return;
+      }
+      const confirmed = confirm(`Are you sure you want to remove "${currentGameset.title}"?`);
+      if (confirmed) {
+        gamesetsStore.removeGameset(currentGameset.id);
+      }
+    });
+
+    this._updateRemoveButton();
+    gamesetsStore.subscribe(() => this._updateRemoveButton());
+  }
+
+  _updateRemoveButton() {
+    const removeBtn = this.shadowRoot?.getElementById("remove-btn");
+    if (!removeBtn) return;
+    const currentGameset = gamesetsStore.getCurrentGameset();
+    const isSystem = gamesetsStore.isSystemGameset(currentGameset.id);
+    removeBtn.disabled = isSystem;
   }
 
   _commitTitle() {

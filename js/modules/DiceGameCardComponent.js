@@ -71,7 +71,7 @@ class DiceGameCardComponent extends HTMLElement {
 
         .card {
           display: grid;
-          grid-template-columns: 96px 1fr;
+          grid-template-columns: 80px 1fr 50px;
           gap: 10px;
           align-items: center;
           padding: 10px;
@@ -135,17 +135,32 @@ class DiceGameCardComponent extends HTMLElement {
           margin: 0;
         }
 
+        .color-column {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          height: 100%;
+        }
+
         .color-picker {
-          width: 36px;
-          height: 36px;
+          width: 44px;
+          height: 44px;
           border-radius: 8px;
           border: 2px solid rgba(0, 0, 0, 0.1);
           cursor: pointer;
           padding: 2px;
+          flex-shrink: 0;
         }
 
         .color-picker:hover {
           border-color: rgba(0, 0, 0, 0.3);
+        }
+
+        :host {
+          display: block;
+          flex-shrink: 0;
         }
 
         .delete-btn {
@@ -185,8 +200,10 @@ class DiceGameCardComponent extends HTMLElement {
             <button id="decrease" aria-label="Decrease quantity">-</button>
             <div class="quantity" id="quantity">0</div>
             <button id="increase" aria-label="Increase quantity">+</button>
-            <input type="color" id="colorPicker" class="color-picker" aria-label="Change dice color" title="Change dice color">
           </div>
+        </div>
+        <div class="color-column">
+          <input type="color" id="colorPicker" class="color-picker" aria-label="Change dice color" title="Change dice color">
         </div>
       </div>
     `;

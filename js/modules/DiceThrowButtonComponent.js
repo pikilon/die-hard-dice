@@ -62,6 +62,15 @@ class DiceThrowButtonComponent extends HTMLElement {
           }
         }
 
+        @media (max-width: 768px) {
+          button {
+            font-size: 18pt;
+            padding: 16px 32px;
+            border-radius: 8px;
+            min-width: 160px;
+          }
+        }
+
       </style>
 
 
