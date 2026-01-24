@@ -123,15 +123,17 @@ class DiceThrowerComponent extends HTMLElement {
       this.box.start_throw(notation_getter, before_roll, after_roll);
     });
 
-    // Verificar parámetros URL para auto-lanzar
-    const params = Object.fromEntries(new URLSearchParams(window.location.search));
+    // Auto-lanzar cuando se carga el juego
+    setTimeout(() => {
+      this.box.start_throw(notation_getter, before_roll, after_roll);
+    }, 500);
 
-    if (params.roll) {
-      // Auto-lanzar
-      setTimeout(() => {
+    // Lanzar automáticamente cuando cambia el gameSet
+    gameState.subscribe('gameSet', () => {
+      if (!this.box.rolling) {
         this.box.start_throw(notation_getter, before_roll, after_roll);
-      }, 500);
-    }
+      }
+    });
   }
 }
 
