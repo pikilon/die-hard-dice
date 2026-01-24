@@ -14,7 +14,7 @@ class DiceGameSetDrawerComponent extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this.isOpen = true;
+    this.isOpen = false;
     this.unsubscribeGameSet = null;
     this.unsubscribeDictionary = null;
   }
