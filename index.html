@@ -6,11 +6,17 @@
       name="keywords"
       content="DnD, dangeon and dragons, roleplay, dice, roller, 3D, RPG, wargame" />
     <meta name="description" content="Online 3D dice roller" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="apple-mobile-web-app-capable" content="true" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent" />
     <title>teal 3d dice roller</title>
 
+    <link rel="icon" href="./iconx/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./iconx/apple-touch-icon.png" />
     <link rel="stylesheet" type="text/css" href="./css/main.css" />
     <link rel="stylesheet" type="text/css" href="./css/dice.css" />
     <link rel="manifest" href="./manifest.json" />
@@ -45,14 +51,17 @@
       {
         "imports": {
           "three": "https://cdn.jsdelivr.net/npm/three@0.124.0/build/three.module.js",
-          "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+          "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js",
+          "templates": "./js/string-templates.js"
         }
       }
     </script>
     <script type="module" src="./js/main.js"></script>
     <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed:', err));
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker
+          .register("./sw.js")
+          .catch((err) => console.log("SW registration failed:", err));
       }
     </script>
   </body>

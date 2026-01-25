@@ -14,7 +14,7 @@ class DiceGameSetDrawerComponent extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this.isOpen = false;
+    this.isOpen = true;
     this.unsubscribeGameSet = null;
     this.unsubscribeDictionary = null;
   }
@@ -261,16 +261,18 @@ class DiceGameSetDrawerComponent extends HTMLElement {
     const state = gameState.getState();
     const { gameSet, diceDictionary, title } = state;
 
-    
     // Add component for selecting and adding dice from dictionary (outside scroll)
-    if (addDiceContainer && !addDiceContainer.querySelector("dice-add-from-dictionary")) {
+    if (
+      addDiceContainer &&
+      !addDiceContainer.querySelector("dice-add-from-dictionary")
+    ) {
       const addComponent = document.createElement("dice-add-from-dictionary");
       addDiceContainer.appendChild(addComponent);
     }
 
-    const sortedSet = [...gameSet].map((entry, index) => ({ ...entry, _index: index })).sort(
-      (a, b) => a.dictionaryIndex - b.dictionaryIndex
-    );
+    const sortedSet = [...gameSet]
+      .map((entry, index) => ({ ...entry, _index: index }))
+      .sort((a, b) => a.dictionaryIndex - b.dictionaryIndex);
 
     sortedSet.forEach((entry) => {
       const diceDef = diceDictionary[entry.dictionaryIndex];

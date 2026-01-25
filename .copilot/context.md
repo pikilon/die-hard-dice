@@ -26,7 +26,9 @@ This file orients agents to the Die Hard Dice app so they can answer precisely.
 - Sums ignore non-numeric faces; calculated in `setLastResult`.
 - Notation parsing uses `notationToGameSet`; serialization uses `gameSetToNotation`.
 - 3D view currently renders numeric faces only; custom faces are logic-only.
-- When adding web components use `/*html*/` and `/*css*/` for syntax highlighting.
+- When adding web components use `html` and `css` for syntax highlighting. Import using `import { html, css } from "templates"` (it is included in the import map in index.html).
+- avoid ternaries inside html templates for readability.
+- nest css rules for web components for scoping.
 
 ## How to run
 

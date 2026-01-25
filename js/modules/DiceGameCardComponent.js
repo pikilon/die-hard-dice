@@ -1,6 +1,7 @@
-import { gameState } from './gameState.js';
-import { isCustomDiceIndex } from './notationUtils.js';
-import './DicePreviewComponent.js';
+import { gameState } from "./gameState.js";
+import { isCustomDiceIndex } from "./notationUtils.js";
+import "./DicePreviewComponent.js";
+import { html } from "templates";
 
 /**
  * Card to visualize and edit a single dice entry from the game set.
@@ -9,12 +10,12 @@ import './DicePreviewComponent.js';
  */
 class DiceGameCardComponent extends HTMLElement {
   static get observedAttributes() {
-    return ['dictionary-index', 'gameset-index'];
+    return ["dictionary-index", "gameset-index"];
   }
 
   constructor() {
     super();
-    this.attachShadow({ mode: 'open' });
+    this.attachShadow({ mode: "open" });
     this.dictionaryIndex = null;
     this.gamesetIndex = null;
     this.unsubscribeGameSet = null;
@@ -22,16 +23,18 @@ class DiceGameCardComponent extends HTMLElement {
   }
 
   connectedCallback() {
-    this.dictionaryIndex = this._parseIndex(this.getAttribute('dictionary-index'));
-    this.gamesetIndex = this._parseIndex(this.getAttribute('gameset-index'));
+    this.dictionaryIndex = this._parseIndex(
+      this.getAttribute("dictionary-index"),
+    );
+    this.gamesetIndex = this._parseIndex(this.getAttribute("gameset-index"));
     this.render();
     this._syncFromState();
 
-    this.unsubscribeGameSet = gameState.subscribe('gameSet', () => {
+    this.unsubscribeGameSet = gameState.subscribe("gameSet", () => {
       this._syncFromState();
     });
 
-    this.unsubscribeDictionary = gameState.subscribe('diceDictionary', () => {
+    this.unsubscribeDictionary = gameState.subscribe("diceDictionary", () => {
       this._syncFromState();
     });
   }
@@ -42,13 +45,13 @@ class DiceGameCardComponent extends HTMLElement {
   }
 
   attributeChangedCallback(name, _oldValue, newValue) {
-    if (name === 'dictionary-index') {
+    if (name === "dictionary-index") {
       const parsed = this._parseIndex(newValue);
       if (parsed !== this.dictionaryIndex) {
         this.dictionaryIndex = parsed;
         this._syncFromState();
       }
-    } else if (name === 'gameset-index') {
+    } else if (name === "gameset-index") {
       const parsed = this._parseIndex(newValue);
       if (parsed !== this.gamesetIndex) {
         this.gamesetIndex = parsed;
@@ -58,7 +61,7 @@ class DiceGameCardComponent extends HTMLElement {
   }
 
   render() {
-    this.shadowRoot.innerHTML = `
+    this.shadowRoot.innerHTML = html`
       <style>
         :host {
           background: rgba(255, 255, 255, 0.95);
@@ -70,9 +73,8 @@ class DiceGameCardComponent extends HTMLElement {
         }
 
         .card {
-          display: grid;
-          grid-template-columns: 80px 1fr 50px;
-          gap: 10px;
+          display: flex;
+          gap: 1em;
           align-items: center;
           padding: 10px;
         }
@@ -82,66 +84,41 @@ class DiceGameCardComponent extends HTMLElement {
           border-radius: 8px;
           padding: 6px;
         }
+        .info {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.3em;
+        }
 
         .title {
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
           font-size: 16px;
           font-weight: 600;
           letter-spacing: 0.5px;
-          margin-bottom: 6px;
         }
 
         .controls {
           display: flex;
-          align-items: center;
+          justify-content: space-between;
           gap: 8px;
         }
 
-        .quantity {
-          min-width: 42px;
+        .quantity-input {
+          width: 3lh;
           text-align: center;
           font-size: 18px;
           font-weight: 700;
-          padding: 6px 10px;
+          padding: 0;
           border-radius: 8px;
           background: rgba(0, 0, 0, 0.05);
           border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-
-        button {
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
-          border: 1px solid rgba(0, 0, 0, 0.2);
-          background: rgba(0, 0, 0, 0.05);
-          color: #333;
-          font-size: 18px;
-          cursor: pointer;
-          transition: transform 0.08s ease, background 0.12s ease, border 0.12s ease;
-        }
-
-        button:hover {
-          background: rgba(0, 0, 0, 0.1);
-          border-color: rgba(0, 0, 0, 0.3);
-        }
-
-        button:active {
-          transform: translateY(1px);
         }
 
         .subtitle {
           font-size: 12px;
           opacity: 0.6;
           margin: 0;
-        }
-
-        .color-column {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          height: 100%;
         }
 
         .color-picker {
@@ -152,15 +129,10 @@ class DiceGameCardComponent extends HTMLElement {
           cursor: pointer;
           padding: 2px;
           flex-shrink: 0;
-        }
 
-        .color-picker:hover {
-          border-color: rgba(0, 0, 0, 0.3);
-        }
-
-        :host {
-          display: block;
-          flex-shrink: 0;
+          &:hover {
+            border-color: rgba(0, 0, 0, 0.3);
+          }
         }
 
         .delete-btn {
@@ -173,64 +145,101 @@ class DiceGameCardComponent extends HTMLElement {
           color: #b32024;
           font-weight: 600;
           cursor: pointer;
-          transition: background 0.12s ease, border 0.12s ease;
+          transition:
+            background 0.12s ease,
+            border 0.12s ease;
+
+          &:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+          }
+
+          &:not(:disabled):hover {
+            background: rgba(255, 77, 79, 0.16);
+            border-color: rgba(255, 77, 79, 0.6);
+          }
         }
 
-        .delete-btn:disabled {
-          opacity: 0.35;
-          cursor: not-allowed;
+        .hidden {
+          display: none;
         }
-
-        .delete-btn:not(:disabled):hover {
-          background: rgba(255, 77, 79, 0.16);
-          border-color: rgba(255, 77, 79, 0.6);
-        }
-
-        .hidden { display: none; }
       </style>
       <div class="card">
         <div class="preview-wrapper">
           <dice-preview id="preview" size="90"></dice-preview>
         </div>
-        <div>
+        <div class="info">
           <div class="title" id="title"></div>
           <p class="subtitle" id="subtitle"></p>
-          <button id="delete" class="delete-btn hidden" aria-label="Delete custom dice">Delete</button>
           <div class="controls">
-            <button id="decrease" aria-label="Decrease quantity">-</button>
-            <div class="quantity" id="quantity">0</div>
-            <button id="increase" aria-label="Increase quantity">+</button>
+            <input
+              type="number"
+              id="quantity"
+              class="quantity-input"
+              step="1"
+              min="0"
+              max="10"
+              maxlength="2"
+              aria-label="Dice quantity" />
+            <input
+              type="color"
+              id="colorPicker"
+              class="color-picker"
+              aria-label="Change dice color"
+              title="Change dice color" />
           </div>
-        </div>
-        <div class="color-column">
-          <input type="color" id="colorPicker" class="color-picker" aria-label="Change dice color" title="Change dice color">
+          <div>
+            <button
+              id="delete"
+              class="delete-btn hidden"
+              aria-label="Delete custom dice">
+              Delete
+            </button>
+          </div>
         </div>
       </div>
     `;
 
-    const decreaseButton = this.shadowRoot.getElementById('decrease');
-    const inc = this.shadowRoot.getElementById('increase');
-    const del = this.shadowRoot.getElementById('delete');
-    const colorPicker = this.shadowRoot.getElementById('colorPicker');
-    decreaseButton?.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      const gameSetState = gameState.getState('gameSet') || [];
-      const [firstDice] = gameSetState
-      const onlyOneDieLeft = gameSetState && gameSetState.length <= 1 && firstDice.quantity <= 1;
-      if (onlyOneDieLeft) return;
+    const del = this.shadowRoot.getElementById("delete");
+    const colorPicker = this.shadowRoot.getElementById("colorPicker");
+    const quantityInput = this.shadowRoot.getElementById("quantity");
 
-      this._changeQuantity(-1);
+    quantityInput?.addEventListener("input", (ev) => {
+      const inputEl = ev.target;
+      const numeric = inputEl.value.replace(/\D+/g, "");
+      if (numeric === "") return;
+      const clamped = Math.min(10, parseInt(numeric, 10) || 0);
+      inputEl.value = String(clamped);
     });
-    inc?.addEventListener('click', (ev) => {
+
+    quantityInput?.addEventListener("change", (ev) => {
       ev.stopPropagation();
-      this._changeQuantity(1);
+      const clamped = Math.min(
+        10,
+        Math.max(0, parseInt(ev.target.value, 10) || 0),
+      );
+      ev.target.value = String(clamped);
+      const newQty = clamped;
+      const gameSetState = gameState.getState("gameSet") || [];
+      const [firstDice] = gameSetState;
+      const onlyOneDieLeft =
+        gameSetState && gameSetState.length <= 1 && firstDice.quantity <= 1;
+      if (onlyOneDieLeft && newQty === 0) return;
+
+      const delta = newQty - this._getQuantityFromState();
+      if (delta !== 0) {
+        this._changeQuantity(delta);
+      }
     });
-    del?.addEventListener('click', (ev) => {
+
+    del?.addEventListener("click", (ev) => {
       ev.stopPropagation();
-      const ok = window.confirm('If you delete this custom die, you will need to create it again to add it.');
+      const ok = window.confirm(
+        "If you delete this custom die, you will need to create it again to add it.",
+      );
       if (ok) this._confirmDelete();
     });
-    colorPicker?.addEventListener('change', (ev) => {
+    colorPicker?.addEventListener("change", (ev) => {
       ev.stopPropagation();
       this._changeColor(ev.target.value);
     });
@@ -242,30 +251,35 @@ class DiceGameCardComponent extends HTMLElement {
   }
 
   _getDiceDefinition() {
-    const dictionary = gameState.getState('diceDictionary');
-    if (this.dictionaryIndex == null || !dictionary[this.dictionaryIndex]) return null;
+    const dictionary = gameState.getState("diceDictionary");
+    if (this.dictionaryIndex == null || !dictionary[this.dictionaryIndex])
+      return null;
     return dictionary[this.dictionaryIndex];
   }
 
   _getQuantityFromState() {
-    const gameSet = gameState.getState('gameSet');
+    const gameSet = gameState.getState("gameSet");
     if (this.gamesetIndex !== null && gameSet[this.gamesetIndex]) {
       return gameSet[this.gamesetIndex].quantity;
     }
-    const entry = gameSet.find((item) => item.dictionaryIndex === this.dictionaryIndex);
+    const entry = gameSet.find(
+      (item) => item.dictionaryIndex === this.dictionaryIndex,
+    );
     return entry ? entry.quantity : 0;
   }
 
   _changeQuantity(delta) {
     if (this.dictionaryIndex == null) return;
-    const currentSet = gameState.getState('gameSet');
-    
+    const currentSet = gameState.getState("gameSet");
+
     let existing, existingIndex;
     if (this.gamesetIndex !== null) {
       existingIndex = this.gamesetIndex;
       existing = currentSet[existingIndex];
     } else {
-      existingIndex = currentSet.findIndex((d) => d.dictionaryIndex === this.dictionaryIndex);
+      existingIndex = currentSet.findIndex(
+        (d) => d.dictionaryIndex === this.dictionaryIndex,
+      );
       existing = currentSet[existingIndex];
     }
 
@@ -283,9 +297,7 @@ class DiceGameCardComponent extends HTMLElement {
     } else {
       // Update entry
       const updated = currentSet.map((d, idx) =>
-        idx === existingIndex
-          ? { ...d, quantity: nextQty }
-          : d
+        idx === existingIndex ? { ...d, quantity: nextQty } : d,
       );
       gameState.setGameSet(updated);
     }
@@ -293,21 +305,21 @@ class DiceGameCardComponent extends HTMLElement {
 
   _changeColor(color) {
     if (this.dictionaryIndex == null || !color) return;
-    const currentSet = gameState.getState('gameSet');
-    
+    const currentSet = gameState.getState("gameSet");
+
     let existingIndex;
     if (this.gamesetIndex !== null) {
       existingIndex = this.gamesetIndex;
     } else {
-      existingIndex = currentSet.findIndex((d) => d.dictionaryIndex === this.dictionaryIndex);
+      existingIndex = currentSet.findIndex(
+        (d) => d.dictionaryIndex === this.dictionaryIndex,
+      );
     }
 
     if (existingIndex === -1) return;
 
     const updated = currentSet.map((d, idx) =>
-      idx === existingIndex
-        ? { ...d, color: color }
-        : d
+      idx === existingIndex ? { ...d, color: color } : d,
     );
 
     gameState.setGameSet(updated);
@@ -317,12 +329,12 @@ class DiceGameCardComponent extends HTMLElement {
     const diceDef = this._getDiceDefinition();
     if (!diceDef) return;
 
-    const titleEl = this.shadowRoot.getElementById('title');
-    const subtitleEl = this.shadowRoot.getElementById('subtitle');
-    const quantityEl = this.shadowRoot.getElementById('quantity');
-    const previewEl = this.shadowRoot.getElementById('preview');
-    const deleteBtn = this.shadowRoot.getElementById('delete');
-    const colorPicker = this.shadowRoot.getElementById('colorPicker');
+    const titleEl = this.shadowRoot.getElementById("title");
+    const subtitleEl = this.shadowRoot.getElementById("subtitle");
+    const quantityEl = this.shadowRoot.getElementById("quantity");
+    const previewEl = this.shadowRoot.getElementById("preview");
+    const deleteBtn = this.shadowRoot.getElementById("delete");
+    const colorPicker = this.shadowRoot.getElementById("colorPicker");
 
     if (titleEl) {
       titleEl.textContent = diceDef.title;
@@ -332,31 +344,33 @@ class DiceGameCardComponent extends HTMLElement {
     }
 
     if (previewEl) {
-      previewEl.setAttribute('type', diceDef.title);
+      previewEl.setAttribute("type", diceDef.title);
       previewEl.sides = diceDef.sides;
     }
 
     const qty = this._getQuantityFromState();
     if (quantityEl) {
-      quantityEl.textContent = String(qty);
+      quantityEl.value = String(qty);
     }
 
     // Set color picker value from gameSet entry
     if (colorPicker) {
-      let color = '#202020'; // Default to dark color
-      const gameSet = gameState.getState('gameSet');
+      let color = "#202020"; // Default to dark color
+      const gameSet = gameState.getState("gameSet");
       if (this.gamesetIndex !== null && gameSet[this.gamesetIndex]) {
-        color = gameSet[this.gamesetIndex].color || '#202020';
+        color = gameSet[this.gamesetIndex].color || "#202020";
       } else {
-        const entry = gameSet.find((item) => item.dictionaryIndex === this.dictionaryIndex);
-        color = entry?.color || '#202020';
+        const entry = gameSet.find(
+          (item) => item.dictionaryIndex === this.dictionaryIndex,
+        );
+        color = entry?.color || "#202020";
       }
       colorPicker.value = color;
     }
 
     if (deleteBtn) {
       const isCustom = isCustomDiceIndex(this.dictionaryIndex);
-      deleteBtn.classList.toggle('hidden', !isCustom);
+      deleteBtn.classList.toggle("hidden", !isCustom);
       deleteBtn.disabled = qty > 0;
     }
   }
@@ -367,6 +381,6 @@ class DiceGameCardComponent extends HTMLElement {
   }
 }
 
-customElements.define('dice-game-card', DiceGameCardComponent);
+customElements.define("dice-game-card", DiceGameCardComponent);
 
 export { DiceGameCardComponent };
