@@ -88,6 +88,37 @@ class GameState {
   }
 
   /**
+   * Suscribirse a cambios en el estado e invocar el callback inmediatamente con el valor actual
+   * @param {string} key - 'title', 'gameSet', 'lastResult', 'sum', 'isThrowing', 'createEditDiceIndex', o 'all'
+   * @param {Function} callback - función que se ejecuta inmediatamente y cuando cambia el estado
+   * @returns {Function} función para desuscribirse
+   */
+  subscribeInitialize(key, callback) {
+    if (!this.subscribers[key]) {
+      console.warn(`Invalid subscription key: ${key}`);
+      return () => {};
+    }
+
+    this.subscribers[key].push(callback);
+
+    // Invocar inmediatamente con el valor actual
+    try {
+      const currentValue = key === "all" ? this.state : this.state[key];
+      callback(currentValue);
+    } catch (error) {
+      console.error(`Error in initial subscriber callback for ${key}:`, error);
+    }
+
+    // Retornar función de desuscripción
+    return () => {
+      const index = this.subscribers[key].indexOf(callback);
+      if (index > -1) {
+        this.subscribers[key].splice(index, 1);
+      }
+    };
+  }
+
+  /**
    * Obtener el estado actual
    * @param {string} key - opcional, 'diceDictionary', 'gameSet', 'lastResult', 'sum', o 'isThrowing'
    * @returns {any} el valor del estado
@@ -311,26 +342,14 @@ class GameState {
 
   /**
    * Actualizar el game set
-   * @param {Array} gameSet - array de objetos { dictionaryIndex, quantity }
+   * @param {Array} newGameSet - array de objetos { dictionaryIndex, quantity }
    */
-  setGameSet(gameSet) {
-    if (JSON.stringify(this.state.gameSet) !== JSON.stringify(gameSet)) {
-      this.state.gameSet = gameSet.map((d) => {
-        const entry = {
-          dictionaryIndex: d.dictionaryIndex,
-          quantity: d.quantity,
-        };
-        // Preserve color if provided
-        if (d.color) {
-          entry.color = d.color;
-        }
-        return entry;
-      });
-      this._notify("gameSet", this.state.gameSet);
-      this._notify("all", this.state);
-      // Update the gameset in the store
-      this._syncToGamesetsStore();
-    }
+  setGameSet(newGameSet) {
+    this.state.gameSet = newGameSet;
+    this._notify("gameSet", this.state.gameSet);
+    this._notify("all", this.state);
+    // Update the gameset in the store
+    this._syncToGamesetsStore();
   }
 
   /**
