@@ -24,10 +24,6 @@ class DiceGameCardComponent extends HTMLElement {
     this.gameSetDiceQuantity = 1;
     this.currentGameSetEntry = null;
     this.currentDictionaryEntry = null;
-    // Local state cache
-    this.diceDef = null;
-    this.quantity = 0;
-    this.color = "#202020";
     this.boundHandlers = null; // Store handler references
   }
 

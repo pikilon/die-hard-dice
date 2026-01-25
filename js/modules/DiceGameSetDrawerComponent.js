@@ -3,6 +3,7 @@ import "./DiceGameCardComponent.js";
 import "./DiceAddFromDictionaryComponent.js";
 import "./DiceGameSetHeaderComponent.js";
 import "./GamesetSelectorComponent.js";
+import { html } from "templates";
 
 /**
  * Drawer that lists the current game set as interactive cards.
@@ -39,7 +40,7 @@ class DiceGameSetDrawerComponent extends HTMLElement {
   }
 
   render() {
-    this.shadowRoot.innerHTML = /*html*/ `
+    this.shadowRoot.innerHTML = html`
       <style>
         :host {
           position: fixed;
@@ -63,7 +64,10 @@ class DiceGameSetDrawerComponent extends HTMLElement {
           font-size: 18px;
           cursor: pointer;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-          transition: transform 0.18s ease, background 0.18s ease, border 0.18s ease;
+          transition:
+            transform 0.18s ease,
+            background 0.18s ease,
+            border 0.18s ease;
         }
 
         .toggle:hover {
@@ -80,7 +84,9 @@ class DiceGameSetDrawerComponent extends HTMLElement {
           border-radius: 0 12px 12px 0;
           overflow: hidden;
           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-          transition: width 0.22s ease, overflow 0.12s ease;
+          transition:
+            width 0.22s ease,
+            overflow 0.12s ease;
           interpolate-size: allow-keywords;
           display: flex;
           flex-direction: column;
@@ -109,7 +115,7 @@ class DiceGameSetDrawerComponent extends HTMLElement {
           font-size: 14px;
           padding: 14px;
           text-align: center;
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
         }
 
         .close-btn {
@@ -167,12 +173,6 @@ class DiceGameSetDrawerComponent extends HTMLElement {
             flex-shrink: 0;
           }
 
-          .mobile-header-selector {
-            display: block;
-            flex: 1;
-            margin-right: 12px;
-          }
-
           .desktop-selector {
             display: none;
           }
@@ -212,12 +212,14 @@ class DiceGameSetDrawerComponent extends HTMLElement {
           </div>
           <button id="closeBtn" aria-label="Close drawer">×</button>
         </div>
-        <gameset-selector class="desktop-selector"></gameset-selector>
+        <gameset-selector></gameset-selector>
         <dice-gameset-header></dice-gameset-header>
         <div class="add-dice-container" id="addDiceContainer"></div>
         <div class="cards" id="cards"></div>
       </div>
-      <button class="toggle" id="toggle" aria-label="Toggle game set drawer">☰</button>
+      <button class="toggle" id="toggle" aria-label="Toggle game set drawer">
+        ☰
+      </button>
     `;
   }
 
