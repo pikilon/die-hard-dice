@@ -6,7 +6,10 @@
 
 import { setUseTrueRandom } from "./dice.js";
 import { gameState } from "./modules/gameState.js";
-import { decodeGameStateFromUrl, syncUrlWithGameState } from "./modules/gameStateUrl.js";
+import {
+  decodeGameStateFromUrl,
+  syncUrlWithGameState,
+} from "./modules/gameStateUrl.js";
 import "./modules/DiceThrowerComponent.js";
 import "./modules/DiceThrowButtonComponent.js";
 import "./modules/DiceResultComponent.js";
@@ -55,7 +58,6 @@ function dice_initialize() {
   // Los web components se encargan de todo
   // Suscribirse a cambios para logging (opcional)
   gameState.subscribe("all", (state) => {
-    console.log("Game state updated:", state);
     syncUrlWithGameState(state);
     updatePageTitle(state);
   });

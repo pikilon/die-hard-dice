@@ -10,7 +10,7 @@ import { html } from "templates";
  */
 class DiceGameCardComponent extends HTMLElement {
   static get observedAttributes() {
-    return ["dictionary-index", "gameset-index"];
+    return ["dictionary-index", "gameset-index", "onlyOneDiceLeft"];
   }
 
   constructor() {
@@ -18,6 +18,7 @@ class DiceGameCardComponent extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.dictionaryIndex = null;
     this.gamesetIndex = null;
+    this.onlyOneDiceLeft = false;
     this.unsubscribeGameSet = null;
     this.unsubscribeDictionary = null;
   }
@@ -31,6 +32,7 @@ class DiceGameCardComponent extends HTMLElement {
     this._syncFromState();
 
     this.unsubscribeGameSet = gameState.subscribe("gameSet", () => {
+      this._updateOnlyOneDiceLeft();
       this._syncFromState();
     });
 
@@ -57,10 +59,13 @@ class DiceGameCardComponent extends HTMLElement {
         this.gamesetIndex = parsed;
         this._syncFromState();
       }
+    } else if (name === "onlyOneDiceLeft") {
+      this.onlyOneDiceLeft = newValue === "true";
     }
   }
 
   render() {
+    console.log("DiceGameCardComponent rendering", this.onlyOneDiceLeft);
     this.shadowRoot.innerHTML = html`
       <style>
         :host {
@@ -378,6 +383,16 @@ class DiceGameCardComponent extends HTMLElement {
   _confirmDelete() {
     if (this.dictionaryIndex == null) return;
     gameState.removeDiceFromDictionary(this.dictionaryIndex);
+  }
+
+  _updateOnlyOneDiceLeft() {
+    const gameSet = gameState.getState("gameSet") || [];
+    console.log('gameSet', gameSet);
+    const newValue = gameSet.length === 1;
+    if (newValue !== this.onlyOneDiceLeft) {
+      this.onlyOneDiceLeft = newValue;
+      this.setAttribute("onlyOneDiceLeft", String(newValue));
+    }
   }
 }
 

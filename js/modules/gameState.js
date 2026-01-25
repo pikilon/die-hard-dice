@@ -14,7 +14,7 @@ class GameState {
   constructor() {
     // Initialize state from the current gameset
     const currentGameset = gamesetsStore.getCurrentGameset();
-    
+
     this.state = {
       title: currentGameset.title,
       // Diccionario de dados disponibles
@@ -190,13 +190,16 @@ class GameState {
       : [];
 
     const nextDictionary = [
-      ...DEFAULT_DICE.map((dice) => ({ title: dice.title, sides: [...dice.sides] })),
+      ...DEFAULT_DICE.map((dice) => ({
+        title: dice.title,
+        sides: [...dice.sides],
+      })),
       ...normalizedCustomDice,
     ];
 
     const dictionaryChanged = !this._areDiceDictionariesEqual(
       this.state.diceDictionary,
-      nextDictionary
+      nextDictionary,
     );
 
     if (dictionaryChanged) {
@@ -227,13 +230,17 @@ class GameState {
     if (index < DEFAULT_DICE.length) return false;
     if (index < 0 || index >= this.state.diceDictionary.length) return false;
 
-    const newDictionary = this.state.diceDictionary.filter((_, i) => i !== index);
+    const newDictionary = this.state.diceDictionary.filter(
+      (_, i) => i !== index,
+    );
 
     const newGameSet = this.state.gameSet
       .filter((item) => item.dictionaryIndex !== index)
       .map((item) => ({
         dictionaryIndex:
-          item.dictionaryIndex > index ? item.dictionaryIndex - 1 : item.dictionaryIndex,
+          item.dictionaryIndex > index
+            ? item.dictionaryIndex - 1
+            : item.dictionaryIndex,
         quantity: item.quantity,
       }));
 
@@ -267,7 +274,7 @@ class GameState {
       updated = current.map((d) =>
         d.dictionaryIndex === dictionaryIndex
           ? { ...d, quantity: d.quantity + quantity }
-          : d
+          : d,
       );
     } else {
       updated = [...current, { dictionaryIndex, quantity }];
@@ -334,16 +341,6 @@ class GameState {
     if (JSON.stringify(this.state.lastResult) !== JSON.stringify(result)) {
       this.state.lastResult = [...result];
       this._calculateSum();
-
-      // Log del estado en cada lanzamiento
-      console.log("🎲 Lanzamiento realizado:", {
-        resultados: this.state.lastResult,
-        suma: this.state.sum,
-        dados: this.state.gameSet.map((item) => {
-          const dice = this.state.diceDictionary[item.dictionaryIndex];
-          return `${item.quantity}${dice.title}`;
-        }),
-      });
 
       this._notify("lastResult", this.state.lastResult);
       this._notify("sum", this.state.sum);
@@ -469,7 +466,7 @@ class GameState {
    */
   _loadCurrentGameset() {
     const currentGameset = gamesetsStore.getCurrentGameset();
-    
+
     this.state.title = currentGameset.title;
     this.state.diceDictionary = currentGameset.diceDictionary.map((d) => ({
       title: d.title,
@@ -486,7 +483,7 @@ class GameState {
       }
       return entry;
     });
-    
+
     // Reset roll results when switching gamesets
     this.state.lastResult = [];
     this.state.sum = 0;

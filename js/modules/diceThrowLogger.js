@@ -3,7 +3,7 @@
 // ============================================================================
 
 /** @type {boolean} Enable/disable dice throwing logging */
-export const LOG_THROWING = true;
+export const LOG_THROWING = false;
 
 /** @type {Array} Comprehensive logs for dice throwing debugging */
 let throwLogs = [];

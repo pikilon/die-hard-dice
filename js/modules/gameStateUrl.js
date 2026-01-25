@@ -21,7 +21,11 @@ function sanitizeGameSet(gameSet) {
         quantity: Number(item?.quantity),
       };
       // Include color if provided and valid (hex color format)
-      if (item?.color && typeof item.color === 'string' && /^#[0-9a-f]{6}$/i.test(item.color)) {
+      if (
+        item?.color &&
+        typeof item.color === "string" &&
+        /^#[0-9a-f]{6}$/i.test(item.color)
+      ) {
         entry.color = item.color.toLowerCase();
       }
       return entry;
@@ -31,7 +35,7 @@ function sanitizeGameSet(gameSet) {
         Number.isInteger(dictionaryIndex) &&
         dictionaryIndex >= 0 &&
         Number.isInteger(quantity) &&
-        quantity > 0
+        quantity > 0,
     );
 }
 
@@ -40,13 +44,16 @@ function normalizeDiceDefinition(diceDefinition) {
     return null;
   }
 
-  const title = typeof diceDefinition.title === "string" ? diceDefinition.title.trim() : "";
+  const title =
+    typeof diceDefinition.title === "string" ? diceDefinition.title.trim() : "";
   if (title.length < 2) {
     return null;
   }
 
   const rawSides = Array.isArray(diceDefinition.sides)
-    ? diceDefinition.sides.map((side) => String(side ?? "").trim()).filter((side) => side.length > 0)
+    ? diceDefinition.sides
+        .map((side) => String(side ?? "").trim())
+        .filter((side) => side.length > 0)
     : [];
   const sides = validateDiceSides(rawSides);
   if (!Array.isArray(sides) || sides.length < 2) {
@@ -130,7 +137,6 @@ export function decodeGameStateFromUrl(search = "") {
     result.customDice = sanitizeCustomDice(parsed.customDice);
   }
 
-  console.log('result', result);
   return result;
 }
 
