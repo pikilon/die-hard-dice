@@ -1,0 +1,193 @@
+import { useEffect, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type RefObject } from 'react';
+import { useTable } from '../store/table';
+import { director } from './director';
+
+/* ---------------------------------------------------------------- accelerometer */
+
+let motionSeen = false;
+let motionListening = false;
+let permission: 'unknown' | 'granted' | 'denied' = 'unknown';
+
+type MotionCtor = typeof DeviceMotionEvent & { requestPermission?: () => Promise<'granted' | 'denied'> };
+
+export const isTouch = () => typeof window !== 'undefined' && (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
+
+function onMotion(e: DeviceMotionEvent) {
+  const a = e.acceleration ?? e.accelerationIncludingGravity;
+  if (!a || a.x == null || a.y == null) return;
+  motionSeen = true;
+  // only the linear acceleration drives the cup (gravity-free when available)
+  if (e.acceleration && e.acceleration.x != null) director.motion(e.acceleration.x ?? 0, e.acceleration.y ?? 0);
+}
+
+function listen() {
+  if (motionListening) return;
+  motionListening = true;
+  window.addEventListener('devicemotion', onMotion);
+}
+
+/** Must be called from a user gesture (iOS asks for permission). */
+export function requestMotion() {
+  if (typeof window === 'undefined' || !('DeviceMotionEvent' in window) || !isTouch()) return;
+  const Ctor = window.DeviceMotionEvent as MotionCtor;
+  if (permission === 'granted') return listen();
+  if (permission === 'denied') return;
+  if (typeof Ctor.requestPermission === 'function') {
+    Ctor.requestPermission()
+      .then((r) => {
+        permission = r;
+        if (r === 'granted') listen();
+      })
+      .catch(() => (permission = 'denied'));
+  } else {
+    permission = 'granted';
+    listen();
+  }
+}
+
+export const motionAvailable = () => motionSeen && permission === 'granted';
+
+/* ---------------------------------------------------------------- table pointer input */
+
+const LONG_PRESS = 520;
+const DRAG_START = 12;
+
+/**
+ * Pointer handling on the table:
+ *  - drag anywhere → gather dice into the cup and shake; release → pour
+ *  - click/tap a die → toggle it for reroll
+ *  - right click / long press a die → context menu
+ */
+export function useTableInput(ref: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let down: { x: number; y: number; hit: string | null; id: number } | null = null;
+    let throwing = false;
+    let longFired = false;
+    let timer = 0;
+
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      const table = useTable.getState();
+      if (table.motionShake) {
+        director.release();
+        return;
+      }
+      if (director.busy) return;
+      requestMotion();
+      const hit = director.pickDie(e.clientX, e.clientY);
+      down = { x: e.clientX, y: e.clientY, hit, id: e.pointerId };
+      longFired = false;
+      throwing = false;
+      el.setPointerCapture?.(e.pointerId);
+      window.clearTimeout(timer);
+      if (hit && e.pointerType !== 'mouse')
+        timer = window.setTimeout(() => {
+          if (!down || throwing) return;
+          longFired = true;
+          table.openMenu({ uid: hit, x: down.x, y: down.y });
+        }, LONG_PRESS);
+    };
+
+    const onMove = (e: PointerEvent) => {
+      if (!down || e.pointerId !== down.id) return;
+      if (throwing) {
+        director.move(e.clientX, e.clientY);
+        return;
+      }
+      if (longFired) return;
+      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > DRAG_START) {
+        window.clearTimeout(timer);
+        const sel = useTable.getState().selected;
+        if (director.press(down.x, down.y, sel.length ? sel : undefined)) {
+          throwing = true;
+          director.move(e.clientX, e.clientY);
+        } else down = null;
+      }
+    };
+
+    const onUp = (e: PointerEvent) => {
+      if (!down || e.pointerId !== down.id) return;
+      window.clearTimeout(timer);
+      const table = useTable.getState();
+      if (throwing) director.release();
+      else if (!longFired) {
+        if (down.hit) table.toggleSelect(down.hit);
+        table.closeMenu();
+      }
+      down = null;
+      throwing = false;
+    };
+
+    const onCtx = (e: MouseEvent) => {
+      e.preventDefault();
+      if (director.busy) return;
+      const hit = director.pickDie(e.clientX, e.clientY);
+      if (hit) useTable.getState().openMenu({ uid: hit, x: e.clientX, y: e.clientY });
+    };
+
+    el.addEventListener('pointerdown', onDown);
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointercancel', onUp);
+    el.addEventListener('contextmenu', onCtx);
+    return () => {
+      window.clearTimeout(timer);
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onUp);
+      el.removeEventListener('contextmenu', onCtx);
+    };
+  }, [ref]);
+}
+
+/* ---------------------------------------------------------------- roll buttons */
+
+/**
+ * Handlers for a roll button: press and drag to shake, release to pour. A quick tap shakes
+ * automatically (or waits for the phone to be shaken when the accelerometer works).
+ */
+export function rollButtonHandlers(getUids: () => string[] | undefined) {
+  let start: { x: number; y: number; t: number; id: number } | null = null;
+  let moved = false;
+  return {
+    onPointerDown: (e: RPointerEvent<HTMLElement>) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      const table = useTable.getState();
+      if (table.motionShake) {
+        director.release();
+        return;
+      }
+      requestMotion();
+      if (!director.press(e.clientX, e.clientY, getUids(), true)) return;
+      start = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId };
+      moved = false;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    onPointerMove: (e: RPointerEvent<HTMLElement>) => {
+      if (!start || e.pointerId !== start.id) return;
+      if (!moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) > DRAG_START) moved = true;
+      if (moved) director.move(e.clientX, e.clientY);
+    },
+    onPointerUp: (e: RPointerEvent<HTMLElement>) => {
+      if (!start || e.pointerId !== start.id) return;
+      const quick = !moved && performance.now() - start.t < 350;
+      start = null;
+      if (!quick) return director.release();
+      if (motionAvailable()) useTable.getState().setMotionShake(true);
+      else director.auto(0.8);
+    },
+    onPointerCancel: () => {
+      if (start) director.release();
+      start = null;
+    },
+    onKeyDown: (e: RKeyboardEvent<HTMLElement>) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      const r = e.currentTarget.getBoundingClientRect();
+      if (director.press(r.left + r.width / 2, r.top, getUids(), true)) director.auto(0.8);
+    },
+  };
+}
