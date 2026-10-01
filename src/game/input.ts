@@ -214,9 +214,7 @@ export function rollButtonHandlers(getUids: () => string[] | undefined) {
   return {
     onClick: (e: RMouseEvent<HTMLElement>) => {
       requestMotion();
-      // with an accelerometer there is no cup: the device itself rolls the dice
-      if (motionAvailable()) director.pressTilt(getUids());
-      else director.press(e.clientX, e.clientY, getUids(), true);
+      director.press(e.clientX, e.clientY, getUids(), true);
     },
   };
 }

@@ -389,27 +389,15 @@ class Director {
   }
 
   /**
-   * Tilt mode: no cup. The dice get a kick and from then on the device's acceleration (tilt + shaking)
-   * pushes them around the table, bouncing off the walls, until they come to rest.
+   * Shaking the device while the cup waits: the cup lets the dice go and disappears, and from then on the
+   * device's acceleration pushes the dice around the table (tilt mode).
    */
-  pressTilt(uids?: string[]) {
-    if (this.busy) return false;
-    unlockAudio();
-    const table = useTable.getState();
-    const all = table.dice.map((d) => d.uid).filter((u) => this.dice.has(u));
-    if (!all.length) return false;
-    const partial = !!uids && uids.length > 0 && uids.length < all.length && !!table.entryId;
-    const list = partial ? uids!.filter((u) => this.dice.has(u)) : all;
-    this.kind = partial ? 'reroll' : 'roll';
-    this.rolling = list;
-    this.frozen = partial ? all.filter((u) => !list.includes(u)) : [];
-    table.setRolling(list);
-    table.closeMenu();
-    for (const u of this.frozen) this.dice.get(u)?.body.setBodyType(FIXED, true);
-    for (const u of list) {
-      const d = this.dice.get(u)!;
-      if (d.die.faces !== d.solid.slots) table.setMapping(u, randomMapping(d.die.faces, cryptoRng));
-    }
+  private waitingToTilt() {
+    for (const u of this.rolling) this.dice.get(u)?.body.setBodyType(DYNAMIC, true);
+    this.tweens.clear();
+    this.cupPhase = 'leave';
+    this.cupT = 0;
+    this.setCupEnabled(false);
     this.tilting = true;
     this.tiltEngaged = false;
     this.tiltQuiet = 0;
@@ -419,10 +407,9 @@ class Director {
     this.nudges.clear();
     this.settleFrames = 0;
     this.settleTime = 0;
-    table.setPhase('tilting');
+    useTable.getState().setPhase('tilting');
     whoosh();
     haptic(15);
-    return true;
   }
 
   /**
@@ -512,19 +499,6 @@ class Director {
     return true;
   }
 
-  /** The accelerometer grabs the waiting cup: from now on the device movement shakes it. */
-  private grabMotion() {
-    this.grabbed = true;
-    this.cupOrigin.copy(this.cupTarget);
-    this.motionPeak = 0;
-    this.motionQuiet = 0;
-    this.motionSpeedMax = 0;
-    this.brakeT = 0;
-    const table = useTable.getState();
-    table.setPhase('gathering');
-    table.setMotionShake(true);
-  }
-
   /** Keyboard alternative to grabbing: shake the waiting cup automatically. */
   grabAuto() {
     if (!this.waiting) return false;
@@ -582,8 +556,8 @@ class Director {
     if (this.cupPhase !== 'gather' && this.cupPhase !== 'shake') return;
     const m = Math.hypot(ax, ay);
     if (this.waiting) {
-      // a shake of the device grabs the waiting cup: no need to touch it
-      if (m > MOTION_GRAB) this.grabMotion();
+      // a shake of the device lets the waiting dice go: no need to touch the cup
+      if (m > MOTION_GRAB) this.waitingToTilt();
       return;
     }
     this.motionAcc.set(ax, 0, -ay);
