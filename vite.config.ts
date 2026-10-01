@@ -62,6 +62,8 @@ export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   // `npm run tunnel` serves the dev server through a *.trycloudflare.com host (HTTPS: needed for the accelerometer)
   server: { allowedHosts: ['.trycloudflare.com'] },
+  // `npm run tunnel:prod` serves the production build (service worker + install prompt only exist there)
+  preview: { allowedHosts: ['.trycloudflare.com'] },
   build: {
     target: 'es2022',
     chunkSizeWarningLimit: 1600,
