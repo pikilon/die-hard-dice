@@ -63,7 +63,7 @@ function visibleRect(camera: PerspectiveCamera, ndcTop: number, ndcBottom: numbe
   };
 }
 
-function SceneSetup({ insets, count, onBounds }: { insets: Insets; count: number; onBounds: (b: Bounds) => void }) {
+function SceneSetup({ insets, count, onBounds }: { insets: Insets; count: number; onBounds: (b: Bounds, ceiling: number) => void }) {
   const { camera, size, gl, scene } = useThree();
   const light = useRef<DirectionalLight>(null);
 
@@ -98,7 +98,8 @@ function SceneSetup({ insets, count, onBounds }: { insets: Insets; count: number
     if (r) {
       const m = 0.25;
       const b = { minX: r.minX + m, maxX: r.maxX - m, minZ: r.minZ + m, maxZ: r.maxZ - m };
-      onBounds(b);
+      // glass lid just behind the camera: dice shaken towards it stay in view until the very last moment
+      onBounds(b, cam.position.y + 2);
       const l = light.current;
       if (l) {
         const s = Math.max(b.maxX - b.minX, b.maxZ - b.minZ) * 0.75 + 4;
@@ -137,7 +138,7 @@ function StepHooks() {
   return null;
 }
 
-function Table({ bounds }: { bounds: Bounds }) {
+function Table({ bounds, ceiling }: { bounds: Bounds; ceiling: number }) {
   const cx = (bounds.minX + bounds.maxX) / 2;
   const cz = (bounds.minZ + bounds.maxZ) / 2;
   const w = bounds.maxX - bounds.minX;
@@ -149,12 +150,12 @@ function Table({ bounds }: { bounds: Bounds }) {
       <RigidBody type="fixed" colliders={false} userData={{ kind: 'table' }}>
         <CuboidCollider args={[80, 1, 80]} position={[0, -1, 0]} friction={0.75} restitution={0.12} />
       </RigidBody>
-      <RigidBody type="fixed" colliders={false} key={`${cx.toFixed(2)}${cz.toFixed(2)}${w.toFixed(2)}${d.toFixed(2)}`} userData={{ kind: 'wall' }}>
+      <RigidBody type="fixed" colliders={false} key={`${cx.toFixed(2)}${cz.toFixed(2)}${w.toFixed(2)}${d.toFixed(2)}${ceiling.toFixed(1)}`} userData={{ kind: 'wall' }}>
         <CuboidCollider args={[T, H, d / 2 + T * 2]} position={[bounds.minX - T, H, cz]} restitution={0.3} friction={0.2} />
         <CuboidCollider args={[T, H, d / 2 + T * 2]} position={[bounds.maxX + T, H, cz]} restitution={0.3} friction={0.2} />
         <CuboidCollider args={[w / 2 + T * 2, H, T]} position={[cx, H, bounds.minZ - T]} restitution={0.3} friction={0.2} />
         <CuboidCollider args={[w / 2 + T * 2, H, T]} position={[cx, H, bounds.maxZ + T]} restitution={0.3} friction={0.2} />
-        <CuboidCollider args={[w / 2 + T * 2, T, d / 2 + T * 2]} position={[cx, H * 2 + T, cz]} />
+        <CuboidCollider args={[w / 2 + T * 2, T, d / 2 + T * 2]} position={[cx, ceiling + T, cz]} />
       </RigidBody>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.001, 0]} receiveShadow>
         <planeGeometry args={[200, 200]} />
@@ -280,11 +281,13 @@ function Bind() {
 export function GameScene({ insets, paused }: { insets: Insets; paused?: boolean }) {
   const count = useTable((s) => s.dice.length);
   const [bounds, setBounds] = useState<Bounds>(director.bounds);
+  const [ceiling, setCeiling] = useState(20);
   const firstBounds = useRef(true);
   const onBounds = useMemo(
-    () => (b: Bounds) => {
+    () => (b: Bounds, c: number) => {
       director.setBounds(b);
       setBounds(b);
+      setCeiling(c);
       if (firstBounds.current) {
         firstBounds.current = false;
         // layout computed with default bounds before the real ones were known
@@ -308,7 +311,7 @@ export function GameScene({ insets, paused }: { insets: Insets; paused?: boolean
       <SceneSetup insets={insets} count={count} onBounds={onBounds} />
       <Physics gravity={[0, -GRAVITY, 0]} timeStep={1 / 60} paused={paused}>
         <StepHooks />
-        <Table bounds={bounds} />
+        <Table bounds={bounds} ceiling={ceiling} />
         <Cup />
         <Dice />
       </Physics>
