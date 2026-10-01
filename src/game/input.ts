@@ -49,6 +49,10 @@ export const motionAvailable = () => motionSeen && permission === 'granted';
 
 /* ---------------------------------------------------------------- table pointer input */
 
+/** True when a pointer event lies outside the browser viewport (captured pointers keep reporting there). */
+const outsideViewport = (e: { clientX: number; clientY: number }) =>
+  e.clientX < 0 || e.clientY < 0 || e.clientX > window.innerWidth || e.clientY > window.innerHeight;
+
 const LONG_PRESS = 520;
 const DRAG_START = 12;
 
@@ -93,6 +97,8 @@ export function useTableInput(ref: RefObject<HTMLElement | null>) {
     const onMove = (e: PointerEvent) => {
       if (!down || e.pointerId !== down.id) return;
       if (throwing) {
+        // leaving the screen counts as letting go
+        if (outsideViewport(e)) return onUp(e);
         director.move(e.clientX, e.clientY);
         return;
       }
@@ -127,7 +133,22 @@ export function useTableInput(ref: RefObject<HTMLElement | null>) {
       if (hit) useTable.getState().openMenu({ uid: hit, x: e.clientX, y: e.clientY });
     };
 
+    // the pointer left the window or the window lost focus mid-throw: no pointerup will arrive
+    const bail = () => {
+      if (!throwing || useTable.getState().motionShake) return;
+      window.clearTimeout(timer);
+      director.release();
+      down = null;
+      throwing = false;
+    };
+    const onLeave = (e: MouseEvent) => {
+      if (!e.relatedTarget) bail();
+    };
+
     el.addEventListener('pointerdown', onDown);
+    el.addEventListener('lostpointercapture', bail);
+    document.addEventListener('mouseout', onLeave);
+    window.addEventListener('blur', bail);
     el.addEventListener('pointermove', onMove);
     el.addEventListener('pointerup', onUp);
     el.addEventListener('pointercancel', onUp);
@@ -135,6 +156,9 @@ export function useTableInput(ref: RefObject<HTMLElement | null>) {
     return () => {
       window.clearTimeout(timer);
       el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('lostpointercapture', bail);
+      document.removeEventListener('mouseout', onLeave);
+      window.removeEventListener('blur', bail);
       el.removeEventListener('pointermove', onMove);
       el.removeEventListener('pointerup', onUp);
       el.removeEventListener('pointercancel', onUp);
@@ -169,6 +193,11 @@ export function rollButtonHandlers(getUids: () => string[] | undefined) {
     onPointerMove: (e: RPointerEvent<HTMLElement>) => {
       if (!start || e.pointerId !== start.id) return;
       if (!moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) > DRAG_START) moved = true;
+      if (moved && outsideViewport(e)) {
+        // leaving the screen counts as letting go
+        start = null;
+        return director.release();
+      }
       if (moved) director.move(e.clientX, e.clientY);
     },
     onPointerUp: (e: RPointerEvent<HTMLElement>) => {
@@ -180,6 +209,10 @@ export function rollButtonHandlers(getUids: () => string[] | undefined) {
       else director.auto(0.8);
     },
     onPointerCancel: () => {
+      if (start) director.release();
+      start = null;
+    },
+    onLostPointerCapture: () => {
       if (start) director.release();
       start = null;
     },
