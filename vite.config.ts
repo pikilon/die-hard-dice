@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import type { Plugin } from 'vite';
+import { readFileSync } from 'node:fs';
+
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 /**
  * Dev only. Mientras el agente trabaja en un turno (`/__dhd/hold`, lo llama un hook de Claude Code) se
@@ -56,6 +59,7 @@ function agentRefresh(): Plugin {
 export default defineConfig({
   base: './',
   plugins: [react(), agentRefresh()],
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   // `npm run tunnel` serves the dev server through a *.trycloudflare.com host (HTTPS: needed for the accelerometer)
   server: { allowedHosts: ['.trycloudflare.com'] },
   build: {

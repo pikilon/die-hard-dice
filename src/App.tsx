@@ -10,6 +10,7 @@ import { SetEditor } from './pages/SetEditor';
 import { useHashLocation, useHashSearch } from './router';
 import { useLibrary } from './store/library';
 import { useSettings } from './store/settings';
+import { UpdateBanner } from './pwa/UpdateBanner';
 import { Dialogs, Toasts } from './ui/feedback';
 import { Icon, Logo } from './ui/Icon';
 import { Modal } from './ui/Modal';
@@ -64,6 +65,7 @@ function About({ open, onClose }: { open: boolean; onClose: () => void }) {
           </a>
         </p>
         <p className="muted small">{t('about.trademarks')}</p>
+        <p className="muted small">{t('pwa.version', { v: __APP_VERSION__ })}</p>
       </div>
     </Modal>
   );
@@ -137,6 +139,7 @@ function Shell() {
         </Suspense>
       </main>
       <Toasts />
+      <UpdateBanner />
       <Dialogs />
     </>
   );

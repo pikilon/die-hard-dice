@@ -5,6 +5,8 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import './styles.css';
 import './styles-app.css';
+import './pwa/install';
+import { registerSW } from './pwa/register';
 
 async function boot() {
   // canvas textures need the face font to be ready before the first dice are painted
@@ -21,6 +23,7 @@ async function boot() {
       <App />
     </StrictMode>,
   );
+  registerSW();
 }
 
 boot();

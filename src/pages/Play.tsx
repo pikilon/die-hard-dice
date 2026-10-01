@@ -147,28 +147,18 @@ export function Play({ id }: { id: string }) {
 
   useTableInput(stage);
 
-  // keep the screen from rotating (best effort: only works installed / fullscreen; FR-320, FR-322):
-  // portrait while on the table, the current orientation while the dice are being thrown
+  // FR-320: portrait while on the table (best effort: only works installed / fullscreen)
   const phase = useTable((s) => s.phase);
-  const throwing = phase !== 'idle' && phase !== 'waiting';
+  const atRest = phase === 'idle' || phase === 'waiting';
   useEffect(() => {
-    const o = screen.orientation as (ScreenOrientation & { lock?: (o: string) => Promise<void> }) | undefined;
+    if (!atRest) return;
     try {
-      o?.lock?.(throwing ? o.type : 'portrait')?.catch(() => {});
+      (screen.orientation as (ScreenOrientation & { lock?: (o: string) => Promise<void> }) | undefined)?.lock?.('portrait')?.catch(() => {});
     } catch {
       /* unsupported */
     }
-  }, [throwing]);
-  useEffect(
-    () => () => {
-      try {
-        screen.orientation?.unlock?.();
-      } catch {
-        /* unsupported */
-      }
-    },
-    [],
-  );
+  }, [atRest]);
+  useEffect(() => unlockOrientation, []);
 
   // once per session: tilting with the accelerometer may rotate the screen if the OS allows it
   useEffect(() => {

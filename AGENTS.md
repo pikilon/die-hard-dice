@@ -33,6 +33,7 @@ npm test            # Vitest: src/**/*.test.ts (lógica pura, entorno node)
 npm run typecheck   # tsc -b
 npm run build       # tsc + vite build → dist/
 npm run preview     # sirve dist/ en :4173
+npm run pwa:icons   # regenera public/icons/* desde los SVG fuente (los binarios van commiteados)
 ```
 
 `scripts/build-icons.mjs` se ejecuta solo (hooks `pre*`) y genera `public/game-icons.json` y
@@ -68,6 +69,8 @@ src/
   pages/    Home, Library, DieEditor, SetEditor, Play, Import
   ui/       Componentes reutilizables (Modal, feedback/toasts, pickers, DieThumb, DiePreview, Icon)
   i18n/     es.ts (define el tipo I18nKey), en.ts, index.ts (useT, useLang, useName)
+  pwa/      register.ts (service worker + estado de actualización), install.ts (botón instalar), UpdateBanner.tsx,
+            sw.template.js (plantilla; `scripts/build-sw.mjs` genera `dist/sw.js` con la lista de precarga)
   data/     presets.ts (dados y sets incluidos), backgrounds.ts
 ```
 
@@ -93,6 +96,10 @@ Rutas (hash): `#/`, `#/dice`, `#/dice/:id`, `#/sets/:id`, `#/play/:id`, `#/impor
   datos del usuario sin migración.
 - **Sin backend y sin peticiones externas en runtime** (salvo fondos por URL que elige el usuario). Todo
   debe funcionar offline una vez cargado.
+- **Offline/PWA.** `dist/sw.js` se genera en el build (cache-first; versión = hash de los archivos). Cualquier
+  asset nuevo en `dist/` se precachea solo, incluido `game-icons.json`. No uses URLs absolutas ni recursos
+  externos en runtime, y no toques `localStorage` desde el SW. Una versión nueva nunca se activa sola: espera
+  a que el usuario pulse «Actualizar» (`SKIP_WAITING`). El SW solo se registra en producción.
 - **Build relativo.** `vite.config.ts` usa `base: './'` para que funcione en cualquier subruta
   (GitHub Pages). No uses rutas absolutas a assets.
 

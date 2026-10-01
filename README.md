@@ -19,6 +19,12 @@ desde un cubilete y **compartirlos por URL**. Sin backend: todo se guarda en el 
   (cambiar valor, seleccionar para relanzar, quitar), añadir dados en partida, sonido sintetizado.
 - **Compartir**: `#/import?d=…` (deflate + base64url) con resolución de conflictos (sobrescribir / renombrar).
 
+## Instalar
+
+La app es una PWA: en Chrome/Edge/Android aparece «Instalar app» en la pantalla de inicio; en iOS, Compartir →
+Añadir a pantalla de inicio. Tras la primera carga funciona sin conexión. Cuando hay una versión nueva se
+avisa con un botón «Actualizar» (no se recarga sola).
+
 ## Desarrollo
 
 ```bash
