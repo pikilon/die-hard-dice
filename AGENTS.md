@@ -39,6 +39,11 @@ npm run preview     # sirve dist/ en :4173
 `src/icons/core.json`. **Ambos están en `.gitignore`: no los edites ni los commitees.** Para cambiar el
 catálogo de iconos, edita `CATEGORIES` en el script.
 
+**Recarga automática al terminar el turno (agentes).** Los hooks de `.claude/settings.json` llaman a
+`.claude/tools/refresh/refresh.mjs`: al enviar un mensaje (`hold`) el plugin `agentRefresh` de
+`vite.config.ts` retiene el HMR y, al terminar de responder (`release`), manda un único `full-reload` a todos
+los navegadores conectados al dev server (solo si hubo cambios). Puerto distinto de 5173 → `DHD_PORT`.
+
 Antes de dar un cambio por terminado: `npm test && npm run build` sin errores.
 
 ## Stack
