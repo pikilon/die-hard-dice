@@ -6,7 +6,7 @@ import { Icon } from './Icon';
 
 const MAX_SHOWN = 240;
 
-export function IconPicker({ value, onPick, color = 'currentColor' }: { value?: string; onPick: (name: string) => void; color?: string }) {
+export function IconPicker({ value, onPick }: { value?: string; onPick: (name: string) => void }) {
   const t = useT();
   const cats = Object.keys(CORE_CATEGORIES);
   const [cat, setCat] = useState<string>(cats[0]);
@@ -63,7 +63,7 @@ export function IconPicker({ value, onPick, color = 'currentColor' }: { value?: 
       <div className="icon-grid">
         {names.slice(0, MAX_SHOWN).map((n) => (
           <button key={n} type="button" className={`icon-cell ${value === n ? 'on' : ''}`} onClick={() => onPick(n)} title={n}>
-            <GameIcon name={n} size={30} color={color} />
+            <GameIcon name={n} size={30} />
           </button>
         ))}
         {names.length === 0 && !loading && <div className="muted small">{t('icons.noResults')}</div>}

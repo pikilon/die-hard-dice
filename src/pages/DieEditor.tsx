@@ -45,7 +45,7 @@ const MAT_SWATCH: Record<string, string> = {
 
 /* ---------------------------------------------------------------- value editor */
 
-function ValueEditor({ value, onChange, allowNone, fg }: { value: FaceValue | undefined; onChange: (v: FaceValue | undefined) => void; allowNone?: boolean; fg: string }) {
+function ValueEditor({ value, onChange, allowNone }: { value: FaceValue | undefined; onChange: (v: FaceValue | undefined) => void; allowNone?: boolean }) {
   const t = useT();
   const [tab, setTab] = useState<'none' | 'text' | 'icon'>(!value ? (allowNone ? 'none' : 'text') : 't' in value ? 'text' : 'icon');
   const [text, setText] = useState(value && 't' in value ? value.t : '');
@@ -79,7 +79,7 @@ function ValueEditor({ value, onChange, allowNone, fg }: { value: FaceValue | un
           <span className="muted small">{t('die.textHint')}</span>
         </div>
       )}
-      {tab === 'icon' && <IconPicker value={value && 'i' in value ? value.i : undefined} onPick={(i) => onChange({ i })} color={fg} />}
+      {tab === 'icon' && <IconPicker value={value && 'i' in value ? value.i : undefined} onPick={(i) => onChange({ i })} />}
     </div>
   );
 }
@@ -123,7 +123,7 @@ function FaceModal({ die, index, onClose, onChange }: { die: Die; index: number 
         <div className="stack">
           <div className="field">
             <span className="label">{t('die.value')}</span>
-            <ValueEditor key={index} value={o.v ?? base.v} onChange={(v) => set({ v })} fg={face.fg} />
+            <ValueEditor key={index} value={o.v ?? base.v} onChange={(v) => set({ v })} />
           </div>
         </div>
         <div className="stack">
@@ -180,7 +180,7 @@ function RangeRow({ die, range, onChange, onRemove }: { die: Die; range: FaceRan
             <div style={{ padding: '10px 0' }}>
               {open === 'bg' && <ColorPicker value={range.bg} onChange={(bg) => onChange({ ...range, bg })} noneLabel={t('die.unchanged')} />}
               {open === 'fg' && <ColorPicker value={range.fg} onChange={(fg) => onChange({ ...range, fg })} noneLabel={t('common.auto')} />}
-              {open === 'v' && <ValueEditor value={range.v} onChange={(v) => onChange({ ...range, v })} allowNone fg={sample.fg} />}
+              {open === 'v' && <ValueEditor value={range.v} onChange={(v) => onChange({ ...range, v })} allowNone />}
             </div>
           </motion.div>
         )}
