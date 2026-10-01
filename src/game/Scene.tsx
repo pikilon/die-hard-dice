@@ -19,6 +19,8 @@ import {
   Vector3,
   AdditiveBlending,
   Plane,
+  Euler,
+  Matrix4,
   Raycaster,
   Vector2,
 } from 'three';
@@ -63,7 +65,7 @@ function visibleRect(camera: PerspectiveCamera, ndcTop: number, ndcBottom: numbe
   };
 }
 
-function SceneSetup({ insets, count, onBounds }: { insets: Insets; count: number; onBounds: (b: Bounds, ceiling: number) => void }) {
+function SceneSetup({ insets, count, onBounds }: { insets: Insets; count: number; onBounds: (b: Bounds, apex: [number, number, number]) => void }) {
   const { camera, size, gl, scene } = useThree();
   const light = useRef<DirectionalLight>(null);
 
@@ -98,8 +100,7 @@ function SceneSetup({ insets, count, onBounds }: { insets: Insets; count: number
     if (r) {
       const m = 0.25;
       const b = { minX: r.minX + m, maxX: r.maxX - m, minZ: r.minZ + m, maxZ: r.maxZ - m };
-      // glass lid just behind the camera: dice shaken towards it stay in view until the very last moment
-      onBounds(b, cam.position.y + 2);
+      onBounds(b, cam.position.toArray());
       const l = light.current;
       if (l) {
         const s = Math.max(b.maxX - b.minX, b.maxZ - b.minZ) * 0.75 + 4;
@@ -138,24 +139,63 @@ function StepHooks() {
   return null;
 }
 
-function Table({ bounds, ceiling }: { bounds: Bounds; ceiling: number }) {
+const WALL_Y = 1.2; // height at which the bounds were measured
+const LID = 0.55; // the glass lid sits this fraction of the way from the table to the camera
+const T = 2;
+
+/**
+ * Glass box that follows the camera's view: four slanted walls through the camera and the edges of the
+ * visible table, plus a lid, so dice shaken in any direction (towards the camera too) never leave the screen.
+ */
+function glassBox(b: Bounds, apex: Vector3) {
+  const corners = [
+    new Vector3(b.minX, WALL_Y, b.minZ),
+    new Vector3(b.maxX, WALL_Y, b.minZ),
+    new Vector3(b.maxX, WALL_Y, b.maxZ),
+    new Vector3(b.minX, WALL_Y, b.maxZ),
+  ];
+  const centre = new Vector3((b.minX + b.maxX) / 2, WALL_Y, (b.minZ + b.maxZ) / 2);
+  const walls = corners.map((p1, i) => {
+    const p2 = corners[(i + 1) % 4];
+    const at = (p: Vector3, t: number) => p.clone().lerp(apex, t);
+    const m0 = at(p1, -0.25).add(at(p2, -0.25)).multiplyScalar(0.5);
+    const m1 = at(p1, LID).add(at(p2, LID)).multiplyScalar(0.5);
+    const u = p2.clone().sub(p1);
+    const width = u.length() * 1.3 + T * 4;
+    u.normalize();
+    const v = m1.clone().sub(m0);
+    const len = v.length();
+    v.addScaledVector(u, -u.dot(v)).normalize();
+    let n = new Vector3().crossVectors(u, v);
+    // the normal must point into the box
+    if (n.dot(centre.clone().sub(p1.clone().add(p2).multiplyScalar(0.5))) < 0) {
+      u.negate();
+      n = new Vector3().crossVectors(u, v);
+    }
+    const rot = new Euler().setFromRotationMatrix(new Matrix4().makeBasis(u, v, n));
+    const pos = m0.clone().add(m1).multiplyScalar(0.5).addScaledVector(n, -T);
+    return { args: [width / 2, len / 2, T] as [number, number, number], pos: pos.toArray() as [number, number, number], rot: [rot.x, rot.y, rot.z] as [number, number, number] };
+  });
+  const lidY = WALL_Y + LID * (apex.y - WALL_Y);
+  return { walls, lidY };
+}
+
+function Table({ bounds, apex }: { bounds: Bounds; apex: [number, number, number] }) {
   const cx = (bounds.minX + bounds.maxX) / 2;
   const cz = (bounds.minZ + bounds.maxZ) / 2;
   const w = bounds.maxX - bounds.minX;
   const d = bounds.maxZ - bounds.minZ;
-  const H = 18;
-  const T = 2;
+  const box = useMemo(() => glassBox(bounds, new Vector3(...apex)), [bounds, apex]);
   return (
     <>
       <RigidBody type="fixed" colliders={false} userData={{ kind: 'table' }}>
         <CuboidCollider args={[80, 1, 80]} position={[0, -1, 0]} friction={0.75} restitution={0.12} />
       </RigidBody>
-      <RigidBody type="fixed" colliders={false} key={`${cx.toFixed(2)}${cz.toFixed(2)}${w.toFixed(2)}${d.toFixed(2)}${ceiling.toFixed(1)}`} userData={{ kind: 'wall' }}>
-        <CuboidCollider args={[T, H, d / 2 + T * 2]} position={[bounds.minX - T, H, cz]} restitution={0.3} friction={0.2} />
-        <CuboidCollider args={[T, H, d / 2 + T * 2]} position={[bounds.maxX + T, H, cz]} restitution={0.3} friction={0.2} />
-        <CuboidCollider args={[w / 2 + T * 2, H, T]} position={[cx, H, bounds.minZ - T]} restitution={0.3} friction={0.2} />
-        <CuboidCollider args={[w / 2 + T * 2, H, T]} position={[cx, H, bounds.maxZ + T]} restitution={0.3} friction={0.2} />
-        <CuboidCollider args={[w / 2 + T * 2, T, d / 2 + T * 2]} position={[cx, ceiling + T, cz]} />
+      <RigidBody type="fixed" colliders={false} key={`${cx.toFixed(2)}${cz.toFixed(2)}${w.toFixed(2)}${d.toFixed(2)}${apex[1].toFixed(1)}`} userData={{ kind: 'wall' }}>
+        {box.walls.map((wl, i) => (
+          <CuboidCollider key={i} args={wl.args} position={wl.pos} rotation={wl.rot} restitution={0.3} friction={0.2} />
+        ))}
+        <CuboidCollider args={[w / 2 + T * 2, T, d / 2 + T * 2]} position={[cx, box.lidY + T, cz]} />
       </RigidBody>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.001, 0]} receiveShadow>
         <planeGeometry args={[200, 200]} />
@@ -281,13 +321,13 @@ function Bind() {
 export function GameScene({ insets, paused }: { insets: Insets; paused?: boolean }) {
   const count = useTable((s) => s.dice.length);
   const [bounds, setBounds] = useState<Bounds>(director.bounds);
-  const [ceiling, setCeiling] = useState(20);
+  const [apex, setApex] = useState<[number, number, number]>([0, 25, 8]);
   const firstBounds = useRef(true);
   const onBounds = useMemo(
-    () => (b: Bounds, c: number) => {
+    () => (b: Bounds, a: [number, number, number]) => {
       director.setBounds(b);
       setBounds(b);
-      setCeiling(c);
+      setApex(a);
       if (firstBounds.current) {
         firstBounds.current = false;
         // layout computed with default bounds before the real ones were known
@@ -311,7 +351,7 @@ export function GameScene({ insets, paused }: { insets: Insets; paused?: boolean
       <SceneSetup insets={insets} count={count} onBounds={onBounds} />
       <Physics gravity={[0, -GRAVITY, 0]} timeStep={1 / 60} paused={paused}>
         <StepHooks />
-        <Table bounds={bounds} ceiling={ceiling} />
+        <Table bounds={bounds} apex={apex} />
         <Cup />
         <Dice />
       </Physics>

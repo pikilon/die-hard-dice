@@ -14,8 +14,9 @@ Ajusta §4.2 de `001-die-hard-dice`: cuando el dispositivo tiene acelerómetro *
 - **FR-203** Tras agitar de verdad (cambio de lectura > ≈3 m/s²), si el dispositivo se mueve con muy poca
   fuerza (< ≈0,6 m/s²) durante **2 s**, el acelerómetro se desactiva: los dados caen y ruedan por
   gravedad normal. Tope de seguridad: 60 s. 
-- **FR-206** La mesa tiene un **cristal** justo **detrás de la cámara** (altura de la cámara + 2 unidades): los dados sacudidos hacia la cámara
-  chocan con él y nunca salen de la vista.
+- **FR-206** La mesa es una **caja de cristal que sigue la vista de la cámara**: cuatro paredes inclinadas que
+  pasan por la cámara y los bordes visibles del tapete, y una tapa al 55 % del camino hacia la cámara. Ningún
+  dado sale de la pantalla, ni por los lados ni hacia la cámara.
 - **FR-207** Tocar la pantalla durante `tilting` desactiva el acelerómetro (los dados se asientan).
 - **FR-204** El resultado se lee en cuanto los dados quedan quietos con el dispositivo en calma (≥ 0,6 s tras
   la sacudida), sin esperar a los 2 s, o al asentarse tras desactivarse el acelerómetro (mismo
