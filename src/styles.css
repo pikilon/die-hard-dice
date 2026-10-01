@@ -40,6 +40,12 @@ body,
   height: 100%;
 }
 
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
   font-family: var(--font-body);
@@ -193,6 +199,7 @@ h3 {
 }
 
 .brand {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -219,6 +226,7 @@ h3 {
 .nav {
   display: flex;
   gap: 4px;
+  min-width: 0;
 }
 
 .nav a {
@@ -238,6 +246,30 @@ h3 {
 .nav a.active {
   color: #1b1208;
   background: linear-gradient(180deg, var(--gold-300), var(--gold-500));
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    gap: 6px;
+    padding: 0 10px;
+  }
+  .app-header .btn {
+    padding: 0 12px;
+  }
+  .app-header .btn.icon {
+    min-width: 40px;
+    padding: 0;
+  }
+  .nav {
+    gap: 0;
+  }
+  .nav a {
+    padding: 8px 9px;
+    font-size: 0.92rem;
+  }
+  .segmented button {
+    padding: 6px 9px;
+  }
 }
 
 @media (max-width: 640px) {
