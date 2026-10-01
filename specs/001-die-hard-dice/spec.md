@@ -112,6 +112,10 @@ HeroQuest (3 calaveras, 2 escudos blancos, 1 escudo negro), dado de movimiento r
    tapete** y el cubilete desaparece.
 5. Cuando todos los dados están quietos se lee la cara superior. Si un dado queda “montado”
    (inclinado sobre otro o contra la pared) se le da un pequeño empujón y se vuelve a esperar.
+   El cubilete contiene siempre los dados mientras se agita, por fuerte que sea el movimiento: ningún
+   dado atraviesa las paredes ni la tapa.
+   Si el puntero sale de la ventana (o la ventana pierde el foco) durante el agitado, se trata como
+   soltar: los dados se lanzan igual que al levantar el ratón y nunca queda la tirada atascada.
 6. Sonido de dados sintetizado (se puede silenciar) y vibración ligera en móvil.
 
 ### 4.3 Recuento (barra inferior)

@@ -15,6 +15,11 @@ const FIXED = 1;
 const KINEMATIC = 2;
 
 const UP = new Vector3(0, 1, 0);
+
+/** Debug traces: set `window.__dhdDebug = true` before loading. */
+const dbg = (...args: unknown[]) => {
+  if ((window as unknown as { __dhdDebug?: boolean }).__dhdDebug) console.debug('[dhd]', ...args);
+};
 const CUP_BASE_Y = 2.7;
 
 export interface Bounds {
@@ -407,6 +412,35 @@ class Director {
     }
   }
 
+  /**
+   * Keeps the dice inside the cup while it is shaken. The kinematic walls are thin and move fast,
+   * so dice can tunnel through them (sideways or through the lid): whatever ends up outside is
+   * put back, moving along with the cup.
+   */
+  private confineDice() {
+    const { radius, height } = useCup.getState().spec;
+    const inv = cupPose.quat.clone().invert();
+    const maxR = Math.max(0.3, radius - 0.3);
+    const minY = 0.5;
+    const maxY = height - 0.2;
+    for (const u of this.rolling) {
+      const d = this.dice.get(u);
+      if (!d || this.tweens.has(u)) continue;
+      const t = d.body.translation();
+      const local = new Vector3(t.x, t.y, t.z).sub(cupPose.pos).applyQuaternion(inv);
+      const r = Math.hypot(local.x, local.z);
+      if (r <= maxR && local.y >= minY && local.y <= maxY) continue;
+      dbg('die escaped the cup, put back', { uid: u, r: +r.toFixed(2), y: +local.y.toFixed(2), maxR: +maxR.toFixed(2), maxY: +maxY.toFixed(2), cupSpeed: +this.cupVel.length().toFixed(1) });
+      if (r > maxR) {
+        local.x *= maxR / r;
+        local.z *= maxR / r;
+      }
+      local.y = Math.min(maxY, Math.max(minY, local.y));
+      d.body.setTranslation(local.applyQuaternion(cupPose.quat).add(cupPose.pos), true);
+      d.body.setLinvel({ x: this.cupVel.x, y: 0, z: this.cupVel.z }, true);
+    }
+  }
+
   private stepCup(dt: number) {
     if (this.cupPhase === 'hidden') return;
     this.cupT += dt;
@@ -451,8 +485,11 @@ class Director {
         if (this.motionQuiet > 0.6 && this.cupT > 1) this.release();
       }
 
+      this.confineDice();
+
       if (this.cupPhase === 'gather' && this.tweens.size === 0) {
         this.cupPhase = 'shake';
+        dbg('shake start', { dice: this.rolling.length });
         useTable.getState().setPhase('shaking');
       }
       if (this.released && this.cupPhase === 'shake') this.startPour();
@@ -493,6 +530,7 @@ class Director {
 
   private startPour() {
     this.cupPhase = 'pour';
+    dbg('pour', { dir: this.throwDir.toArray().map((n) => +n.toFixed(2)) });
     this.cupT = 0;
     this.pourFrom.copy(cupPose.pos);
     this.setCupEnabled(false);
@@ -540,6 +578,7 @@ class Director {
     const timeout = this.settleTime > 10;
     if (this.settleFrames < 16 && !timeout) return;
 
+    dbg('settled', { timeout, time: +this.settleTime.toFixed(1) });
     this.containDice();
     // cocked dice get a nudge
     if (!timeout) {
