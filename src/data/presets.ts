@@ -96,7 +96,7 @@ function set(s: SetSpec): DiceSet {
 }
 
 export const BUILTIN_SETS: DiceSet[] = [
-  set({ id: 'kot', es: 'King of Tokyo', en: 'King of Tokyo', dice: Array(6).fill('kot'), bg: 'city', sum: false, groupNumbers: true }),
+  set({ id: 'kot', es: 'King of Tokyo', en: 'King of Tokyo', dice: Array(6).fill('kot'), bg: 'city', sum: true, groupNumbers: true }),
   set({ id: 'hq-hero', es: 'HeroQuest · Héroe', en: 'HeroQuest · Hero', dice: ['hq-move', 'hq-move', 'hq-combat', 'hq-combat', 'hq-combat'], bg: 'dungeon' }),
   set({ id: 'hq-enemies', es: 'HeroQuest · Enemigos', en: 'HeroQuest · Enemies', dice: ['hq-combat', 'hq-combat', 'hq-combat'], bg: 'dungeon' }),
   set({ id: 'dnd', es: 'D&D', en: 'D&D', dice: ['d4', 'd6', 'd8', 'd10', 'd100', 'd12', 'd20'], bg: 'tavern' }),

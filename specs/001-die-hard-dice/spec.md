@@ -116,7 +116,7 @@ HeroQuest (3 calaveras, 2 escudos blancos, 1 escudo negro), dado de movimiento r
 
 ### 4.3 Recuento (barra inferior)
 - Una ficha por dado, en el orden del set, con **su color de cara y su valor** (legible, grande).
-- **Σ suma** de los valores numéricos.
+- **Σ suma** de los valores numéricos (activada por defecto, también en King of Tokyo, donde además se agrupan los números iguales).
 - Valores **no numéricos agrupados** por apariencia idéntica (valor + colores): `2 × ☠ · 1 × 🛡`.
 - Marcas: ✎ alterado · ↻ relanzado · anillo = seleccionado para relanzar.
 
