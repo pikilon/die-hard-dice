@@ -37,7 +37,8 @@ fondo que el usuario elige por URL externa.
   barra superior** (`top: var(--header-h) + 8px`), visible en todas las pantallas con cabecera mientras no se
   cierre ni se instale, también al hacer scroll. Contiene texto, botón **«Instalar»** y ✕. Se muestra solo si
   el navegador emitió `beforeinstallprompt` (se guarda el evento y se llama a `prompt()` al pulsar) y la app no
-  está ya instalada. No aparece en la pantalla de juego (`Play`, que no tiene cabecera).
+  está ya instalada. Aparece **también en la pantalla de juego** (`Play`): ahí se coloca justo debajo de su barra
+  superior (la que lleva volver/selector de set), medida en tiempo de ejecución.
 - **FR-313** **Nunca dentro de la app instalada:** si se ejecuta en modo standalone (`display-mode: standalone`
   o `navigator.standalone`), o tras `appinstalled`, el aviso no se muestra.
 - **FR-314** iOS/Safari no emite `beforeinstallprompt`: si es iOS y no está en standalone, la misma tarjeta

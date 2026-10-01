@@ -12,6 +12,7 @@ import { HistoryPanel } from '../game/ui/HistoryPanel';
 import { TallyBar } from '../game/ui/TallyBar';
 import { useName, useT } from '../i18n';
 import { isStandalone } from '../pwa/install';
+import { InstallBanner } from '../pwa/InstallBanner';
 import { useLibrary } from '../store/library';
 import { useSettings } from '../store/settings';
 import { useTable } from '../store/table';
@@ -233,6 +234,7 @@ export function Play({ id }: { id: string }) {
         {loaded && <GameScene insets={insets} />}
       </div>
       <GrabPrompt />
+      <InstallBanner top={insets.top + 2} />
 
       <div className="play-top" ref={top}>
         <Link href="/" className="btn icon" aria-label={t('common.back')}>
