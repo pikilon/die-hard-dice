@@ -211,6 +211,8 @@ export const es = {
   'import.setTitle': 'Set',
 
   'pwa.install': 'Instalar app',
+  'pwa.installPrompt': 'Instala Die Hard Dice en tu dispositivo',
+  'pwa.installAction': 'Instalar',
   'pwa.installIos': 'Para instalar: Compartir → Añadir a pantalla de inicio',
   'pwa.updateAvailable': 'Hay una nueva versión',
   'pwa.update': 'Actualizar',

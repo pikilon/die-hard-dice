@@ -4,7 +4,6 @@ import { Link, useLocation } from 'wouter';
 import { backgroundUrl } from '../data/backgrounds';
 import { useName, useT } from '../i18n';
 import type { DiceSet } from '../model/types';
-import { promptInstall, useInstall } from '../pwa/install';
 import { useLibrary } from '../store/library';
 import { DieThumb } from '../ui/DieThumb';
 import { confirmDialog, promptDialog, toast } from '../ui/feedback';
@@ -111,7 +110,6 @@ export function Home() {
   const sets = useLibrary((s) => s.sets);
   const order = useLibrary((s) => s.setOrder);
   const restore = useLibrary((s) => s.restoreDefaults);
-  const install = useInstall();
   const [sharing, setSharing] = useState<DiceSet | null>(null);
   const list = order.map((id) => sets[id]).filter(Boolean);
 
@@ -144,17 +142,6 @@ export function Home() {
           <Icon name="refresh" size={16} /> {t('home.restore')}
         </button>
       </div>
-      {!install.isStandalone && (install.canInstall || install.isIOS) && (
-        <div className="row" style={{ marginTop: 12, justifyContent: 'center' }}>
-          {install.canInstall ? (
-            <button className="btn sm" onClick={promptInstall}>
-              <Icon name="phone" size={16} /> {t('pwa.install')}
-            </button>
-          ) : (
-            <p className="muted small">{t('pwa.installIos')}</p>
-          )}
-        </div>
-      )}
       <ShareModal set={sharing} open={!!sharing} onClose={() => setSharing(null)} />
     </div>
   );

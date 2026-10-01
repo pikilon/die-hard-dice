@@ -1290,3 +1290,26 @@ body:has(.play) .toasts {
   border-radius: 14px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
 }
+
+/* PWA: install card floating right under the top bar */
+.install-banner {
+  position: fixed;
+  top: calc(var(--header-h) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 19;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 8px 8px 8px 14px;
+  background: var(--walnut-700);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+.install-text {
+  font-size: 0.9rem;
+}

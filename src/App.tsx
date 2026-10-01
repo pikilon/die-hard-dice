@@ -10,6 +10,7 @@ import { SetEditor } from './pages/SetEditor';
 import { useHashLocation, useHashSearch } from './router';
 import { useLibrary } from './store/library';
 import { useSettings } from './store/settings';
+import { InstallBanner } from './pwa/InstallBanner';
 import { UpdateBanner } from './pwa/UpdateBanner';
 import { Dialogs, Toasts } from './ui/feedback';
 import { Icon, Logo } from './ui/Icon';
@@ -123,6 +124,7 @@ function Shell() {
   return (
     <>
       {!playing && <Header />}
+      {!playing && <InstallBanner />}
       <main>
         <Suspense fallback={<Loading />}>
         <Switch>

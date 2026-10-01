@@ -28,20 +28,29 @@ fondo que el usuario elige por URL externa.
 
 - **FR-310** Existe `manifest.webmanifest` enlazado desde `index.html` (`<link rel="manifest" href="./manifest.webmanifest">`)
   con: `name` «Die Hard Dice», `short_name` «Die Hard Dice», `description`, `lang: "es"`, `display: "standalone"`,
-  `orientation: "portrait"`, `start_url`, `scope`, `id: "./"`, `background_color` y `theme_color` `#1c120b`
+  `orientation: "portrait"`, `start_url`, `scope`, `id: "./"`, `handle_links` y `launch_handler` (FR-316), `background_color` y `theme_color` `#1c120b`
   (el mismo que el `<meta name="theme-color">`), `categories: ["games", "entertainment"]` e `icons`
   (FR-330).
 - **FR-311** Cumple los criterios de instalabilidad de Chromium (Lighthouse/DevTools → Application →
   Manifest sin errores, «Installable») servido por HTTPS (o `localhost`).
-- **FR-312** Botón **«Instalar app»** en la pantalla de inicio (junto al acceso a «Acerca de» o equivalente),
-  visible solo si: el navegador emitió `beforeinstallprompt` (se guarda el evento y se llama a `prompt()` al
-  pulsar) y la app no está ya instalada. Tras `appinstalled` o si se ejecuta en modo standalone
-  (`display-mode: standalone` o `navigator.standalone`) el botón no se muestra.
-- **FR-313** iOS/Safari no emite `beforeinstallprompt`: si es iOS (Safari) y no está en standalone, el mismo
-  sitio muestra un texto de ayuda «Compartir → Añadir a pantalla de inicio» en lugar del botón (sin
-  `prompt()`).
-- **FR-314** Si el usuario descarta el aviso, no se vuelve a insistir con ningún diálogo propio; el botón
-  de la pantalla de inicio sigue disponible mientras el navegador permita instalar.
+- **FR-312** Aviso **«Instalar app»**: una tarjeta flotante (`position: fixed`) colocada **justo debajo de la
+  barra superior** (`top: var(--header-h) + 8px`), visible en todas las pantallas con cabecera mientras no se
+  cierre ni se instale, también al hacer scroll. Contiene texto, botón **«Instalar»** y ✕. Se muestra solo si
+  el navegador emitió `beforeinstallprompt` (se guarda el evento y se llama a `prompt()` al pulsar) y la app no
+  está ya instalada. No aparece en la pantalla de juego (`Play`, que no tiene cabecera).
+- **FR-313** **Nunca dentro de la app instalada:** si se ejecuta en modo standalone (`display-mode: standalone`
+  o `navigator.standalone`), o tras `appinstalled`, el aviso no se muestra.
+- **FR-314** iOS/Safari no emite `beforeinstallprompt`: si es iOS y no está en standalone, la misma tarjeta
+  muestra el texto «Compartir → Añadir a pantalla de inicio» (sin botón) y su ✕.
+- **FR-315** **Cerrar = preguntar en 7 días.** Al pulsar ✕ (o tras descartar el diálogo nativo) se guarda la fecha
+  en `localStorage` (`dhd.installDismissed`) y el aviso no vuelve a mostrarse hasta pasados 7 días (7×24 h);
+  entonces reaparece. Si `localStorage` falla, el aviso se oculta solo durante la sesión.
+- **FR-316** **Enlaces dentro de la app (best effort).** Con la app instalada, los enlaces a la propia web (p. ej.
+  los de compartir `#/import?d=…`) deben abrirse en la app y no en el navegador: el manifest declara
+  `"handle_links": "preferred"` y `"launch_handler": { "client_mode": ["navigate-existing", "auto"] }`
+  (Chromium de escritorio; en Android el WebAPK ya captura los enlaces del `scope`). Los navegadores que no lo
+  soportan lo ignoran. Los enlaces de **otros** sitios (atribución game-icons.net, licencia CC) siguen abriéndose
+  fuera de la app, con `target="_blank" rel="noreferrer"`.
 
 ### Orientación
 

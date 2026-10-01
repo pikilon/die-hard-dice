@@ -213,6 +213,8 @@ export const en: Record<I18nKey, string> = {
   'import.setTitle': 'Set',
 
   'pwa.install': 'Install app',
+  'pwa.installPrompt': 'Install Die Hard Dice on your device',
+  'pwa.installAction': 'Install',
   'pwa.installIos': 'To install: Share → Add to Home Screen',
   'pwa.updateAvailable': 'A new version is available',
   'pwa.update': 'Update',
