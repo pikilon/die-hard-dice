@@ -8,6 +8,7 @@
     "icons": "node scripts/build-icons.mjs",
     "predev": "npm run icons",
     "dev": "vite",
+    "tunnel": "npx --yes cloudflared tunnel --url http://localhost:5173",
     "prebuild": "npm run icons",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
