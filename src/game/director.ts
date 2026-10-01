@@ -149,6 +149,8 @@ class Director {
   private tilting = false;
   private tiltAcc = new Vector3(); // world-space acceleration the dice feel (the device is a box: −reading, gravity included)
   private tiltReading = new Vector3();
+  private restG = new Vector3(0, 0, 9.81); // slow low-pass of the gravity reading while the device is not shaking: how the user holds it
+  private restSeen = false;
   private tiltEngaged = false; // the user has shaken the device since the throw started
   private tiltQuiet = 0; // seconds the device has barely moved (after being shaken)
   private tiltT = 0;
@@ -419,8 +421,21 @@ class Director {
    * out of the screen (+z) → world −y.
    */
   tilt(gx: number, gy: number, gz: number) {
-    if (!this.tilting) return;
-    const r = new Vector3(gx, gy, gz).clampLength(0, TILT_MAX);
+    if (!this.tilting) {
+      // learn the resting pose (flat on a table, or upright in the hand) while the cup waits
+      const g = new Vector3(gx, gy, gz).clampLength(0, TILT_MAX);
+      if (!this.restSeen) this.restG.copy(g);
+      else this.restG.lerp(g, 0.04);
+      this.restSeen = true;
+      return;
+    }
+    const raw = new Vector3(gx, gy, gz).clampLength(0, TILT_MAX);
+    // the screen is the felt however the device is held: rotate about the x axis so the resting gravity points
+    // into the screen (an upright phone must not make the dice fall towards the bottom edge)
+    const pitch = Math.min(Math.max(Math.atan2(this.restG.y, this.restG.z), 0), 1.75);
+    const c = Math.cos(pitch);
+    const sn = Math.sin(pitch);
+    const r = new Vector3(raw.x, raw.y * c - raw.z * sn, raw.y * sn + raw.z * c);
     // the first sample after pressing Lanzar has nothing to compare with
     const delta = this.tiltReading.lengthSq() === 0 ? 0 : r.distanceTo(this.tiltReading);
     this.tiltReading.copy(r);
