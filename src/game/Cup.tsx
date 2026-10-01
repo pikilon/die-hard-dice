@@ -132,13 +132,11 @@ export function Cup() {
   }, [geoms]);
 
   useEffect(() => {
-    director.cupBody = body.current;
-    director.cupWalls = [...walls.current.filter((c): c is RapierCollider => !!c), ...(base.current ? [base.current] : []), ...(lid.current ? [lid.current] : [])];
-    director.cupLid = lid.current;
+    director.cupRef = body;
+    director.cupColliders = () => [...walls.current, base.current, lid.current];
     return () => {
-      director.cupBody = null;
-      director.cupWalls = [];
-      director.cupLid = null;
+      director.cupRef = null;
+      director.cupColliders = () => [];
     };
   }, [spec.key, spec.visible]);
 

@@ -84,9 +84,10 @@ class Director {
   camera: Camera | null = null;
   dom: HTMLElement | null = null;
 
-  cupBody: RapierRigidBody | null = null;
-  cupWalls: RapierCollider[] = [];
-  cupLid: RapierCollider | null = null;
+  /** Live ref: Rapier may recreate the body behind it (React StrictMode in dev), so never cache the body. */
+  cupRef: { current: RapierRigidBody | null } | null = null;
+  /** Returns the cup's colliders (walls, base, lid) read live from their refs. */
+  cupColliders: () => (RapierCollider | null)[] = () => [];
 
   private cupPhase: CupPhase = 'hidden';
   private cupT = 0;
@@ -409,7 +410,7 @@ class Director {
   private stepCup(dt: number) {
     if (this.cupPhase === 'hidden') return;
     this.cupT += dt;
-    const body = this.cupBody;
+    const body = this.cupRef?.current;
     const spec = useCup.getState().spec;
 
     if (this.cupPhase === 'gather' || this.cupPhase === 'shake') {
@@ -472,25 +473,29 @@ class Director {
       cupPose.pos.addScaledVector(this.throwDir, -dt * 7);
       cupPose.pos.y += dt * (6 + t * 10);
       cupPose.opacity = 1 - t;
-      if (t > 0.25) this.cupWalls.forEach((c) => c.setEnabled(false));
+      if (t > 0.25) this.setCupEnabled(false);
       if (t >= 1) {
         this.cupPhase = 'hidden';
         useCup.getState().setSpec({ visible: false });
       }
     }
 
-    if (body && spec.visible) {
+    if (body && spec.visible && body.isValid()) {
       const bodyPos = cupPose.pos;
       body.setNextKinematicTranslation({ x: bodyPos.x, y: bodyPos.y, z: bodyPos.z });
       body.setNextKinematicRotation(cupPose.quat);
     }
   }
 
+  private setCupEnabled(on: boolean) {
+    for (const c of this.cupColliders()) if (c?.isValid()) c.setEnabled(on);
+  }
+
   private startPour() {
     this.cupPhase = 'pour';
     this.cupT = 0;
     this.pourFrom.copy(cupPose.pos);
-    this.cupLid?.setEnabled(false);
+    this.setCupEnabled(false);
     useTable.getState().setPhase('pouring');
     useTable.getState().setMotionShake(false);
     whoosh();
