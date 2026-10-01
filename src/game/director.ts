@@ -21,6 +21,14 @@ const dbg = (...args: unknown[]) => {
   if ((window as unknown as { __dhdDebug?: boolean }).__dhdDebug) console.debug('[dhd]', ...args);
 };
 const CUP_BASE_Y = 2.7;
+/**
+ * World gravity. One unit is ~1.3 cm (a d6 is ~1.2 units wide), so real gravity would be ~750:
+ * low values make the dice float. Throw impulses are scaled with it.
+ */
+export const GRAVITY = 130;
+const G = GRAVITY / 40;
+/** The cup moves this many times the pointer's displacement, so shaking needs only small gestures. */
+const SHAKE_GAIN = 2.6;
 
 export interface Bounds {
   minX: number;
@@ -97,14 +105,19 @@ class Director {
   private cupPhase: CupPhase = 'hidden';
   private cupT = 0;
   private cupVel = new Vector3();
+  /** Recent peak of the cup velocity (decays over ~0.2 s): what the shot is fired with. */
+  private peakVel = new Vector3();
   private cupTarget = new Vector3();
   private shakeEnergy = 0;
   private autoShake = 0;
   private throwDir = new Vector3(0, 0, -1);
+  /** Muzzle speed (world units/s) of the dice when the cup is released. */
+  private throwSpeed = 14;
   private pourFrom = new Vector3();
   private dragOrigin = new Vector3();
+  /** From the roll button the drag is anchored at the first pointer move, not at the button. */
+  private anchorPending = false;
   private cupOrigin = new Vector3();
-  private pointerHist: { t: number; p: Vector3 }[] = [];
   private tweens = new Map<string, Tween>();
   private rolling: string[] = [];
   private kind: 'roll' | 'reroll' = 'roll';
@@ -268,6 +281,7 @@ class Director {
     this.clampToBounds(start, radius + 0.4);
     start.y = CUP_BASE_Y;
     this.dragOrigin.copy(pointer ?? start);
+    this.anchorPending = fromButton;
     this.cupOrigin.copy(start);
     cupPose.pos.copy(start);
     cupPose.quat.identity();
@@ -275,12 +289,12 @@ class Director {
     cupPose.opacity = 1;
     this.cupTarget.copy(start);
     this.cupVel.set(0, 0, 0);
+    this.peakVel.set(0, 0, 0);
     this.cupPhase = 'gather';
     this.cupT = 0;
     this.shakeEnergy = 0;
     this.autoShake = 0;
     this.released = false;
-    this.pointerHist = [{ t: performance.now(), p: start.clone() }];
     this.motionPeak = 0;
     this.motionQuiet = 0;
     this.nudges.clear();
@@ -333,14 +347,16 @@ class Director {
     if (this.cupPhase !== 'gather' && this.cupPhase !== 'shake') return;
     const raw = this.screenToWorld(clientX, clientY);
     if (!raw) return;
-    const p = this.cupOrigin.clone().add(raw.sub(this.dragOrigin));
+    if (this.anchorPending) {
+      this.anchorPending = false;
+      this.dragOrigin.copy(raw);
+      this.cupOrigin.copy(cupPose.pos);
+    }
+    const p = this.cupOrigin.clone().add(raw.sub(this.dragOrigin).multiplyScalar(SHAKE_GAIN));
     const { radius } = useCup.getState().spec;
     this.clampToBounds(p, radius + 0.2);
     p.y = CUP_BASE_Y;
     this.cupTarget.copy(p);
-    const now = performance.now();
-    this.pointerHist.push({ t: now, p: p.clone() });
-    while (this.pointerHist.length > 2 && now - this.pointerHist[0].t > 140) this.pointerHist.shift();
   }
 
   /** Device acceleration (m/s², gravity removed) while shaking with the phone. */
@@ -360,11 +376,12 @@ class Director {
   release() {
     if (this.cupPhase !== 'gather' && this.cupPhase !== 'shake') return;
     this.released = true;
-    // pour direction from the recent pointer movement, else away from the viewer
-    const h = this.pointerHist;
-    const v = h.length >= 2 ? h[h.length - 1].p.clone().sub(h[0].p) : new Vector3();
-    v.y = 0;
-    if (v.length() > 0.6) this.throwDir.copy(v.normalize());
+    // the shot leaves with the cup's own velocity (recent peak) at the moment of release (direction and speed)
+    const cv = new Vector3(this.peakVel.x, 0, this.peakVel.z);
+    const speed = cv.length();
+    this.throwSpeed = Math.min(30, Math.max(8, speed));
+    dbg('release', { cupSpeed: +speed.toFixed(1), phase: this.cupPhase });
+    if (speed > 3) this.throwDir.copy(cv.normalize());
     else {
       const c = new Vector3((this.bounds.minX + this.bounds.maxX) / 2, 0, (this.bounds.minZ + this.bounds.maxZ) / 2);
       const d = c.sub(new Vector3(cupPose.pos.x, 0, cupPose.pos.z));
@@ -470,6 +487,8 @@ class Director {
       this.cupVel.addScaledVector(acc, dt);
       const maxV = 28;
       if (this.cupVel.length() > maxV) this.cupVel.setLength(maxV);
+      this.peakVel.multiplyScalar(Math.pow(0.06, dt));
+      if (this.cupVel.lengthSq() >= this.peakVel.lengthSq()) this.peakVel.copy(this.cupVel);
       cupPose.pos.addScaledVector(this.cupVel, dt);
       cupPose.pos.y = CUP_BASE_Y;
       // lean into the movement
@@ -517,7 +536,7 @@ class Director {
       }
     }
 
-    if (body && spec.visible && body.isValid()) {
+    if (body && spec.visible && body.isValid() && this.cupPhase !== 'pour' && this.cupPhase !== 'leave') {
       const bodyPos = cupPose.pos;
       body.setNextKinematicTranslation({ x: bodyPos.x, y: bodyPos.y, z: bodyPos.z });
       body.setNextKinematicRotation(cupPose.quat);
@@ -526,11 +545,15 @@ class Director {
 
   private setCupEnabled(on: boolean) {
     for (const c of this.cupColliders()) if (c?.isValid()) c.setEnabled(on);
+    // park the body away from the table: otherwise the leaving cup still carries the dice up with it
+    // (only the visual cup keeps animating)
+    const body = this.cupRef?.current;
+    if (!on && body?.isValid()) body.setTranslation({ x: 0, y: -500, z: 0 }, true);
   }
 
   private startPour() {
     this.cupPhase = 'pour';
-    dbg('pour', { dir: this.throwDir.toArray().map((n) => +n.toFixed(2)) });
+    dbg('pour', { dir: this.throwDir.toArray().map((n) => +n.toFixed(2)), speed: +this.throwSpeed.toFixed(1) });
     this.cupT = 0;
     this.pourFrom.copy(cupPose.pos);
     this.setCupEnabled(false);
@@ -538,17 +561,17 @@ class Director {
     useTable.getState().setMotionShake(false);
     whoosh();
     haptic(25);
-    // fling the dice out with some spin
-    setTimeout(() => {
-      for (const u of this.rolling) {
-        const d = this.dice.get(u);
-        if (!d) continue;
-        const m = d.body.mass();
-        const f = rand(4.5, 7.5) * m;
-        d.body.applyImpulse({ x: this.throwDir.x * f, y: rand(0.5, 2) * m, z: this.throwDir.z * f }, true);
-        d.body.setAngvel({ x: rand(-16, 16), y: rand(-12, 12), z: rand(-16, 16) }, true);
-      }
-    }, 140);
+    // cannon shot: open the cup and fire the dice along the last gesture, aimed slightly down so they
+    // hit the table right away instead of drifting down from the cup
+    const side = new Vector3(-this.throwDir.z, 0, this.throwDir.x);
+    for (const u of this.rolling) {
+      const d = this.dice.get(u);
+      if (!d) continue;
+      const sp = this.throwSpeed * rand(0.8, 1.2);
+      const lat = rand(-0.2, 0.2) * sp;
+      d.body.setLinvel({ x: this.throwDir.x * sp + side.x * lat, y: -rand(2, 8), z: this.throwDir.z * sp + side.z * lat }, true);
+      d.body.setAngvel({ x: rand(-30, 30), y: rand(-20, 20), z: rand(-30, 30) }, true);
+    }
     this.settleFrames = 0;
     this.settleTime = 0;
   }
@@ -569,7 +592,7 @@ class Director {
       if (d.body.isSleeping()) continue;
       const lv = d.body.linvel();
       const av = d.body.angvel();
-      if (Math.hypot(lv.x, lv.y, lv.z) > 0.09 || Math.hypot(av.x, av.y, av.z) > 0.2) {
+      if (Math.hypot(lv.x, lv.y, lv.z) > 0.15 || Math.hypot(av.x, av.y, av.z) > 0.4) {
         still = false;
         break;
       }
@@ -590,10 +613,12 @@ class Director {
         const { alignment } = topSlot(d.solid, (v) => v.applyQuaternion(quat));
         const n = this.nudges.get(u) ?? 0;
         if (alignment < 0.93 && n < 3) {
+          dbg('nudge cocked die', { uid: u, faces: d.die.faces, alignment: +alignment.toFixed(2), n: n + 1 });
           this.nudges.set(u, n + 1);
           const m = d.body.mass();
-          d.body.applyImpulse({ x: rand(-1, 1) * m, y: 3.2 * m, z: rand(-1, 1) * m }, true);
-          d.body.applyTorqueImpulse({ x: rand(-0.6, 0.6) * m, y: 0, z: rand(-0.6, 0.6) * m }, true);
+          const push = 1 + n * 0.7; // each retry kicks harder
+          d.body.applyImpulse({ x: rand(-1.5, 1.5) * push * m, y: 3.2 * Math.sqrt(G) * push * m, z: rand(-1.5, 1.5) * push * m }, true);
+          d.body.applyTorqueImpulse({ x: rand(-0.8, 0.8) * push * m, y: 0, z: rand(-0.8, 0.8) * push * m }, true);
           this.settleFrames = 0;
           return;
         }

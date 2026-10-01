@@ -30,7 +30,7 @@ import { getEnvironment } from '../three/environment';
 import { slotDirection } from '../three/solids';
 import { useDieMaterial } from '../three/useDieMaterial';
 import { Cup } from './Cup';
-import { director, type Bounds } from './director';
+import { GRAVITY, director, type Bounds } from './director';
 import { clack } from './sound';
 
 export interface Insets {
@@ -147,13 +147,13 @@ function Table({ bounds }: { bounds: Bounds }) {
   return (
     <>
       <RigidBody type="fixed" colliders={false} userData={{ kind: 'table' }}>
-        <CuboidCollider args={[80, 1, 80]} position={[0, -1, 0]} friction={0.75} restitution={0.28} />
+        <CuboidCollider args={[80, 1, 80]} position={[0, -1, 0]} friction={0.75} restitution={0.12} />
       </RigidBody>
       <RigidBody type="fixed" colliders={false} key={`${cx.toFixed(2)}${cz.toFixed(2)}${w.toFixed(2)}${d.toFixed(2)}`} userData={{ kind: 'wall' }}>
-        <CuboidCollider args={[T, H, d / 2 + T * 2]} position={[bounds.minX - T, H, cz]} restitution={0.4} friction={0.2} />
-        <CuboidCollider args={[T, H, d / 2 + T * 2]} position={[bounds.maxX + T, H, cz]} restitution={0.4} friction={0.2} />
-        <CuboidCollider args={[w / 2 + T * 2, H, T]} position={[cx, H, bounds.minZ - T]} restitution={0.4} friction={0.2} />
-        <CuboidCollider args={[w / 2 + T * 2, H, T]} position={[cx, H, bounds.maxZ + T]} restitution={0.4} friction={0.2} />
+        <CuboidCollider args={[T, H, d / 2 + T * 2]} position={[bounds.minX - T, H, cz]} restitution={0.3} friction={0.2} />
+        <CuboidCollider args={[T, H, d / 2 + T * 2]} position={[bounds.maxX + T, H, cz]} restitution={0.3} friction={0.2} />
+        <CuboidCollider args={[w / 2 + T * 2, H, T]} position={[cx, H, bounds.minZ - T]} restitution={0.3} friction={0.2} />
+        <CuboidCollider args={[w / 2 + T * 2, H, T]} position={[cx, H, bounds.maxZ + T]} restitution={0.3} friction={0.2} />
         <CuboidCollider args={[w / 2 + T * 2, T, d / 2 + T * 2]} position={[cx, H * 2 + T, cz]} />
       </RigidBody>
       <mesh rotation-x={-Math.PI / 2} position={[0, 0.001, 0]} receiveShadow>
@@ -231,8 +231,8 @@ const PhysicsDie = memo(function PhysicsDie({ uid, dieId, index, count }: { uid:
         quaternion={initial.quat}
         ccd
         canSleep
-        linearDamping={0.08}
-        angularDamping={0.12}
+        linearDamping={0.02}
+        angularDamping={0.05}
         userData={{ kind: 'die', uid }}
         onCollisionEnter={(e) => {
           const b = body.current;
@@ -247,7 +247,7 @@ const PhysicsDie = memo(function PhysicsDie({ uid, dieId, index, count }: { uid:
           clack(speed * 6, kind === 'die' ? 'die' : kind === 'cup' ? 'cup' : 'table');
         }}
       >
-        <ConvexHullCollider args={[data.hull]} restitution={0.32} friction={0.55} density={1.4} />
+        <ConvexHullCollider args={[data.hull]} restitution={0.2} friction={0.55} density={1.4} />
         <mesh ref={mesh} geometry={data.geometry} material={material} castShadow receiveShadow />
       </RigidBody>
       <mesh ref={ring} geometry={ringGeo} material={ringMat} rotation-x={-Math.PI / 2} visible={false} />
@@ -306,7 +306,7 @@ export function GameScene({ insets, paused }: { insets: Insets; paused?: boolean
     >
       <Bind />
       <SceneSetup insets={insets} count={count} onBounds={onBounds} />
-      <Physics gravity={[0, -40, 0]} timeStep={1 / 60} paused={paused}>
+      <Physics gravity={[0, -GRAVITY, 0]} timeStep={1 / 60} paused={paused}>
         <StepHooks />
         <Table bounds={bounds} />
         <Cup />
