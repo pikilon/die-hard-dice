@@ -112,6 +112,9 @@ HeroQuest (3 calaveras, 2 escudos blancos, 1 escudo negro), dado de movimiento r
    - con ratón/dedo: **arrastrando**; el cubilete sigue al puntero y los dados chocan dentro con física;
    - con **acelerómetro** (móvil): agitando el dispositivo mientras se sostiene el cubilete (se pide
      permiso en iOS).
+   Con acelerómetro el movimiento se amplifica mucho (un gesto corto recorre buena parte de la mesa) y
+   **se lanza al frenar en seco** tras una sacudida rápida (la velocidad previa al frenazo da la fuerza del
+   disparo); si se deja de agitar poco a poco, se lanza tras ≈0,6 s de calma.
    Al llegar al borde de la mesa el cubilete se detiene y el exceso de recorrido del puntero se descarta:
    al invertir el movimiento el cubilete vuelve a responder de inmediato.
 4. **Soltar** (levantar el clic/dedo, o salir de la ventana):

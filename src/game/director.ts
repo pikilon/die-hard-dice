@@ -21,6 +21,8 @@ const dbg = (...args: unknown[]) => {
   if ((window as unknown as { __dhdDebug?: boolean }).__dhdDebug) console.debug('[dhd]', ...args);
 };
 const CUP_BASE_Y = 2.7;
+const MOTION_GAIN = 0.5; // world units of cup travel per m/s² of device acceleration (shaking the phone moves the cup a lot)
+const MOTION_GRAB = 9; // m/s² of linear acceleration that counts as a shake
 /**
  * World gravity. One unit is ~1.3 cm (a d6 is ~1.2 units wide), so real gravity would be ~750:
  * low values make the dice float. Throw impulses are scaled with it.
@@ -133,6 +135,9 @@ class Director {
   private motionAcc = new Vector3();
   private motionPeak = 0;
   private motionQuiet = 0;
+  private motionSpeedMax = 0; // recent top cup speed while shaking with the device
+  private brakeT = 0; // how long the cup has been braking hard
+  private brakeVel = new Vector3(); // cup velocity at the moment the braking started
   private raycaster = new Raycaster();
   private plane = new Plane(new Vector3(0, 1, 0), -CUP_BASE_Y);
 
@@ -307,6 +312,8 @@ class Director {
     this.released = false;
     this.motionPeak = 0;
     this.motionQuiet = 0;
+    this.motionSpeedMax = 0;
+    this.brakeT = 0;
     this.nudges.clear();
 
     // freeze the dice that are not rerolled
@@ -406,6 +413,19 @@ class Director {
     return true;
   }
 
+  /** The accelerometer grabs the waiting cup: from now on the device movement shakes it. */
+  private grabMotion() {
+    this.grabbed = true;
+    this.cupOrigin.copy(this.cupTarget);
+    this.motionPeak = 0;
+    this.motionQuiet = 0;
+    this.motionSpeedMax = 0;
+    this.brakeT = 0;
+    const table = useTable.getState();
+    table.setPhase('gathering');
+    table.setMotionShake(true);
+  }
+
   /** Keyboard alternative to grabbing: shake the waiting cup automatically. */
   grabAuto() {
     if (!this.waiting) return false;
@@ -461,8 +481,13 @@ class Director {
   /** Device acceleration (m/s², gravity removed) while shaking with the phone. */
   motion(ax: number, ay: number) {
     if (this.cupPhase !== 'gather' && this.cupPhase !== 'shake') return;
-    this.motionAcc.set(ax, 0, -ay);
     const m = Math.hypot(ax, ay);
+    if (this.waiting) {
+      // a shake of the device grabs the waiting cup: no need to touch it
+      if (m > MOTION_GRAB) this.grabMotion();
+      return;
+    }
+    this.motionAcc.set(ax, 0, -ay);
     this.motionPeak = Math.max(this.motionPeak * 0.95, m);
   }
 
@@ -579,7 +604,8 @@ class Director {
         if (this.autoShake <= 0) this.release();
       }
       if (this.motionAcc.lengthSq() > 0) {
-        target.addScaledVector(this.motionAcc, 0.09);
+        target.addScaledVector(this.motionAcc, MOTION_GAIN);
+        this.clampToBounds(target, useCup.getState().spec.radius + 0.4);
         this.motionAcc.multiplyScalar(0.6);
         if (this.motionPeak > 6) this.motionQuiet = 0;
       }
@@ -602,6 +628,17 @@ class Director {
       if (useTable.getState().motionShake && this.motionPeak > 0) {
         if (this.motionPeak < 3) this.motionQuiet += dt;
         if (this.motionQuiet > 0.6 && this.cupT > 1) this.release();
+        // hard braking after a fast shake: the dice fly out with the speed the cup had just before stopping
+        const speed = this.cupVel.length();
+        this.motionSpeedMax = Math.max(this.motionSpeedMax * Math.pow(0.5, dt), speed);
+        if (this.cupT > 0.8 && this.motionSpeedMax > 10 && speed < this.motionSpeedMax * 0.35) {
+          if (this.brakeT === 0) this.brakeVel.copy(this.peakVel);
+          this.brakeT += dt;
+          if (this.brakeT > 0.1) {
+            this.peakVel.copy(this.brakeVel);
+            this.release();
+          }
+        } else if (speed > this.motionSpeedMax * 0.5) this.brakeT = 0;
       }
 
       this.confineDice();
