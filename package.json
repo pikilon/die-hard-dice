@@ -16,7 +16,8 @@
     "typecheck": "tsc -b",
     "pretest": "npm run icons",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "pwa:icons": "node scripts/build-pwa-icons.mjs"
   },
   "dependencies": {
     "@fontsource-variable/cinzel": "^5.2.0",
@@ -40,6 +41,8 @@
     "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^6.1.1",
     "jsdom": "^27.0.0",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.35.5",
     "typescript": "~5.9.3",
     "vite": "^8.3.1",
     "vitest": "^5.0.3"
