@@ -55,6 +55,10 @@ fondo que el usuario elige por URL externa.
     (FR-201) está activo, la app no está en standalone y el dispositivo no es de escritorio, se muestra una
     sola vez por sesión un aviso discreto: «Para que la pantalla no gire, instala la app o activa el bloqueo
     de rotación».
+- **FR-322** Mientras se lanzan los dados (fases `gathering`, `shaking`, `tilting`, `pouring` y `settling`) la
+  orientación de la pantalla **nunca cambia**: de forma *best effort* se llama a
+  `screen.orientation.lock(<orientación actual>)` al empezar y a `unlock()` al terminar (o al salir de
+  `Play`), sin errores visibles. Mismas limitaciones que FR-320 donde la web no puede bloquear.
 - **FR-321** El diseño sigue siendo válido si el sistema rota igualmente (no se rompe nada), pero no se
   añade soporte horizontal nuevo.
 

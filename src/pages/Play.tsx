@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { backgroundBase, backgroundUrl } from '../data/backgrounds';
 import { director } from '../game/director';
+import { lockOrientation, unlockOrientation } from '../game/orientation';
 import { isTouch, motionAvailable, rollButtonHandlers, useTableInput } from '../game/input';
 import { GameScene, type Insets } from '../game/Scene';
 import { addToTable } from '../game/session';
@@ -10,9 +11,11 @@ import { DieMenu } from '../game/ui/DieMenu';
 import { HistoryPanel } from '../game/ui/HistoryPanel';
 import { TallyBar } from '../game/ui/TallyBar';
 import { useName, useT } from '../i18n';
+import { isStandalone } from '../pwa/install';
 import { useLibrary } from '../store/library';
 import { useSettings } from '../store/settings';
 import { useTable } from '../store/table';
+import { toast } from '../ui/feedback';
 import { DiePicker } from '../ui/DiePicker';
 import { HAND_PATH, Icon } from '../ui/Icon';
 import { cssUrl } from '../ui/css';
@@ -143,6 +146,49 @@ export function Play({ id }: { id: string }) {
   const [insets, setInsets] = useState<Insets>({ top: 70, bottom: 140 });
 
   useTableInput(stage);
+
+  // keep the screen from rotating (best effort: only works installed / fullscreen; FR-320, FR-322):
+  // portrait while on the table, the current orientation while the dice are being thrown
+  const phase = useTable((s) => s.phase);
+  const throwing = phase !== 'idle' && phase !== 'waiting';
+  useEffect(() => {
+    const o = screen.orientation as (ScreenOrientation & { lock?: (o: string) => Promise<void> }) | undefined;
+    try {
+      o?.lock?.(throwing ? o.type : 'portrait')?.catch(() => {});
+    } catch {
+      /* unsupported */
+    }
+  }, [throwing]);
+  useEffect(
+    () => () => {
+      try {
+        screen.orientation?.unlock?.();
+      } catch {
+        /* unsupported */
+      }
+    },
+    [],
+  );
+
+  // once per session: tilting with the accelerometer may rotate the screen if the OS allows it
+  useEffect(() => {
+    if (phase !== 'tilting' || isStandalone() || !isTouch()) return;
+    try {
+      if (sessionStorage.getItem('dhd.rotateHint')) return;
+      sessionStorage.setItem('dhd.rotateHint', '1');
+    } catch {
+      /* private mode: show it anyway */
+    }
+    toast(t('pwa.rotateHint'), undefined, 6000);
+  }, [phase, t]);
+
+  // FR-322: the screen never rotates while the dice are being thrown
+  const throwing = useTable((s) => s.phase !== 'idle' && s.phase !== 'waiting');
+  useEffect(() => {
+    if (!throwing) return;
+    lockOrientation();
+    return unlockOrientation;
+  }, [throwing]);
 
   // load the set onto the table when it changes
   useEffect(() => {
