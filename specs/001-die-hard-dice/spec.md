@@ -101,13 +101,20 @@ HeroQuest (3 calaveras, 2 escudos blancos, 1 escudo negro), dado de movimiento r
   pantalla, en cualquier tamaño/orientación.
 
 ### 4.2 Lanzar
-1. El usuario pulsa **Lanzar** (o pulsa sobre el tapete y arrastra).
-2. Aparece un **cubilete** 3D y los dados **vuelan dentro** con una animación.
-3. **Agitar**:
+1. El usuario pulsa **Lanzar** (o pulsa sobre el tapete y arrastra: atajo que salta el paso 2).
+2. Con **Lanzar** el cubilete aparece **en el centro de la mesa**, los dados vuelan dentro y un mensaje
+   parpadeante con una mano pide **mantener pulsado el cubilete** para agarrarlo (zona de agarre generosa).
+   Si se pulsa fuera del cubilete, o se pulsa Esc, el lanzamiento **se cancela**: los dados vuelven a su
+   sitio y a su aspecto anteriores. Con teclado, Intro/Espacio agarra y agita automáticamente.
+   Con *reduced motion* el mensaje no parpadea. Arrastrando desde el tapete el cubilete aparece ya
+   agarrado bajo el puntero.
+3. **Agitar** (una vez agarrado):
    - con ratón/dedo: **arrastrando**; el cubilete sigue al puntero y los dados chocan dentro con física;
-   - con **acelerómetro** (móvil): agitando el dispositivo (se pide permiso en iOS);
-   - clic corto sin arrastrar: agitado automático breve.
-4. **Soltar** (levantar el clic/dedo, o tocar de nuevo / dejar de agitar en modo acelerómetro):
+   - con **acelerómetro** (móvil): agitando el dispositivo mientras se sostiene el cubilete (se pide
+     permiso en iOS).
+   Al llegar al borde de la mesa el cubilete se detiene y el exceso de recorrido del puntero se descarta:
+   al invertir el movimiento el cubilete vuelve a responder de inmediato.
+4. **Soltar** (levantar el clic/dedo, o salir de la ventana):
    el cubilete **se vuelca** en la dirección del último movimiento, los dados caen, **rebotan en el
    tapete** y el cubilete desaparece.
 5. Cuando todos los dados están quietos se lee la cara superior. Si un dado queda “montado”

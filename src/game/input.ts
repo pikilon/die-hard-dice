@@ -1,4 +1,4 @@
-import { useEffect, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type RefObject } from 'react';
+import { useEffect, type MouseEvent as RMouseEvent, type RefObject } from 'react';
 import { useTable } from '../store/table';
 import { director } from './director';
 
@@ -78,6 +78,16 @@ export function useTableInput(ref: RefObject<HTMLElement | null>) {
         director.release();
         return;
       }
+      if (director.waiting) {
+        // the cup waits in the middle of the table: grab it, or tap anywhere else to cancel the throw
+        if (director.hitCup(e.clientX, e.clientY) && director.grab(e.clientX, e.clientY)) {
+          down = { x: e.clientX, y: e.clientY, hit: null, id: e.pointerId };
+          throwing = true;
+          longFired = false;
+          el.setPointerCapture?.(e.pointerId);
+        } else director.cancel();
+        return;
+      }
       if (director.busy) return;
       requestMotion();
       const hit = director.pickDie(e.clientX, e.clientY);
@@ -145,7 +155,17 @@ export function useTableInput(ref: RefObject<HTMLElement | null>) {
       if (!e.relatedTarget) bail();
     };
 
+    const onKey = (e: KeyboardEvent) => {
+      if (!director.waiting) return;
+      if (e.key === 'Escape') director.cancel();
+      else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        director.grabAuto();
+      }
+    };
+
     el.addEventListener('pointerdown', onDown);
+    window.addEventListener('keydown', onKey);
     el.addEventListener('lostpointercapture', bail);
     document.addEventListener('mouseout', onLeave);
     window.addEventListener('blur', bail);
@@ -156,6 +176,7 @@ export function useTableInput(ref: RefObject<HTMLElement | null>) {
     return () => {
       window.clearTimeout(timer);
       el.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('keydown', onKey);
       el.removeEventListener('lostpointercapture', bail);
       document.removeEventListener('mouseout', onLeave);
       window.removeEventListener('blur', bail);
@@ -170,57 +191,14 @@ export function useTableInput(ref: RefObject<HTMLElement | null>) {
 /* ---------------------------------------------------------------- roll buttons */
 
 /**
- * Handlers for a roll button: press and drag to shake, release to pour. A quick tap shakes
- * automatically (or waits for the phone to be shaken when the accelerometer works).
+ * Handler for a roll button: the dice go into the cup, which waits in the middle of the table until
+ * the user grabs it (see `useTableInput`).
  */
 export function rollButtonHandlers(getUids: () => string[] | undefined) {
-  let start: { x: number; y: number; t: number; id: number } | null = null;
-  let moved = false;
   return {
-    onPointerDown: (e: RPointerEvent<HTMLElement>) => {
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
-      const table = useTable.getState();
-      if (table.motionShake) {
-        director.release();
-        return;
-      }
+    onClick: (e: RMouseEvent<HTMLElement>) => {
       requestMotion();
-      if (!director.press(e.clientX, e.clientY, getUids(), true)) return;
-      start = { x: e.clientX, y: e.clientY, t: performance.now(), id: e.pointerId };
-      moved = false;
-      e.currentTarget.setPointerCapture(e.pointerId);
-    },
-    onPointerMove: (e: RPointerEvent<HTMLElement>) => {
-      if (!start || e.pointerId !== start.id) return;
-      if (!moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) > DRAG_START) moved = true;
-      if (moved && outsideViewport(e)) {
-        // leaving the screen counts as letting go
-        start = null;
-        return director.release();
-      }
-      if (moved) director.move(e.clientX, e.clientY);
-    },
-    onPointerUp: (e: RPointerEvent<HTMLElement>) => {
-      if (!start || e.pointerId !== start.id) return;
-      const quick = !moved && performance.now() - start.t < 350;
-      start = null;
-      if (!quick) return director.release();
-      if (motionAvailable()) useTable.getState().setMotionShake(true);
-      else director.auto(0.8);
-    },
-    onPointerCancel: () => {
-      if (start) director.release();
-      start = null;
-    },
-    onLostPointerCapture: () => {
-      if (start) director.release();
-      start = null;
-    },
-    onKeyDown: (e: RKeyboardEvent<HTMLElement>) => {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      e.preventDefault();
-      const r = e.currentTarget.getBoundingClientRect();
-      if (director.press(r.left + r.width / 2, r.top, getUids(), true)) director.auto(0.8);
+      director.press(e.clientX, e.clientY, getUids(), true);
     },
   };
 }

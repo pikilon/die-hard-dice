@@ -19,7 +19,7 @@ export interface DieRuntime {
   rerolled?: boolean;
 }
 
-export type Phase = 'idle' | 'gathering' | 'shaking' | 'pouring' | 'settling';
+export type Phase = 'idle' | 'waiting' | 'gathering' | 'shaking' | 'pouring' | 'settling';
 
 export interface MenuState {
   uid: string;

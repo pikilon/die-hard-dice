@@ -14,7 +14,7 @@ import { useLibrary } from '../store/library';
 import { useSettings } from '../store/settings';
 import { useTable } from '../store/table';
 import { DiePicker } from '../ui/DiePicker';
-import { Icon } from '../ui/Icon';
+import { HAND_PATH, Icon } from '../ui/Icon';
 import { cssUrl } from '../ui/css';
 import { ShareModal } from '../ui/ShareModal';
 
@@ -25,7 +25,9 @@ function Hint() {
   const entryId = useTable((s) => s.entryId);
   const touch = isTouch();
   let text: string | null = null;
-  if (motionShake) text = t('play.hintMotion');
+  const grab = phase === 'waiting';
+  if (grab) text = t('play.hintGrab');
+  else if (motionShake) text = t('play.hintMotion');
   else if (phase === 'shaking' || phase === 'gathering') text = t('play.hintDrag');
   else if (phase === 'idle' && !entryId) text = t('play.hintDrag');
   else if (phase === 'idle' && entryId) text = touch ? t('play.hintTapDie') : t('play.hintClickDie');
@@ -33,11 +35,49 @@ function Hint() {
     <div className="play-hint-wrap" aria-live="polite">
       <AnimatePresence mode="wait">
         {text && (
-          <motion.div key={text} className={`play-hint ${motionShake ? 'pulse' : ''}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
-            {motionShake && <Icon name="phone" size={16} />} {text}
+          <motion.div key={text} className={`play-hint ${motionShake || grab ? 'pulse' : ''}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
+            {grab ? <Icon name="hand" size={18} /> : motionShake && <Icon name="phone" size={16} />} {text}
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/** Big animated call to action over the waiting cup: a hand pressing it and bouncing letters. */
+function GrabPrompt() {
+  const t = useT();
+  const waiting = useTable((s) => s.phase === 'waiting');
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!waiting) return;
+    let raf = 0;
+    const follow = () => {
+      const p = director.cupScreen();
+      if (p && box.current) {
+        box.current.style.left = `${p.x}px`;
+        box.current.style.top = `${p.y}px`;
+        box.current.style.visibility = 'visible';
+      }
+      raf = requestAnimationFrame(follow);
+    };
+    follow();
+    return () => cancelAnimationFrame(raf);
+  }, [waiting]);
+  if (!waiting) return null;
+  const text = t('play.grabBig');
+  return (
+    <div className="grab-prompt" ref={box} style={{ visibility: 'hidden' }} aria-hidden="true">
+      <svg className="grab-hand" viewBox="0 0 24 24" width="84" height="84" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d={HAND_PATH} />
+      </svg>
+      <div className="grab-text">
+        {[...text].map((c, i) => (
+          <span key={i} style={{ animationDelay: `${i * 0.07}s` }}>
+            {c === ' ' ? '\u00a0' : c}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -155,6 +195,7 @@ export function Play({ id }: { id: string }) {
       <div className="play-stage" ref={stage}>
         {loaded && <GameScene insets={insets} />}
       </div>
+      <GrabPrompt />
 
       <div className="play-top" ref={top}>
         <Link href="/" className="btn icon" aria-label={t('common.back')}>

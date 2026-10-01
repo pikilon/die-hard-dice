@@ -152,6 +152,8 @@ export const es = {
   'play.reroll': 'Relanzar ({n})',
   'play.clearSel': 'Quitar selección',
   'play.hintDrag': 'Mantén pulsado y arrastra para agitar · suelta para lanzar',
+  'play.grabBig': '¡Agárralo!',
+  'play.hintGrab': 'Mantén pulsado el cubilete para agarrarlo',
   'play.hintMotion': '¡Agita el móvil! Toca la pantalla para lanzar',
   'play.hintClickDie': 'Clic en un dado: seleccionar para relanzar · clic derecho: más opciones',
   'play.hintTapDie': 'Toca un dado para seleccionarlo · mantén pulsado para más opciones',

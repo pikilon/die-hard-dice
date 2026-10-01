@@ -115,8 +115,12 @@ class Director {
   private throwSpeed = 14;
   private pourFrom = new Vector3();
   private dragOrigin = new Vector3();
-  /** From the roll button the drag is anchored at the first pointer move, not at the button. */
-  private anchorPending = false;
+  /** False while the cup waits (dice inside) for the user to grab it after pressing a roll button. */
+  private grabbed = true;
+  /** The throw was cancelled: the dice fly back to where they were and the cup leaves. */
+  private cancelling = false;
+  /** Where each die was (and what it showed) when the throw started, to restore it on cancel. */
+  private origins = new Map<string, { p: Vector3; q: Quaternion; mapping: number[] }>();
   private cupOrigin = new Vector3();
   private tweens = new Map<string, Tween>();
   private rolling: string[] = [];
@@ -151,6 +155,11 @@ class Director {
 
   get busy() {
     return this.cupPhase !== 'hidden' || this.rolling.length > 0;
+  }
+
+  /** The cup is ready in the middle of the table, waiting to be grabbed. */
+  get waiting() {
+    return this.cupPhase === 'gather' && !this.grabbed && !this.cancelling;
   }
 
   // ------------------------------------------------------------------ helpers
@@ -248,10 +257,11 @@ class Director {
   // ------------------------------------------------------------------ input API
 
   /**
-   * Starts a throw: the cup appears at the pointer and the dice fly into it.
-   * `uids` = dice to throw (all by default).
+   * Starts a throw: the dice fly into the cup. `uids` = dice to throw (all by default).
+   * By default the cup appears under the pointer and is already held; with `wait` (roll buttons)
+   * it appears in the middle of the table and waits until the user grabs it (`grab`).
    */
-  press(clientX: number, clientY: number, uids?: string[], fromButton = false) {
+  press(clientX: number, clientY: number, uids?: string[], wait = false) {
     if (this.busy) return false;
     unlockAudio();
     const table = useTable.getState();
@@ -264,7 +274,9 @@ class Director {
     this.frozen = partial ? all.filter((u) => !list.includes(u)) : [];
     table.setRolling(list);
     table.closeMenu();
-    table.setPhase('gathering');
+    table.setPhase(wait ? 'waiting' : 'gathering');
+    this.grabbed = !wait;
+    this.cancelling = false;
 
     // cup size grows with the number of dice
     const n = list.length;
@@ -272,16 +284,14 @@ class Director {
     const height = radius * 1.65 + 0.4;
     useCup.getState().setSpec({ key: useCup.getState().spec.key + 1, visible: true, radius, height });
 
-    // the cup starts under the pointer (table drag) or at the near edge of the table (button);
-    // afterwards it follows the pointer *relative* to where the press started
+    // the cup starts under the pointer (table drag) or in the middle of the table (button);
+    // afterwards it follows the pointer *relative* to where the grab started
     const pointer = this.screenToWorld(clientX, clientY);
     const b = this.bounds;
-    const start =
-      fromButton || !pointer ? new Vector3((b.minX + b.maxX) / 2, CUP_BASE_Y, (b.minZ + b.maxZ) / 2 + (b.maxZ - b.minZ) * 0.22) : pointer.clone();
+    const start = wait || !pointer ? new Vector3((b.minX + b.maxX) / 2, CUP_BASE_Y, (b.minZ + b.maxZ) / 2) : pointer.clone();
     this.clampToBounds(start, radius + 0.4);
     start.y = CUP_BASE_Y;
     this.dragOrigin.copy(pointer ?? start);
-    this.anchorPending = fromButton;
     this.cupOrigin.copy(start);
     cupPose.pos.copy(start);
     cupPose.quat.identity();
@@ -301,6 +311,15 @@ class Director {
 
     // freeze the dice that are not rerolled
     for (const u of this.frozen) this.dice.get(u)?.body.setBodyType(FIXED, true);
+
+    // remember how the dice were, in case the throw is cancelled
+    this.origins.clear();
+    for (const u of list) {
+      const d = this.dice.get(u)!;
+      const t = d.body.translation();
+      const r = d.body.rotation();
+      this.origins.set(u, { p: new Vector3(t.x, t.y, t.z), q: new Quaternion(r.x, r.y, r.z, r.w), mapping: table.rt[u]?.mapping ?? [] });
+    }
 
     // impossible dice get a fresh random slice of faces before every throw
     for (const u of list) {
@@ -347,16 +366,96 @@ class Director {
     if (this.cupPhase !== 'gather' && this.cupPhase !== 'shake') return;
     const raw = this.screenToWorld(clientX, clientY);
     if (!raw) return;
-    if (this.anchorPending) {
-      this.anchorPending = false;
-      this.dragOrigin.copy(raw);
-      this.cupOrigin.copy(cupPose.pos);
-    }
+    if (!this.grabbed) return;
     const p = this.cupOrigin.clone().add(raw.sub(this.dragOrigin).multiplyScalar(SHAKE_GAIN));
     const { radius } = useCup.getState().spec;
+    const free = p.clone();
     this.clampToBounds(p, radius + 0.2);
+    // at the table's edge the pointer keeps going but the cup does not: drop the excess so that
+    // reversing the movement brings the cup back at once instead of first "unwinding" it
+    this.dragOrigin.x += (free.x - p.x) / SHAKE_GAIN;
+    this.dragOrigin.z += (free.z - p.z) / SHAKE_GAIN;
     p.y = CUP_BASE_Y;
     this.cupTarget.copy(p);
+  }
+
+  /** Client coordinates of the cup's centre (for overlays), or null before the scene is ready. */
+  cupScreen() {
+    if (!this.camera || !this.dom) return null;
+    const r = this.dom.getBoundingClientRect();
+    const v = new Vector3(cupPose.pos.x, cupPose.pos.y + useCup.getState().spec.height * 0.5, cupPose.pos.z).project(this.camera);
+    return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
+  }
+
+  /** True when a screen point is on (or close to) the cup: a generous target for fingers. */
+  hitCup(clientX: number, clientY: number) {
+    const { radius, height } = useCup.getState().spec;
+    const p = this.screenToWorld(clientX, clientY, CUP_BASE_Y + height * 0.4);
+    return !!p && Math.hypot(p.x - cupPose.pos.x, p.z - cupPose.pos.z) < radius + 1.2;
+  }
+
+  /** The user grabs the waiting cup at a screen point: from now on it follows the pointer. */
+  grab(clientX: number, clientY: number) {
+    if (!this.waiting) return false;
+    const p = this.screenToWorld(clientX, clientY);
+    if (!p) return false;
+    this.grabbed = true;
+    this.dragOrigin.copy(p);
+    this.cupOrigin.copy(this.cupTarget);
+    useTable.getState().setPhase('gathering');
+    return true;
+  }
+
+  /** Keyboard alternative to grabbing: shake the waiting cup automatically. */
+  grabAuto() {
+    if (!this.waiting) return false;
+    this.grabbed = true;
+    this.cupOrigin.copy(this.cupTarget);
+    useTable.getState().setPhase('gathering');
+    this.auto(0.8);
+    return true;
+  }
+
+  /** Cancels a throw that is waiting to be grabbed: the dice go back to the table as they were. */
+  cancel() {
+    if (!this.waiting) return;
+    const table = useTable.getState();
+    this.cancelling = true;
+    this.cupPhase = 'leave';
+    this.cupT = 0;
+    this.setCupEnabled(false);
+    this.rolling.forEach((u, i) => {
+      const d = this.dice.get(u);
+      const o = this.origins.get(u);
+      if (!d || !o) return;
+      table.setMapping(u, o.mapping);
+      const t = d.body.translation();
+      const r = d.body.rotation();
+      d.body.setBodyType(KINEMATIC, true);
+      this.tweens.set(u, {
+        from: new Vector3(t.x, t.y, t.z),
+        fromQ: new Quaternion(r.x, r.y, r.z, r.w),
+        to: o.p,
+        toQ: o.q,
+        t: 0,
+        dur: 0.4,
+        delay: Math.min(0.2, i * 0.02),
+        local: false,
+        arc: 2,
+        onDone: () => d.body.setBodyType(DYNAMIC, true),
+      });
+    });
+    whoosh();
+  }
+
+  private finishCancel() {
+    const table = useTable.getState();
+    for (const u of this.frozen) this.dice.get(u)?.body.setBodyType(DYNAMIC, true);
+    this.cancelling = false;
+    this.rolling = [];
+    this.frozen = [];
+    table.setRolling([]);
+    table.setPhase('idle');
   }
 
   /** Device acceleration (m/s², gravity removed) while shaking with the phone. */
@@ -395,6 +494,7 @@ class Director {
   beforeStep(dt: number) {
     this.stepCup(dt);
     this.stepTweens(dt);
+    if (this.cancelling && this.tweens.size === 0) this.finishCancel();
   }
 
   private cupLocalToWorld(local: Vector3) {
@@ -506,7 +606,7 @@ class Director {
 
       this.confineDice();
 
-      if (this.cupPhase === 'gather' && this.tweens.size === 0) {
+      if (this.cupPhase === 'gather' && this.grabbed && this.tweens.size === 0) {
         this.cupPhase = 'shake';
         dbg('shake start', { dice: this.rolling.length });
         useTable.getState().setPhase('shaking');
@@ -714,6 +814,8 @@ class Director {
     this.rolling = [];
     this.frozen = [];
     this.cupPhase = 'hidden';
+    this.grabbed = true;
+    this.cancelling = false;
     cupPose.scale = 0;
     useCup.getState().setSpec({ visible: false });
   }

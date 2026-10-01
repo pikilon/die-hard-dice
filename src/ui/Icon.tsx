@@ -1,6 +1,9 @@
 import type { SVGProps } from 'react';
 
 /** Small hand-drawn UI icon set (stroke based, 24×24). */
+export const HAND_PATH =
+  'M8 12V6.5a1.5 1.5 0 0 1 3 0V10M11 9.5V5a1.5 1.5 0 0 1 3 0v5M14 10V6.5a1.5 1.5 0 0 1 3 0V12M17 10.5a1.5 1.5 0 0 1 3 0V15a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-5-2.7L4.5 14.5a1.5 1.5 0 0 1 2.3-1.9L8 13.8';
+
 const PATHS: Record<string, string> = {
   play: 'M7 4.5v15l12-7.5z',
   edit: 'M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4',
@@ -26,6 +29,7 @@ const PATHS: Record<string, string> = {
   sparkles: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z',
   lock: 'M6 11h12v9H6zM9 11V8a3 3 0 0 1 6 0v3',
   target: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01',
+  hand: HAND_PATH,
   phone: 'M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM11 18h2',
   cube: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5',
   layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',

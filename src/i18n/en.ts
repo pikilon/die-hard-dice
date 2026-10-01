@@ -154,6 +154,8 @@ export const en: Record<I18nKey, string> = {
   'play.reroll': 'Reroll ({n})',
   'play.clearSel': 'Clear selection',
   'play.hintDrag': 'Press and drag to shake · release to roll',
+  'play.grabBig': 'Grab it!',
+  'play.hintGrab': 'Press and hold the cup to grab it',
   'play.hintMotion': 'Shake your phone! Tap the screen to roll',
   'play.hintClickDie': 'Click a die: select it for reroll · right click: more options',
   'play.hintTapDie': 'Tap a die to select it · long-press for more options',

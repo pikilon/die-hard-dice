@@ -843,4 +843,9 @@ button.face-chip:hover {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
+  .play-hint.pulse,
+  .grab-hand,
+  .grab-text span {
+    animation: none;
+  }
 }
