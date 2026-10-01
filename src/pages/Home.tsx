@@ -10,6 +10,24 @@ import { confirmDialog, promptDialog, toast } from '../ui/feedback';
 import { Icon } from '../ui/Icon';
 import { ShareModal } from '../ui/ShareModal';
 import { cssUrl } from '../ui/css';
+import { HomeHero } from './HomeHero';
+
+const HERO_KEY = 'dhd.heroDismissed';
+const heroDismissed = () => {
+  try {
+    return localStorage.getItem(HERO_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+const storeHero = (v: boolean) => {
+  try {
+    if (v) localStorage.setItem(HERO_KEY, '1');
+    else localStorage.removeItem(HERO_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+};
 
 function SetCard({ set, index, onShare }: { set: DiceSet; index: number; onShare: () => void }) {
   const t = useT();
@@ -111,18 +129,40 @@ export function Home() {
   const order = useLibrary((s) => s.setOrder);
   const restore = useLibrary((s) => s.restoreDefaults);
   const [sharing, setSharing] = useState<DiceSet | null>(null);
+  const [hero, setHero] = useState(() => !heroDismissed());
   const list = order.map((id) => sets[id]).filter(Boolean);
 
   return (
     <div className="page">
+      {hero && (
+        <HomeHero
+          onDismiss={() => {
+            storeHero(true);
+            setHero(false);
+          }}
+        />
+      )}
       <div className="page-head">
         <div>
           <h1>{t('home.title')}</h1>
           <p>{t('home.subtitle')}</p>
         </div>
-        <Link href="/sets/new" className="btn primary">
-          <Icon name="plus" /> {t('home.newSet')}
-        </Link>
+        <div className="row">
+          {!hero && (
+            <button
+              className="btn ghost sm"
+              onClick={() => {
+                storeHero(false);
+                setHero(true);
+              }}
+            >
+              <Icon name="info" size={16} /> {t('hero.show')}
+            </button>
+          )}
+          <Link href="/sets/new" className="btn primary">
+            <Icon name="plus" /> {t('home.newSet')}
+          </Link>
+        </div>
       </div>
       <div className="grid-cards">
         {list.map((s, i) => (
