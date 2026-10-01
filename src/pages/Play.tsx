@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { backgroundBase, backgroundUrl } from '../data/backgrounds';
 import { director } from '../game/director';
-import { isTouch, rollButtonHandlers, useTableInput } from '../game/input';
+import { isTouch, motionAvailable, rollButtonHandlers, useTableInput } from '../game/input';
 import { GameScene, type Insets } from '../game/Scene';
 import { addToTable } from '../game/session';
 import { DieMenu } from '../game/ui/DieMenu';
@@ -26,7 +26,7 @@ function Hint() {
   const touch = isTouch();
   let text: string | null = null;
   const grab = phase === 'waiting';
-  if (grab) text = t('play.hintGrab');
+  if (grab) text = motionAvailable() ? t('play.hintGrabMotion') : t('play.hintGrab');
   else if (motionShake) text = t('play.hintMotion');
   else if (phase === 'shaking' || phase === 'gathering') text = t('play.hintDrag');
   else if (phase === 'idle' && !entryId) text = t('play.hintDrag');
@@ -36,7 +36,7 @@ function Hint() {
       <AnimatePresence mode="wait">
         {text && (
           <motion.div key={text} className={`play-hint ${motionShake || grab ? 'pulse' : ''}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
-            {grab ? <Icon name="hand" size={18} /> : motionShake && <Icon name="phone" size={16} />} {text}
+            {grab ? <Icon name={motionAvailable() ? 'phone' : 'hand'} size={motionAvailable() ? 16 : 18} /> : motionShake && <Icon name="phone" size={16} />} {text}
           </motion.div>
         )}
       </AnimatePresence>
@@ -65,7 +65,7 @@ function GrabPrompt() {
     return () => cancelAnimationFrame(raf);
   }, [waiting]);
   if (!waiting) return null;
-  const text = t('play.grabBig');
+  const text = t(motionAvailable() ? 'play.grabBigMotion' : 'play.grabBig');
   return (
     <div className="grab-prompt" ref={box} style={{ visibility: 'hidden' }} aria-hidden="true">
       <svg className="grab-hand" viewBox="0 0 24 24" width="84" height="84" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">

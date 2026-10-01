@@ -153,6 +153,8 @@ export const es = {
   'play.clearSel': 'Quitar selección',
   'play.hintDrag': 'Mantén pulsado y arrastra para agitar · suelta para lanzar',
   'play.grabBig': '¡Agárralo!',
+  'play.hintGrabMotion': 'Agita el móvil para lanzar, o mantén pulsado el cubilete',
+  'play.grabBigMotion': '¡Agítalo!',
   'play.hintGrab': 'Mantén pulsado el cubilete para agarrarlo',
   'play.hintMotion': '¡Agita el móvil! Toca la pantalla para lanzar',
   'play.hintClickDie': 'Clic en un dado: seleccionar para relanzar · clic derecho: más opciones',
