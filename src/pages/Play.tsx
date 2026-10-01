@@ -27,6 +27,7 @@ function Hint() {
   let text: string | null = null;
   const grab = phase === 'waiting';
   if (grab) text = motionAvailable() ? t('play.hintGrabMotion') : t('play.hintGrab');
+  else if (phase === 'tilting') text = t('play.hintTilt');
   else if (motionShake) text = t('play.hintMotion');
   else if (phase === 'shaking' || phase === 'gathering') text = t('play.hintDrag');
   else if (phase === 'idle' && !entryId) text = t('play.hintDrag');
@@ -35,8 +36,8 @@ function Hint() {
     <div className="play-hint-wrap" aria-live="polite">
       <AnimatePresence mode="wait">
         {text && (
-          <motion.div key={text} className={`play-hint ${motionShake || grab ? 'pulse' : ''}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
-            {grab ? <Icon name={motionAvailable() ? 'phone' : 'hand'} size={motionAvailable() ? 16 : 18} /> : motionShake && <Icon name="phone" size={16} />} {text}
+          <motion.div key={text} className={`play-hint ${motionShake || grab || phase === 'tilting' ? 'pulse' : ''}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
+            {phase === 'tilting' ? <Icon name="phone" size={16} /> : grab ? <Icon name={motionAvailable() ? 'phone' : 'hand'} size={motionAvailable() ? 16 : 18} /> : motionShake && <Icon name="phone" size={16} />} {text}
           </motion.div>
         )}
       </AnimatePresence>

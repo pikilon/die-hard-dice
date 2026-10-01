@@ -29,6 +29,13 @@ const MOTION_GRAB = 9; // m/s² of linear acceleration that counts as a shake
  */
 export const GRAVITY = 130;
 const G = GRAVITY / 40;
+const TILT_GAIN = GRAVITY / 9.81; // device m/s² → world acceleration (tilting 90° pulls like gravity)
+const TILT_MAX = 28; // clamp of the device acceleration so violent shakes cannot launch dice through walls
+const TILT_SHAKE = 3; // change of reading (m/s²) between samples that counts as shaking
+const TILT_STILL = 0.6; // change below this counts as (almost) not moving
+const TILT_QUIET = 2; // seconds of near stillness that stop the accelerometer
+const TILT_CALM = 0.6; // seconds of calm after a shake before still dice are read
+const TILT_MAX_TIME = 60;
 /** The cup moves this many times the pointer's displacement, so shaking needs only small gestures. */
 const SHAKE_GAIN = 2.6;
 
@@ -138,6 +145,13 @@ class Director {
   private motionSpeedMax = 0; // recent top cup speed while shaking with the device
   private brakeT = 0; // how long the cup has been braking hard
   private brakeVel = new Vector3(); // cup velocity at the moment the braking started
+  /** Tilt mode (accelerometer): no cup, the device is the tray and its acceleration pushes the dice. */
+  private tilting = false;
+  private tiltAcc = new Vector3(); // world-space acceleration the dice feel (the device is a box: −reading, gravity included)
+  private tiltReading = new Vector3();
+  private tiltEngaged = false; // the user has shaken the device since the throw started
+  private tiltQuiet = 0; // seconds the device has barely moved (after being shaken)
+  private tiltT = 0;
   private raycaster = new Raycaster();
   private plane = new Plane(new Vector3(0, 1, 0), -CUP_BASE_Y);
 
@@ -369,6 +383,91 @@ class Director {
     return true;
   }
 
+  /** True while the dice roll around the table pushed by the device (tilt mode). */
+  get isTilting() {
+    return this.tilting;
+  }
+
+  /**
+   * Tilt mode: no cup. The dice get a kick and from then on the device's acceleration (tilt + shaking)
+   * pushes them around the table, bouncing off the walls, until they come to rest.
+   */
+  pressTilt(uids?: string[]) {
+    if (this.busy) return false;
+    unlockAudio();
+    const table = useTable.getState();
+    const all = table.dice.map((d) => d.uid).filter((u) => this.dice.has(u));
+    if (!all.length) return false;
+    const partial = !!uids && uids.length > 0 && uids.length < all.length && !!table.entryId;
+    const list = partial ? uids!.filter((u) => this.dice.has(u)) : all;
+    this.kind = partial ? 'reroll' : 'roll';
+    this.rolling = list;
+    this.frozen = partial ? all.filter((u) => !list.includes(u)) : [];
+    table.setRolling(list);
+    table.closeMenu();
+    for (const u of this.frozen) this.dice.get(u)?.body.setBodyType(FIXED, true);
+    for (const u of list) {
+      const d = this.dice.get(u)!;
+      if (d.die.faces !== d.solid.slots) table.setMapping(u, randomMapping(d.die.faces, cryptoRng));
+    }
+    this.tilting = true;
+    this.tiltEngaged = false;
+    this.tiltQuiet = 0;
+    this.tiltT = 0;
+    this.tiltAcc.set(0, 0, 0);
+    this.tiltReading.set(0, 0, 0);
+    this.nudges.clear();
+    this.settleFrames = 0;
+    this.settleTime = 0;
+    table.setPhase('tilting');
+    whoosh();
+    haptic(15);
+    return true;
+  }
+
+  /**
+   * Device acceleration *including gravity* (m/s², device axes). The device is a box and the dice are loose
+   * inside: they feel `−reading` (flat on the table that is exactly gravity; tilting or shaking along any axis,
+   * including towards/away from the screen, pushes them). Device right (+x) → world −x, up (+y) → world +z,
+   * out of the screen (+z) → world −y.
+   */
+  tilt(gx: number, gy: number, gz: number) {
+    if (!this.tilting) return;
+    const r = new Vector3(gx, gy, gz).clampLength(0, TILT_MAX);
+    // the first sample after pressing Lanzar has nothing to compare with
+    const delta = this.tiltReading.lengthSq() === 0 ? 0 : r.distanceTo(this.tiltReading);
+    this.tiltReading.copy(r);
+    this.tiltAcc.set(-r.x, -r.z, r.y);
+    if (delta > TILT_SHAKE) this.tiltEngaged = true;
+    if (delta > TILT_STILL) this.tiltQuiet = 0;
+  }
+
+  /** Stop pushing the dice (accelerometer off): they fall and roll out, and the result is read when they are still. */
+  endTilt() {
+    if (!this.tilting) return;
+    this.tilting = false;
+    this.tiltAcc.set(0, 0, 0);
+    this.settleFrames = 0;
+    this.settleTime = 0;
+    useTable.getState().setPhase('settling');
+  }
+
+  private stepTilt(dt: number) {
+    if (!this.tilting) return;
+    this.tiltT += dt;
+    // after a real shake, a couple of seconds of near stillness (or the safety limit) switch the accelerometer off
+    if (this.tiltEngaged) this.tiltQuiet += dt;
+    if (this.tiltQuiet > TILT_QUIET || this.tiltT > TILT_MAX_TIME) return this.endTilt();
+    for (const u of this.rolling) {
+      const d = this.dice.get(u);
+      if (!d) continue;
+      const m = d.body.mass();
+      const k = m * TILT_GAIN * dt;
+      // the world already pulls down with GRAVITY: add only the difference
+      d.body.applyImpulse({ x: this.tiltAcc.x * k, y: this.tiltAcc.y * k + m * GRAVITY * dt, z: this.tiltAcc.z * k }, true);
+    }
+  }
+
   move(clientX: number, clientY: number) {
     if (this.cupPhase !== 'gather' && this.cupPhase !== 'shake') return;
     const raw = this.screenToWorld(clientX, clientY);
@@ -518,6 +617,7 @@ class Director {
   /** Called before every physics step (fixed dt). */
   beforeStep(dt: number) {
     this.stepCup(dt);
+    this.stepTilt(dt);
     this.stepTweens(dt);
     if (this.cancelling && this.tweens.size === 0) this.finishCancel();
   }
@@ -717,10 +817,12 @@ class Director {
   afterStep(dt: number) {
     if (!this.rolling.length || this.tweens.size) return;
     const phase = useTable.getState().phase;
-    if (phase !== 'pouring' && phase !== 'settling') return;
+    if (phase !== 'pouring' && phase !== 'settling' && phase !== 'tilting') return;
     this.settleTime += dt;
     if (phase === 'pouring' && this.cupPhase === 'hidden') useTable.getState().setPhase('settling');
     if (this.cupPhase === 'pour') return;
+    // tilt mode: read the dice as soon as they are still while the device is calm after a shake (no need to wait for the accelerometer to switch off)
+    if (phase === 'tilting' && !(this.tiltEngaged && this.tiltQuiet > TILT_CALM)) return;
 
     let still = true;
     for (const u of this.rolling) {
@@ -735,7 +837,7 @@ class Director {
       }
     }
     this.settleFrames = still ? this.settleFrames + 1 : 0;
-    const timeout = this.settleTime > 10;
+    const timeout = phase !== 'tilting' && this.settleTime > 10;
     if (this.settleFrames < 16 && !timeout) return;
 
     dbg('settled', { timeout, time: +this.settleTime.toFixed(1) });
@@ -778,6 +880,7 @@ class Director {
     }
     for (const u of this.frozen) this.dice.get(u)?.body.setBodyType(DYNAMIC, true);
     const kind = this.kind;
+    this.tilting = false;
     this.rolling = [];
     this.frozen = [];
     table.setRolling([]);

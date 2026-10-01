@@ -155,6 +155,7 @@ export const es = {
   'play.grabBig': '¡Agárralo!',
   'play.hintGrabMotion': 'Agita el móvil para lanzar, o mantén pulsado el cubilete',
   'play.grabBigMotion': '¡Agítalo!',
+  'play.hintTilt': 'Agita el móvil para lanzarlos',
   'play.hintGrab': 'Mantén pulsado el cubilete para agarrarlo',
   'play.hintMotion': '¡Agita el móvil! Toca la pantalla para lanzar',
   'play.hintClickDie': 'Clic en un dado: seleccionar para relanzar · clic derecho: más opciones',

@@ -16,6 +16,8 @@ function onMotion(e: DeviceMotionEvent) {
   const a = e.acceleration ?? e.accelerationIncludingGravity;
   if (!a || a.x == null || a.y == null) return;
   motionSeen = true;
+  const g = e.accelerationIncludingGravity;
+  if (g && g.x != null && g.y != null) director.tilt(g.x, g.y, g.z ?? 0);
   // only the linear acceleration drives the cup (gravity-free when available)
   if (e.acceleration && e.acceleration.x != null) director.motion(e.acceleration.x ?? 0, e.acceleration.y ?? 0);
 }
@@ -24,6 +26,15 @@ function listen() {
   if (motionListening) return;
   motionListening = true;
   window.addEventListener('devicemotion', onMotion);
+}
+
+/** Android/desktop need no permission: start listening right away so the accelerometer is known before the first roll. */
+export function initMotion() {
+  if (typeof window === 'undefined' || !('DeviceMotionEvent' in window) || !isTouch()) return;
+  const Ctor = window.DeviceMotionEvent as MotionCtor;
+  if (typeof Ctor.requestPermission === 'function') return;
+  permission = 'granted';
+  listen();
 }
 
 /** Must be called from a user gesture (iOS asks for permission). */
@@ -66,6 +77,7 @@ export function useTableInput(ref: RefObject<HTMLElement | null>) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    initMotion();
     let down: { x: number; y: number; hit: string | null; id: number } | null = null;
     let throwing = false;
     let longFired = false;
@@ -74,6 +86,10 @@ export function useTableInput(ref: RefObject<HTMLElement | null>) {
     const onDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       const table = useTable.getState();
+      if (director.isTilting) {
+        director.endTilt();
+        return;
+      }
       if (table.motionShake) {
         director.release();
         return;
@@ -198,7 +214,9 @@ export function rollButtonHandlers(getUids: () => string[] | undefined) {
   return {
     onClick: (e: RMouseEvent<HTMLElement>) => {
       requestMotion();
-      director.press(e.clientX, e.clientY, getUids(), true);
+      // with an accelerometer there is no cup: the device itself rolls the dice
+      if (motionAvailable()) director.pressTilt(getUids());
+      else director.press(e.clientX, e.clientY, getUids(), true);
     },
   };
 }

@@ -157,6 +157,7 @@ export const en: Record<I18nKey, string> = {
   'play.grabBig': 'Grab it!',
   'play.hintGrabMotion': 'Shake your phone to roll, or press and hold the cup',
   'play.grabBigMotion': 'Shake it!',
+  'play.hintTilt': 'Shake your phone to throw them',
   'play.hintGrab': 'Press and hold the cup to grab it',
   'play.hintMotion': 'Shake your phone! Tap the screen to roll',
   'play.hintClickDie': 'Click a die: select it for reroll · right click: more options',
