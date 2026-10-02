@@ -65,6 +65,11 @@ function visibleRect(camera: PerspectiveCamera, ndcTop: number, ndcBottom: numbe
   };
 }
 
+const CELL = 2.6; // table footprint per die (matches the layout gap)
+const FILL = 0.4; // fraction of the visible table the dice should occupy
+const MIN_EXTENT = 8.5; // zoom-in limit (the cup must still fit and move)
+const MAX_EXTENT = 28; // zoom-out limit
+
 function SceneSetup({ insets, count, onBounds }: { insets: Insets; count: number; onBounds: (b: Bounds, apex: [number, number, number]) => void }) {
   const { camera, size, gl, scene } = useThree();
   const light = useRef<DirectionalLight>(null);
@@ -80,15 +85,19 @@ function SceneSetup({ insets, count, onBounds }: { insets: Insets; count: number
     cam.aspect = size.width / Math.max(1, size.height);
     const ndcTop = 1 - (2 * insets.top) / Math.max(1, size.height);
     const ndcBottom = -1 + (2 * insets.bottom) / Math.max(1, size.height);
-    // Choose the distance so the smaller side of the safe area shows ~E world units.
-    const extent = Math.min(19, Math.max(10.5, 7.9 + Math.sqrt(count) * 1.75));
     const probe = 30;
     cam.position.copy(CAM_DIR).multiplyScalar(probe);
     cam.lookAt(0, 0, 0);
     cam.updateProjectionMatrix();
     cam.updateMatrixWorld();
     const r0 = visibleRect(cam, ndcTop, ndcBottom, 0);
-    const minSide = r0 ? Math.min(r0.maxX - r0.minX, r0.maxZ - r0.minZ) : extent;
+    const sideX = r0 ? r0.maxX - r0.minX : 1;
+    const sideZ = r0 ? r0.maxZ - r0.minZ : 1;
+    const minSide = Math.max(1, Math.min(sideX, sideZ));
+    // Zoom to the space available: the visible table area must hold `count` cells of CELL² at FILL occupancy,
+    // so a few dice are shown big and many dice small. E = world units shown along the smaller side.
+    const aspect = Math.max(sideX, sideZ) / minSide;
+    const extent = Math.min(MAX_EXTENT, Math.max(MIN_EXTENT, Math.sqrt((count * CELL * CELL) / (FILL * aspect))));
     const dist = (probe * extent) / Math.max(1, minSide);
     cam.position.copy(CAM_DIR).multiplyScalar(dist);
     cam.near = 1;

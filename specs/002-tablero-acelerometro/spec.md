@@ -24,3 +24,7 @@ Ajusta §4.2 de `001-die-hard-dice`: cuando el dispositivo tiene acelerómetro *
 - **FR-205** Sin acelerómetro (escritorio, HTTP en móvil, permiso denegado) todo funciona como en §4.2
   (cubilete). En iOS la primera tirada tras conceder el permiso puede usar el cubilete.
 - Equiprobabilidad: los dados imposibles reciben un `randomMapping` nuevo en cada tirada.
+
+- **FR-208** El **zoom de la cámara se adapta al espacio disponible y al número de dados**: el área visible de
+  la mesa debe albergar `n` celdas de ≈2,6 u con una ocupación ≈40 %, así pocos dados se ven grandes y muchos
+  dados se ven pequeños. Límites: 8,5 u (máximo zoom) a 28 u (mínimo) en el lado menor visible.
