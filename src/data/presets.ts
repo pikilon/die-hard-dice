@@ -69,6 +69,10 @@ export const BUILTIN_DICE: Die[] = [
       { from: 6, to: 6, v: { i: 'shield' }, fg: '#141414' },
     ],
   }),
+  die({
+    id: 'catan', es: 'Colonos de Catán', en: 'Settlers of Catan', faces: 6, color: '#c8102e', material: 'glass',
+    ranges: [{ from: 1, to: 6, fg: '#ffffff' }],
+  }),
   die({ id: 'hq-move', es: 'Movimiento HeroQuest', en: 'HeroQuest movement', faces: 6, color: '#b3261e', material: 'plastic' }),
 ];
 
@@ -99,6 +103,7 @@ export const BUILTIN_SETS: DiceSet[] = [
   set({ id: 'kot', es: 'King of Tokyo', en: 'King of Tokyo', dice: Array(6).fill('kot'), bg: 'city', sum: true, groupNumbers: true }),
   set({ id: 'hq-hero', es: 'HeroQuest · Héroe', en: 'HeroQuest · Hero', dice: ['hq-move', 'hq-move', 'hq-combat', 'hq-combat', 'hq-combat'], bg: 'dungeon' }),
   set({ id: 'hq-enemies', es: 'HeroQuest · Enemigos', en: 'HeroQuest · Enemies', dice: ['hq-combat', 'hq-combat', 'hq-combat'], bg: 'dungeon' }),
+  set({ id: 'catan', es: 'Colonos de Catán', en: 'Settlers of Catan', dice: ['catan', 'catan'], bg: 'parchment' }),
   set({ id: 'dnd', es: 'D&D', en: 'D&D', dice: ['d4', 'd6', 'd8', 'd10', 'd100', 'd12', 'd20'], bg: 'tavern' }),
   set({ id: 'classic', es: 'Clásico 2D6', en: 'Classic 2D6', dice: ['d6-ivory', 'd6-ivory'], bg: 'felt' }),
 ];

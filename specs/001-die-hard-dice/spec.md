@@ -71,7 +71,7 @@ Se usa el **mayor sólido cuyo nº de caras sea ≤ N** (así nunca queda una ca
 ### 2.3 Dados predefinidos (biblioteca inicial)
 Moneda, D4, D6, D8, D10, D12, D20, D100 (d10 de decenas 00-90), dado de King of Tokyo (negro:
 1, 2, 3, garra, corazón, rayo), dado de bonificación verde de King of Tokyo, dado de combate de
-HeroQuest (3 calaveras, 2 escudos blancos, 1 escudo negro), dado de movimiento rojo de HeroQuest (d6).
+HeroQuest (3 calaveras, 2 escudos blancos, 1 escudo negro), dado de movimiento rojo de HeroQuest (d6), dado de Colonos de Catán (rojo de cristal con números blancos).
 
 ---
 
@@ -87,7 +87,7 @@ HeroQuest (3 calaveras, 2 escudos blancos, 1 escudo negro), dado de movimiento r
 - Desde el editor de sets se puede añadir un dado de la biblioteca, **crear uno nuevo** o **clonar**
   uno existente para modificarlo sin afectar a otros sets.
 - **Sets predefinidos**: King of Tokyo (6 dados KoT), HeroQuest · Héroe (2 de movimiento + 3 de
-  combate), HeroQuest · Enemigos (3 de combate), D&D (d4, d6, d8, d10, d12, d20, d100), Clásico (2d6).
+  combate), HeroQuest · Enemigos (3 de combate), Colonos de Catán (2 dados rojos de cristal), D&D (d4, d6, d8, d10, d12, d20, d100), Clásico (2d6).
 - “Restaurar predeterminados” vuelve a crear los dados/sets de fábrica que falten o se hayan cambiado.
 
 ---
