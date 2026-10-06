@@ -38,6 +38,21 @@ const TILT_CALM = 0.6; // seconds of calm after a shake before still dice are re
 const TILT_MAX_TIME = 60;
 /** The cup moves this many times the pointer's displacement, so shaking needs only small gestures. */
 const SHAKE_GAIN = 2.6;
+/** The dice leave this many times faster than the pointer was moving when it was released. */
+const THROW_GAIN = 1.5;
+const THROW_MAX = 48;
+/** Tilt (rad) of the cup at which the dice are let go: its mouth already points where they fly. */
+const LAUNCH_TILT = 1.5;
+const POUR_TILT = 2.25;
+const THROW_MIN = 15; // even a gentle release sends the dice across the table
+/** Window (s) over which the pointer's velocity is measured when it is released. */
+const FLICK_WINDOW = 0.12;
+
+/**
+ * How far from the visible edge the cup's centre must stay. The cup hangs above the table, so it may
+ * overhang the edge: with the full radius a big cup (many dice, or a zoomed-in camera) barely moved.
+ */
+const cupMargin = (radius: number) => Math.min(radius * 0.3, 1);
 
 export interface Bounds {
   minX: number;
@@ -116,6 +131,11 @@ class Director {
   private cupVel = new Vector3();
   /** Recent peak of the cup velocity (decays over ~0.2 s): what the shot is fired with. */
   private peakVel = new Vector3();
+  /** Recent samples of the cup's target (the pointer), to read the flick of the hand at release. */
+  private targetTrail: { t: number; x: number; z: number }[] = [];
+  private flickPeak = new Vector3();
+  /** Dice ride inside the tilting cup (pose relative to it) until the mouth points along the throw. */
+  private carried = new Map<string, { p: Vector3; q: Quaternion }>();
   private cupTarget = new Vector3();
   private shakeEnergy = 0;
   private autoShake = 0;
@@ -321,6 +341,8 @@ class Director {
     this.cupTarget.copy(start);
     this.cupVel.set(0, 0, 0);
     this.peakVel.set(0, 0, 0);
+    this.targetTrail = [];
+    this.flickPeak.set(0, 0, 0);
     this.cupPhase = 'gather';
     this.cupT = 0;
     this.shakeEnergy = 0;
@@ -478,7 +500,7 @@ class Director {
     const p = this.cupOrigin.clone().add(raw.sub(this.dragOrigin).multiplyScalar(SHAKE_GAIN));
     const { radius } = useCup.getState().spec;
     const free = p.clone();
-    this.clampToBounds(p, radius + 0.2);
+    this.clampToBounds(p, cupMargin(radius));
     // at the table's edge the pointer keeps going but the cup does not: drop the excess so that
     // reversing the movement brings the cup back at once instead of first "unwinding" it
     this.dragOrigin.x += (free.x - p.x) / SHAKE_GAIN;
@@ -590,8 +612,11 @@ class Director {
     this.released = true;
     // the shot leaves with the cup's own velocity (recent peak) at the moment of release (direction and speed)
     const cv = new Vector3(this.peakVel.x, 0, this.peakVel.z);
+    // a flick with the finger or mouse: the pointer's own velocity, which the smoothed cup lags behind
+    const flick = this.flickVelocity();
+    if (flick.lengthSq() > cv.lengthSq()) cv.copy(flick).multiplyScalar(THROW_GAIN);
     const speed = cv.length();
-    this.throwSpeed = Math.min(30, Math.max(8, speed));
+    this.throwSpeed = Math.min(THROW_MAX, Math.max(THROW_MIN, speed));
     dbg('release', { cupSpeed: +speed.toFixed(1), phase: this.cupPhase });
     if (speed > 3) this.throwDir.copy(cv.normalize());
     else {
@@ -599,6 +624,31 @@ class Director {
       const d = c.sub(new Vector3(cupPose.pos.x, 0, cupPose.pos.z));
       this.throwDir.copy(d.length() > 1 ? d.normalize() : new Vector3(rand(-0.4, 0.4), 0, -1).normalize());
     }
+  }
+
+  /** Records where the pointer wants the cup and keeps a decaying peak of its velocity. */
+  private trackFlick(dt: number) {
+    const t = this.cupT;
+    this.targetTrail.push({ t, x: this.cupTarget.x, z: this.cupTarget.z });
+    while (this.targetTrail.length > 2 && t - this.targetTrail[0].t > 0.4) this.targetTrail.shift();
+    this.flickPeak.multiplyScalar(Math.pow(0.15, dt));
+    const v = this.windowVelocity();
+    if (v.lengthSq() >= this.flickPeak.lengthSq()) this.flickPeak.copy(v);
+  }
+
+  private windowVelocity() {
+    const trail = this.targetTrail;
+    const last = trail[trail.length - 1];
+    if (!last) return new Vector3();
+    const first = trail.find((s) => last.t - s.t <= FLICK_WINDOW) ?? last;
+    const span = last.t - first.t;
+    if (span < 0.03) return new Vector3();
+    return new Vector3((last.x - first.x) / span, 0, (last.z - first.z) / span);
+  }
+
+  /** Velocity of the gesture at release: the recent peak, so a hand that eases off still throws hard. */
+  private flickVelocity() {
+    return this.flickPeak.clone();
   }
 
   // ------------------------------------------------------------------ frame logic
@@ -694,7 +744,7 @@ class Director {
       }
       if (this.motionAcc.lengthSq() > 0) {
         target.addScaledVector(this.motionAcc, MOTION_GAIN);
-        this.clampToBounds(target, useCup.getState().spec.radius + 0.4);
+        this.clampToBounds(target, cupMargin(useCup.getState().spec.radius));
         this.motionAcc.multiplyScalar(0.6);
         if (this.motionPeak > 6) this.motionQuiet = 0;
       }
@@ -702,6 +752,7 @@ class Director {
       this.cupVel.addScaledVector(acc, dt);
       const maxV = 28;
       if (this.cupVel.length() > maxV) this.cupVel.setLength(maxV);
+      this.trackFlick(dt);
       this.peakVel.multiplyScalar(Math.pow(0.06, dt));
       if (this.cupVel.lengthSq() >= this.peakVel.lengthSq()) this.peakVel.copy(this.cupVel);
       cupPose.pos.addScaledVector(this.cupVel, dt);
@@ -743,9 +794,11 @@ class Director {
       const t = Math.min(1, this.cupT / T);
       const e = easeOut(t);
       const axis = new Vector3().crossVectors(UP, this.throwDir).normalize();
-      cupPose.quat.setFromAxisAngle(axis, e * 2.25);
+      cupPose.quat.setFromAxisAngle(axis, e * POUR_TILT);
       cupPose.pos.copy(this.pourFrom).addScaledVector(this.throwDir, e * 1.6);
       cupPose.pos.y = CUP_BASE_Y + e * 1.1;
+      this.carryDice();
+      if (this.carried.size && e * POUR_TILT >= LAUNCH_TILT) this.launchDice();
       if (t >= 1) {
         this.cupPhase = 'leave';
         this.cupT = 0;
@@ -787,19 +840,52 @@ class Director {
     useTable.getState().setMotionShake(false);
     whoosh();
     haptic(25);
-    // cannon shot: open the cup and fire the dice along the last gesture, aimed slightly down so they
-    // hit the table right away instead of drifting down from the cup
-    const side = new Vector3(-this.throwDir.z, 0, this.throwDir.x);
+    // the dice ride inside the cup while it tips, so they never cross its walls; they are let go in launchDice()
+    const inv = cupPose.quat.clone().invert();
+    this.carried.clear();
     for (const u of this.rolling) {
       const d = this.dice.get(u);
       if (!d) continue;
-      const sp = this.throwSpeed * rand(0.8, 1.2);
-      const lat = rand(-0.2, 0.2) * sp;
-      d.body.setLinvel({ x: this.throwDir.x * sp + side.x * lat, y: -rand(2, 8), z: this.throwDir.z * sp + side.z * lat }, true);
-      d.body.setAngvel({ x: rand(-30, 30), y: rand(-20, 20), z: rand(-30, 30) }, true);
+      const t = d.body.translation();
+      const r = d.body.rotation();
+      this.carried.set(u, {
+        p: new Vector3(t.x, t.y, t.z).sub(cupPose.pos).applyQuaternion(inv),
+        q: inv.clone().multiply(new Quaternion(r.x, r.y, r.z, r.w)),
+      });
+      d.body.setBodyType(KINEMATIC, true);
+      d.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      d.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
     }
     this.settleFrames = 0;
     this.settleTime = 0;
+  }
+
+  private carryDice() {
+    for (const [u, c] of this.carried) {
+      const d = this.dice.get(u);
+      if (!d) continue;
+      d.body.setNextKinematicTranslation(c.p.clone().applyQuaternion(cupPose.quat).add(cupPose.pos));
+      d.body.setNextKinematicRotation(cupPose.quat.clone().multiply(c.q));
+    }
+  }
+
+  /** Cannon shot: the cup's mouth faces the throw, the dice fly out along the last gesture, aimed slightly down. */
+  private launchDice() {
+    const side = new Vector3(-this.throwDir.z, 0, this.throwDir.x);
+    for (const u of this.carried.keys()) {
+      const d = this.dice.get(u);
+      if (!d) continue;
+      d.body.setBodyType(DYNAMIC, true);
+      // each die leaves faster or slower and a bit to one side, so they spread out instead of landing as a clump
+      const sp = this.throwSpeed * rand(0.6, 1.3);
+      const lat = rand(-0.2, 0.2) * sp;
+      d.body.setLinvel({ x: this.throwDir.x * sp + side.x * lat, y: -rand(0.5, 2), z: this.throwDir.z * sp + side.z * lat }, true);
+      d.body.setAngvel({ x: rand(-30, 30), y: rand(-20, 20), z: rand(-30, 30) }, true);
+    }
+    this.carried.clear();
+    // the cup stops turning and backs away from the dice instead of swinging its rim through them
+    this.cupPhase = 'leave';
+    this.cupT = 0;
   }
 
   /** Called after every physics step: detects when the throw has settled. */
@@ -828,6 +914,8 @@ class Director {
     this.settleFrames = still ? this.settleFrames + 1 : 0;
     const timeout = phase !== 'tilting' && this.settleTime > 10;
     if (this.settleFrames < 16 && !timeout) return;
+    // still only because the device pushes them (against walls/other dice): release the tilt and read once they settle under plain gravity
+    if (phase === 'tilting') return this.endTilt();
 
     dbg('settled', { timeout, time: +this.settleTime.toFixed(1) });
     this.containDice();
