@@ -1058,6 +1058,10 @@ main {
     align-items: stretch;
     gap: 6px;
   }
+  .tally-chips {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
   .tally-summary {
     border-left: 0;
     padding-left: 4px;
