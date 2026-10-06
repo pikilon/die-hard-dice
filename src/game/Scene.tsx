@@ -250,7 +250,7 @@ const PhysicsDie = memo(function PhysicsDie({ uid, dieId, index, count }: { uid:
 
   useEffect(() => {
     if (!body.current || !mesh.current) return;
-    director.register({ uid, body: body.current, mesh: mesh.current, solid: data.solid, die, rest });
+    director.register({ uid, body: body.current, mesh: mesh.current, solid: data.solid, die, rest, radius: data.geometry.boundingSphere?.radius });
     return () => director.unregister(uid);
   }, [uid, data, die, rest]);
 

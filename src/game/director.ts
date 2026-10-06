@@ -29,6 +29,9 @@ const MOTION_GRAB = 9; // m/s² of linear acceleration that counts as a shake
  */
 export const GRAVITY = 130;
 const G = GRAVITY / 40;
+const REPEL_ACC = 80; // world units/s² pushing two overlapping dice apart (gravity is 130: a gentle shove, not a bounce)
+const REPEL_STACK = 2.2; // a die lying on top of another gets this much more sideways push so it slides off
+const REPEL_MAX_TIME = 4; // seconds after the throw during which dice repel each other
 const TILT_GAIN = GRAVITY / 9.81; // device m/s² → world acceleration (tilting 90° pulls like gravity)
 const TILT_MAX = 28; // clamp of the device acceleration so violent shakes cannot launch dice through walls
 const TILT_SHAKE = 3; // change of reading (m/s²) between samples that counts as shaking
@@ -69,6 +72,8 @@ interface DieEntry {
   die: Die;
   /** Distance from centre to the resting face (used to place dice). */
   rest: number;
+  /** Radius of the bounding sphere (used to keep dice apart). */
+  radius?: number;
 }
 
 interface Tween {
@@ -658,7 +663,58 @@ class Director {
     this.stepCup(dt);
     this.stepTilt(dt);
     this.stepTweens(dt);
+    this.repelDice(dt);
     if (this.cancelling && this.tweens.size === 0) this.finishCancel();
+  }
+
+  /**
+   * Soft repulsion between thrown dice: while they fly and settle (and while the device shakes them) any two
+   * dice whose footprints overlap are pushed apart horizontally, so they slide away from each other instead of
+   * piling up. A die resting on top of another is pushed harder so it slides off. Only affects position,
+   * never which face ends up on top.
+   */
+  private repelDice(dt: number) {
+    const phase = useTable.getState().phase;
+    const tilting = phase === 'tilting';
+    if (!tilting && !(phase === 'settling' || (phase === 'pouring' && this.cupPhase !== 'pour'))) return;
+    if (!tilting && this.settleTime > REPEL_MAX_TIME) return;
+    const list: { d: DieEntry; x: number; y: number; z: number; r: number }[] = [];
+    for (const u of this.rolling) {
+      const d = this.dice.get(u);
+      if (!d || this.tweens.has(u) || this.carried.has(u)) continue;
+      const t = d.body.translation();
+      list.push({ d, x: t.x, y: t.y, z: t.z, r: d.radius ?? d.rest * 1.4 });
+    }
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const a = list[i];
+        const b = list[j];
+        const reach = (a.r + b.r) * 0.9;
+        let dx = b.x - a.x;
+        let dz = b.z - a.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist >= reach) continue;
+        if (dist < 1e-4) {
+          const ang = Math.random() * Math.PI * 2;
+          dx = Math.cos(ang);
+          dz = Math.sin(ang);
+        } else {
+          dx /= dist;
+          dz /= dist;
+        }
+        const overlap = Math.min(1, (reach - dist) / reach);
+        const dy = b.y - a.y;
+        const stacked = Math.abs(dy) > Math.min(a.d.rest, b.d.rest) * 0.8;
+        const acc = REPEL_ACC * (0.4 + overlap) * (stacked ? REPEL_STACK : 1);
+        const push = (e: typeof a, sign: number, upper: boolean) => {
+          // when stacked, the upper die takes the full push and the lower one half
+          const k = e.d.body.mass() * acc * dt * (stacked && !upper ? 0.5 : 1);
+          e.d.body.applyImpulse({ x: dx * sign * k, y: 0, z: dz * sign * k }, true);
+        };
+        push(a, -1, dy < 0);
+        push(b, 1, dy > 0);
+      }
+    }
   }
 
   private cupLocalToWorld(local: Vector3) {

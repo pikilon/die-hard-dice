@@ -28,3 +28,8 @@ Ajusta §4.2 de `001-die-hard-dice`: cuando el dispositivo tiene acelerómetro *
 - **FR-208** El **zoom de la cámara se adapta al espacio disponible y al número de dados**: el área visible de
   la mesa debe albergar `n` celdas de ≈2,6 u con una ocupación ≈40 %, así pocos dados se ven grandes y muchos
   dados se ven pequeños. Límites: 8,5 u (máximo zoom) a 28 u (mínimo) en el lado menor visible.
+
+- **FR-209** Los dados **se repelen** mientras vuelan y se asientan tras salir del cubilete (≈4 s) y mientras el
+  acelerómetro los agita: dos dados cuyas huellas se solapan reciben un empujón horizontal suave y opuesto, y el
+  que queda encima de otro recibe más para deslizarse y no quedar apilado. Solo afecta a posiciones, nunca a la
+  cara resultante (equiprobabilidad intacta).
