@@ -6,8 +6,12 @@ interface InstallEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-const standalone = () =>
-  (typeof matchMedia === 'function' && matchMedia('(display-mode: standalone)').matches) || (navigator as unknown as { standalone?: boolean }).standalone === true;
+/** FR-310/313: an installed app runs in `standalone` or, since we request it, `fullscreen`. */
+const installedDisplayMode = () =>
+  typeof matchMedia === 'function' &&
+  (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches);
+
+const standalone = () => installedDisplayMode() || (navigator as unknown as { standalone?: boolean }).standalone === true;
 
 const ios = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 

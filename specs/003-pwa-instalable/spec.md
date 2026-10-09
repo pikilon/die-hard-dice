@@ -28,6 +28,9 @@ fondo que el usuario elige por URL externa.
 
 - **FR-310** Existe `manifest.webmanifest` enlazado desde `index.html` (`<link rel="manifest" href="./manifest.webmanifest">`)
   con: `name` «Die Hard Dice», `short_name` «Die Hard Dice», `description`, `lang: "es"`, `display: "standalone"`,
+  `display_override: ["fullscreen"]` (best effort: pide pantalla completa inmersiva, que oculta las barras del
+  sistema; donde no se soporte cae a `standalone`. Obliga a que la detección de app instalada acepte también
+  `display-mode: fullscreen`, ver FR-313),
   `orientation: "portrait"`, `start_url`, `scope`, `id: "./"`, `handle_links` y `launch_handler` (FR-316), `background_color` y `theme_color` `#1c120b`
   (el mismo que el `<meta name="theme-color">`), `categories: ["games", "entertainment"]` e `icons`
   (FR-330).
@@ -39,8 +42,8 @@ fondo que el usuario elige por URL externa.
   el navegador emitió `beforeinstallprompt` (se guarda el evento y se llama a `prompt()` al pulsar) y la app no
   está ya instalada. Aparece **también en la pantalla de juego** (`Play`): ahí se coloca justo debajo de su barra
   superior (la que lleva volver/selector de set), medida en tiempo de ejecución.
-- **FR-313** **Nunca dentro de la app instalada:** si se ejecuta en modo standalone (`display-mode: standalone`
-  o `navigator.standalone`), o tras `appinstalled`, el aviso no se muestra.
+- **FR-313** **Nunca dentro de la app instalada:** si se ejecuta en modo instalado (`display-mode: standalone`
+  o `display-mode: fullscreen`, o `navigator.standalone`), o tras `appinstalled`, el aviso no se muestra.
 - **FR-314** iOS/Safari no emite `beforeinstallprompt`: si es iOS y no está en standalone, la misma tarjeta
   muestra el texto «Compartir → Añadir a pantalla de inicio» (sin botón) y su ✕.
 - **FR-315** **Cerrar = preguntar en 7 días.** Al pulsar ✕ (o tras descartar el diálogo nativo) se guarda la fecha
