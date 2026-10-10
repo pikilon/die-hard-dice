@@ -4,11 +4,13 @@ import { Link, useLocation } from 'wouter';
 import { backgroundUrl } from '../data/backgrounds';
 import { useName, useT } from '../i18n';
 import type { DiceSet } from '../model/types';
+import { promptInstall, useInstall } from '../pwa/install';
 import { useLibrary } from '../store/library';
 import { DieThumb } from '../ui/DieThumb';
 import { confirmDialog, promptDialog, toast } from '../ui/feedback';
-import { Icon } from '../ui/Icon';
-import { ShareModal } from '../ui/ShareModal';
+import { Icon, Logo } from '../ui/Icon';
+import { Modal } from '../ui/Modal';
+import { ShareLinkModal, ShareModal } from '../ui/ShareModal';
 import { cssUrl } from '../ui/css';
 import { HomeHero } from './HomeHero';
 
@@ -77,15 +79,15 @@ function SetCard({ set, index, onShare }: { set: DiceSet; index: number; onShare
             <Icon name="edit" size={16} /> {t('common.edit')}
           </Link>
           <span className="spacer" />
+          <button className="btn sm icon" onClick={onShare} aria-label={t('common.share')} title={t('common.share')}>
+            <Icon name="share" size={16} />
+          </button>
           <div className="menu-wrap">
             <button className="btn sm icon" onClick={() => setMenu((m) => !m)} aria-label={t('common.more')} title={t('common.more')}>
               <Icon name="dots" size={16} />
             </button>
             {menu && (
               <div className="pop-menu" onMouseLeave={() => setMenu(false)}>
-                <button className="ctx-item" onClick={() => (setMenu(false), onShare())}>
-                  <Icon name="share" size={16} /> {t('common.share')}
-                </button>
                 <button
                   className="ctx-item"
                   onClick={async () => {
@@ -129,11 +131,35 @@ export function Home() {
   const order = useLibrary((s) => s.setOrder);
   const restore = useLibrary((s) => s.restoreDefaults);
   const [sharing, setSharing] = useState<DiceSet | null>(null);
+  const [sharingApp, setSharingApp] = useState(false);
+  const [iosHelp, setIosHelp] = useState(false);
   const [hero, setHero] = useState(() => !heroDismissed());
+  const { isStandalone, canInstall, isIOS } = useInstall();
   const list = order.map((id) => sets[id]).filter(Boolean);
+  /** Root of the site (no `#`, no payload): opening it lands on this Home (FR-503). */
+  const appUrl = typeof location === 'undefined' ? '' : location.href.split(/[?#]/)[0];
+  /** Not installed yet and we have a way to offer it (FR-508). */
+  const offerInstall = !isStandalone && (canInstall || isIOS);
 
   return (
     <div className="page">
+      <header className="home-brand">
+        <Logo size={46} />
+        <div className="home-brand-copy">
+          <h1>{t('app.name')}</h1>
+          <p>{t('app.tagline')}</p>
+        </div>
+        <div className="home-brand-actions">
+          {offerInstall && (
+            <button className="btn" onClick={() => (canInstall ? promptInstall() : setIosHelp(true))}>
+              <Icon name="phone" size={18} /> {t('pwa.install')}
+            </button>
+          )}
+          <button className="btn" onClick={() => setSharingApp(true)} title={t('app.shareTitle')}>
+            <Icon name="share" size={18} /> {t('app.share')}
+          </button>
+        </div>
+      </header>
       {hero && (
         <HomeHero
           onDismiss={() => {
@@ -144,7 +170,7 @@ export function Home() {
       )}
       <div className="page-head">
         <div>
-          <h1>{t('home.title')}</h1>
+          <h2>{t('home.title')}</h2>
           <p>{t('home.subtitle')}</p>
         </div>
         <div className="row">
@@ -183,6 +209,17 @@ export function Home() {
         </button>
       </div>
       <ShareModal set={sharing} open={!!sharing} onClose={() => setSharing(null)} />
+      <ShareLinkModal
+        open={sharingApp}
+        onClose={() => setSharingApp(false)}
+        title={t('app.shareTitle')}
+        body={t('app.shareBody')}
+        url={appUrl}
+        nativeTitle={t('app.name')}
+      />
+      <Modal open={iosHelp} onClose={() => setIosHelp(false)} title={t('pwa.install')}>
+        <p style={{ margin: 0 }}>{t('pwa.installIos')}</p>
+      </Modal>
     </div>
   );
 }

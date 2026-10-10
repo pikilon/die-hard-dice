@@ -177,7 +177,8 @@ h3 {
 
 .grid-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  /* ≥320px keeps the card action row (play · edit · share · ⋯) on one line */
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 18px;
 }
 

@@ -1,5 +1,9 @@
 export const es = {
+  'app.name': 'Die Hard Dice',
   'app.tagline': 'Crea, comparte y lanza tus dados',
+  'app.share': 'Compartir app',
+  'app.shareTitle': 'Compartir Die Hard Dice',
+  'app.shareBody': 'Pasa la app a quien quieras: se abre en el navegador, sin cuenta y sin instalar nada.',
   'nav.sets': 'Sets',
   'nav.dice': 'Dados',
   'nav.play': 'Jugar',

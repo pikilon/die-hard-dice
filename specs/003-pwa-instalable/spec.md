@@ -42,6 +42,9 @@ fondo que el usuario elige por URL externa.
   el navegador emitió `beforeinstallprompt` (se guarda el evento y se llama a `prompt()` al pulsar) y la app no
   está ya instalada. Aparece **también en la pantalla de juego** (`Play`): ahí se coloca justo debajo de su barra
   superior (la que lleva volver/selector de set), medida en tiempo de ejecución.
+  **Excepción: la Home.** En `#/` la tarjeta flotante **no se renderiza**: ocuparía el sitio del banner de
+  identidad. Ahí la oferta de instalar vive dentro de ese banner (FR-508 de la spec 005), y la tarjeta reaparece
+  en cuanto se navega a otra pantalla.
 - **FR-313** **Nunca dentro de la app instalada:** si se ejecuta en modo instalado (`display-mode: standalone`
   o `display-mode: fullscreen`, o `navigator.standalone`), o tras `appinstalled`, el aviso no se muestra.
 - **FR-314** iOS/Safari no emite `beforeinstallprompt`: si es iOS y no está en standalone, la misma tarjeta

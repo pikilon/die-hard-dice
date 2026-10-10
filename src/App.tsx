@@ -86,7 +86,7 @@ function Header() {
     <header className="app-header">
       <Link href="/" className="brand">
         <Logo />
-        <span>Die Hard Dice</span>
+        <span>{t('app.name')}</span>
       </Link>
       <nav className="nav">
         <Link href="/" className={active('/') ? 'active' : ''}>
@@ -117,6 +117,8 @@ function Header() {
 function Shell() {
   const [loc] = useLocation();
   const playing = loc.startsWith('/play/');
+  /** On the Home the install offer lives inside the identity banner (FR-508), so the floating card would overlap it. */
+  const home = loc === '/';
   const lang = useLang();
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -124,7 +126,7 @@ function Shell() {
   return (
     <>
       {!playing && <Header />}
-      {!playing && <InstallBanner />}
+      {!playing && !home && <InstallBanner />}
       <main>
         <Suspense fallback={<Loading />}>
         <Switch>

@@ -1,7 +1,11 @@
 import type { I18nKey } from './es';
 
 export const en: Record<I18nKey, string> = {
+  'app.name': 'Die Hard Dice',
   'app.tagline': 'Create, share and roll your own dice',
+  'app.share': 'Share app',
+  'app.shareTitle': 'Share Die Hard Dice',
+  'app.shareBody': 'Pass the app on to anyone: it opens in the browser, no account and nothing to install.',
   'nav.sets': 'Sets',
   'nav.dice': 'Dice',
   'nav.play': 'Play',

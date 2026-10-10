@@ -1322,6 +1322,62 @@ body:has(.play) .toasts {
   font-size: 0.9rem;
 }
 
+/* ================= home: identidad de la app (FR-501..507) ================= */
+
+.home-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255, 238, 205, 0.06), rgba(0, 0, 0, 0.18));
+}
+
+.home-brand > svg {
+  flex: none;
+  filter: drop-shadow(0 3px 10px rgba(226, 174, 63, 0.35));
+}
+
+.home-brand-copy {
+  min-width: 0;
+}
+
+.home-brand h1 {
+  font-size: clamp(1.6rem, 2.4vw + 1rem, 2.2rem);
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.home-brand-copy p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.home-brand-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-left: auto;
+}
+
+@media (max-width: 560px) {
+  .home-brand {
+    padding: 14px;
+    gap: 12px;
+  }
+  .home-brand-actions {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+  .home-brand-actions .btn {
+    flex: 1 1 auto;
+  }
+}
+
 /* ================= home: hero (FR-401..) ================= */
 
 .hero {
