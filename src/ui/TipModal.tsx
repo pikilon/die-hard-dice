@@ -19,7 +19,7 @@ export function TipModal() {
       onClose={closeTip}
       title={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-          <Icon name="takeMyMoney" size={24} style={{ color: 'var(--gold-400)' }} />
+          <Icon name="coinTip" size={30} />
           {t('tip.title')}
         </span>
       }

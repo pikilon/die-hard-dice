@@ -51,7 +51,7 @@ interfaz y un recordatorio automático tras un tiempo significativo de uso activ
 
 ## Criterios de aceptación
 
-1. En la Home y en la cabecera aparece el botón de apoyar con icono de corazón y abre el modal de propina.
+1. En la Home y en la cabecera aparece el botón de apoyar con icono de moneda de propina y abre el modal de propina.
 2. Los enlaces de 1 $, 2 $ y otra cantidad dirigen a `https://paypal.me/pikilongeorgia/1USD`,
    `https://paypal.me/pikilongeorgia/2USD` y `https://paypal.me/pikilongeorgia` en una nueva pestaña.
 3. El modal explica claramente la opción de sugerir una feature en la nota de PayPal y la advertencia de que

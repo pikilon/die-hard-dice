@@ -161,7 +161,7 @@ export function Home() {
             <Icon name="share" size={18} /> {t('app.share')}
           </button>
           <button className="btn" onClick={openTip} title={t('tip.title')}>
-            <Icon name="takeMyMoney" size={18} style={{ color: 'var(--gold-400)' }} /> {t('tip.button')}
+            <Icon name="coinTip" size={22} /> {t('tip.button')}
           </button>
         </div>
       </header>

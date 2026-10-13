@@ -101,7 +101,7 @@ function Header() {
       </nav>
       <span className="spacer" />
       <button className="btn ghost icon" onClick={openTip} title={t('tip.button')} aria-label={t('tip.button')}>
-        <Icon name="takeMyMoney" style={{ color: 'var(--gold-400)' }} />
+        <Icon name="coinTip" size={26} />
       </button>
       <button className="btn ghost icon" onClick={toggleSound} title={t('nav.sound')} aria-label={t('nav.sound')}>
         <Icon name={sound ? 'soundOn' : 'soundOff'} />
