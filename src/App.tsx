@@ -10,11 +10,13 @@ import { SetEditor } from './pages/SetEditor';
 import { useHashLocation, useHashSearch } from './router';
 import { useLibrary } from './store/library';
 import { useSettings } from './store/settings';
+import { initTipTracker, useTip } from './store/tip';
 import { InstallBanner } from './pwa/InstallBanner';
 import { UpdateBanner } from './pwa/UpdateBanner';
 import { Dialogs, Toasts } from './ui/feedback';
 import { Icon, Logo } from './ui/Icon';
 import { Modal } from './ui/Modal';
+import { TipModal } from './ui/TipModal';
 
 // the 3D-heavy screens (physics engine, orbit controls) load on demand
 const Play = lazy(() => import('./pages/Play').then((m) => ({ default: m.Play })));
@@ -79,6 +81,7 @@ function Header() {
   const toggleSound = useSettings((s) => s.toggleSound);
   const lastSet = useSettings((s) => s.lastSetId);
   const sets = useLibrary((s) => s.sets);
+  const openTip = useTip((s) => s.openTip);
   const [about, setAbout] = useState(false);
   const playId = lastSet && sets[lastSet] ? lastSet : sets[DEFAULT_SET_ID] ? DEFAULT_SET_ID : Object.keys(sets)[0];
   const active = (p: string) => (p === '/' ? loc === '/' || loc.startsWith('/sets') : loc.startsWith(p));
@@ -97,6 +100,9 @@ function Header() {
         </Link>
       </nav>
       <span className="spacer" />
+      <button className="btn ghost icon" onClick={openTip} title={t('tip.button')} aria-label={t('tip.button')}>
+        <Icon name="heart" style={{ color: 'var(--ruby-2)' }} />
+      </button>
       <button className="btn ghost icon" onClick={toggleSound} title={t('nav.sound')} aria-label={t('nav.sound')}>
         <Icon name={sound ? 'soundOn' : 'soundOff'} />
       </button>
@@ -123,6 +129,9 @@ function Shell() {
   useEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
+  useEffect(() => {
+    return initTipTracker();
+  }, []);
   return (
     <>
       {!playing && <Header />}
@@ -145,6 +154,7 @@ function Shell() {
       <Toasts />
       <UpdateBanner />
       <Dialogs />
+      <TipModal />
     </>
   );
 }

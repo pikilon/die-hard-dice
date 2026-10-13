@@ -40,9 +40,33 @@ const PATHS: Record<string, string> = {
   undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
 };
 
-export type IconName = keyof typeof PATHS;
+/** Icons sourced directly from game-icons.net (512×512, solid fill). */
+const GAME_PATHS: Record<string, string> = {
+  heart:
+    'M480.25 156.355c0 161.24-224.25 324.43-224.25 324.43S31.75 317.595 31.75 156.355c0-91.41 70.63-125.13 107.77-125.13c77.65 0 116.48 65.72 116.48 65.72s38.83-65.73 116.48-65.73c37.14.01 107.77 33.72 107.77 125.14',
+};
+
+export type IconName = keyof typeof PATHS | keyof typeof GAME_PATHS;
+
+export { GameIcon } from './FaceChip';
 
 export function Icon({ name, size = 20, ...rest }: { name: IconName; size?: number } & SVGProps<SVGSVGElement>) {
+  const gamePath = GAME_PATHS[name];
+  if (gamePath) {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 512 512"
+        fill="currentColor"
+        aria-hidden="true"
+        {...rest}
+      >
+        <path d={gamePath} />
+      </svg>
+    );
+  }
+
   const filled = name === 'play';
   return (
     <svg

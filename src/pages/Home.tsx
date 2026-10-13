@@ -6,6 +6,7 @@ import { useName, useT } from '../i18n';
 import type { DiceSet } from '../model/types';
 import { promptInstall, useInstall } from '../pwa/install';
 import { useLibrary } from '../store/library';
+import { useTip } from '../store/tip';
 import { DieThumb } from '../ui/DieThumb';
 import { confirmDialog, promptDialog, toast } from '../ui/feedback';
 import { Icon, Logo } from '../ui/Icon';
@@ -140,6 +141,7 @@ export function Home() {
   const appUrl = typeof location === 'undefined' ? '' : location.href.split(/[?#]/)[0];
   /** Not installed yet and we have a way to offer it (FR-508). */
   const offerInstall = !isStandalone && (canInstall || isIOS);
+  const openTip = useTip((s) => s.openTip);
 
   return (
     <div className="page">
@@ -157,6 +159,9 @@ export function Home() {
           )}
           <button className="btn" onClick={() => setSharingApp(true)} title={t('app.shareTitle')}>
             <Icon name="share" size={18} /> {t('app.share')}
+          </button>
+          <button className="btn" onClick={openTip} title={t('tip.title')}>
+            <Icon name="heart" size={18} style={{ color: 'var(--ruby-2)' }} /> {t('tip.button')}
           </button>
         </div>
       </header>

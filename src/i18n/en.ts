@@ -253,4 +253,17 @@ export const en: Record<I18nKey, string> = {
   'about.howTo1': 'Press “Roll” (or press on the table) and drag to shake the cup; release to roll.',
   'about.howTo2': 'On a phone you can also shake the device.',
   'about.howTo3': 'Click a die to select it for a reroll; right click or long-press to change its value or remove it.',
+
+  'tip.button': 'Support',
+  'tip.buttonAction': 'Leave a tip',
+  'tip.title': 'Support Die Hard Dice',
+  'tip.lead': 'Die Hard Dice is a free, independent, ad-free web app. If you find it useful for your games or projects, a small tip helps keep it maintained and growing.',
+  'tip.amount1': '$1',
+  'tip.amount2': '$2',
+  'tip.amountOther': 'Other amount',
+  'tip.featureTitle': 'Have a feature suggestion?',
+  'tip.featureNote': 'When sending your donation on PayPal you can include your suggestion in the note. Every idea is read! Note that this is a voluntary suggestion and does not guarantee it will be implemented.',
+  'tip.alreadyDonated': 'I’ve already donated',
+  'tip.maybeLater': 'Maybe later',
+  'tip.thanksToast': 'Thank you so much for your support! ❤️',
 };

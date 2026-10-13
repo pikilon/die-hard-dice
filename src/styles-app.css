@@ -1617,3 +1617,97 @@ body:has(.play) .toasts {
     animation: none;
   }
 }
+
+/* ================= tip & donation modal (FR-601..609) ================= */
+
+.tip-modal-body {
+  gap: 16px;
+}
+
+.tip-amounts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.tip-amount-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 12px 8px;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tip-amount-btn:hover {
+  transform: translateY(-2px);
+}
+
+.tip-amount-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.tip-amount-sub {
+  font-size: 0.75rem;
+  opacity: 0.85;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tip-feature-callout {
+  background: rgba(226, 174, 63, 0.08);
+  border: 1px solid rgba(226, 174, 63, 0.25);
+  color: var(--ink);
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  gap: 12px;
+}
+
+.tip-feature-icon {
+  color: var(--gold-400);
+  flex: none;
+  margin-top: 2px;
+}
+
+.tip-feature-callout strong {
+  display: block;
+  color: var(--gold-300);
+  margin-bottom: 4px;
+}
+
+.tip-feature-callout p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.tip-modal-actions {
+  margin-top: 6px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+@media (max-width: 440px) {
+  .tip-amounts {
+    grid-template-columns: 1fr 1fr;
+  }
+  .tip-amounts .tip-amount-btn:last-child {
+    grid-column: span 2;
+  }
+  .tip-modal-actions {
+    flex-direction: column-reverse;
+    gap: 8px;
+    align-items: stretch;
+  }
+  .tip-modal-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

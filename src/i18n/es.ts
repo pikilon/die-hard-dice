@@ -251,6 +251,19 @@ export const es = {
   'about.howTo1': 'Pulsa «Lanzar» (o pulsa sobre el tapete) y arrastra para agitar el cubilete; suelta para lanzar.',
   'about.howTo2': 'En móvil también puedes agitar el teléfono.',
   'about.howTo3': 'Clic en un dado para seleccionarlo y relanzarlo; clic derecho o pulsación larga para cambiar su valor o quitarlo.',
+
+  'tip.button': 'Apoyar',
+  'tip.buttonAction': 'Dar propina',
+  'tip.title': 'Apoyar Die Hard Dice',
+  'tip.lead': 'Die Hard Dice es una web app gratuita, independiente y sin anuncios. Si te resulta útil para tus partidas o proyectos, una pequeña propina ayuda a mantenerla y seguir mejorándola.',
+  'tip.amount1': '1 $',
+  'tip.amount2': '2 $',
+  'tip.amountOther': 'Otra cantidad',
+  'tip.featureTitle': '¿Tienes una sugerencia de mejora?',
+  'tip.featureNote': 'Al realizar tu donación en PayPal puedes incluir tu sugerencia en la nota. ¡Todas las ideas son leídas! Ten en cuenta que es una propuesta voluntaria y no garantiza que se vaya a implementar.',
+  'tip.alreadyDonated': 'Ya he donado',
+  'tip.maybeLater': 'Quizá más tarde',
+  'tip.thanksToast': '¡Muchísimas gracias por tu apoyo! ❤️',
 } as const;
 
 export type I18nKey = keyof typeof es;
