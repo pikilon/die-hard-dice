@@ -18,8 +18,8 @@ export function TipModal() {
       open={isOpen}
       onClose={closeTip}
       title={
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <Icon name="heart" size={22} style={{ color: 'var(--ruby-2)' }} />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+          <Icon name="takeMyMoney" size={24} style={{ color: 'var(--gold-400)' }} />
           {t('tip.title')}
         </span>
       }

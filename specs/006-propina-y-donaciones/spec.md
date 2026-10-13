@@ -8,10 +8,10 @@ interfaz y un recordatorio automático tras un tiempo significativo de uso activ
 ## Requisitos funcionales
 
 - **FR-601** **Acceso en la cabecera.** La barra superior (`app-header`) incluye un botón con icono de
-  corazón (`hearts` de `game-icons.net`) y texto accesible «Apoyar» / «Support» (`tip.button`), visible en
+  propina (`take-my-money` de `game-icons.net`) y texto accesible «Apoyar» / «Support» (`tip.button`), visible en
   todas las páginas con cabecera. Al pulsarlo, abre la ventana modal de propinas.
 - **FR-602** **Acceso en la Home.** En el bloque de identidad de la Home (`home-brand-actions`), junto a los
-  botones de instalar y compartir, se incluye un botón «Apoyar» con icono de corazón (`hearts` de
+  botones de instalar y compartir, se incluye un botón «Apoyar» con icono de propina (`take-my-money` de
   `game-icons.net`), integrado estéticamente con el resto de acciones de la app.
 - **FR-603** **Ventana modal de propina.** El modal de propina contiene:
   1. Título y mensaje de agradecimiento explicando que Die Hard Dice es un proyecto independiente y libre de

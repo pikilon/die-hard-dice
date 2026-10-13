@@ -33,7 +33,7 @@ const CATEGORIES = {
   ],
   resources: [
     'hearts', 'heart-plus', 'broken-heart', 'power-lightning', 'lightning-helix', 'lightning-trio',
-    'coins', 'two-coins', 'crown', 'cut-diamond', 'gold-bar', 'gem-chain', 'health-potion',
+    'coins', 'two-coins', 'take-my-money', 'crown', 'cut-diamond', 'gold-bar', 'gem-chain', 'health-potion',
     'magic-potion', 'star-medal', 'trophy', 'open-treasure-chest', 'locked-chest', 'key', 'wheat',
     'wood-pile', 'stone-block', 'sheep', 'anvil',
   ],
