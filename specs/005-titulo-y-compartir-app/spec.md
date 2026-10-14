@@ -41,6 +41,11 @@ sea una acción visible. No cambia dados, sets, física, formato de compartir ni
   llamada. La tarjeta sigue apareciendo en las demás pantallas con cabecera y en la de juego. El ✕ y su
   snooze de 7 días (FR-315) siguen afectando solo a la tarjeta: el botón del bloque es un acceso discreto
   y permanente mientras la app no esté instalada.
+- **FR-510** **Previsualización en redes sociales (Open Graph y Twitter Cards).** `index.html` incluye metadatos
+  Open Graph (`og:type`, `og:title`, `og:description`, `og:image`, `og:url`) y Twitter Cards
+  (`twitter:card: summary_large_image`, `twitter:image`, etc.) asociados a una imagen en miniatura representativa
+  en `public/og-image.jpg` (1200×630 px) para que al compartir la URL en mensajería o redes (WhatsApp, Telegram,
+  Discord, Twitter/X) se muestre una vista previa clara y atractiva de la web con dados 3D.
 
 ## Criterios de aceptación
 
@@ -55,3 +60,4 @@ sea una acción visible. No cambia dados, sets, física, formato de compartir ni
    con las instrucciones. En la Home no hay tarjeta flotante; en `#/dice` sí.
 7. Con la app instalada (o tras `appinstalled`), el bloque solo muestra «Compartir app».
 8. `npm test` y `npm run build` pasan.
+9. `index.html` expone etiquetas `og:image` y `twitter:image` con una miniatura de 1200×630 px en `public/og-image.jpg`.
