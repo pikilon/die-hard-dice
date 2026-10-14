@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, Redirect, Route, Router, Switch, useLocation } from 'wouter';
-import { DEFAULT_SET_ID } from './data/presets';
 import { useLang, useT } from './i18n';
 import type { Lang } from './model/types';
 import { Home } from './pages/Home';
@@ -8,7 +7,6 @@ import { Import } from './pages/Import';
 import { Library } from './pages/Library';
 import { SetEditor } from './pages/SetEditor';
 import { useHashLocation, useHashSearch } from './router';
-import { useLibrary } from './store/library';
 import { useSettings } from './store/settings';
 import { initTipTracker, useTip } from './store/tip';
 import { InstallBanner } from './pwa/InstallBanner';
@@ -35,7 +33,7 @@ function LangSwitch() {
   const setLang = useSettings((s) => s.setLang);
   const t = useT();
   return (
-    <div className="segmented" role="group" aria-label={t('nav.language')}>
+    <div className="lang-switch" role="group" aria-label={t('nav.language')}>
       {(['es', 'en'] as Lang[]).map((l) => (
         <button key={l} className={lang === l ? 'on' : ''} onClick={() => setLang(l)} aria-pressed={lang === l}>
           {l.toUpperCase()}
@@ -79,11 +77,8 @@ function Header() {
   const [loc] = useLocation();
   const sound = useSettings((s) => s.sound);
   const toggleSound = useSettings((s) => s.toggleSound);
-  const lastSet = useSettings((s) => s.lastSetId);
-  const sets = useLibrary((s) => s.sets);
   const openTip = useTip((s) => s.openTip);
   const [about, setAbout] = useState(false);
-  const playId = lastSet && sets[lastSet] ? lastSet : sets[DEFAULT_SET_ID] ? DEFAULT_SET_ID : Object.keys(sets)[0];
   const active = (p: string) => (p === '/' ? loc === '/' || loc.startsWith('/sets') : loc.startsWith(p));
   return (
     <header className="app-header">
@@ -91,30 +86,29 @@ function Header() {
         <Logo />
         <span>{t('app.name')}</span>
       </Link>
-      <nav className="nav">
-        <Link href="/" className={active('/') ? 'active' : ''}>
-          {t('nav.sets')}
+      <nav className="nav" role="tablist">
+        <Link href="/" role="tab" aria-selected={active('/')} className={active('/') ? 'active' : ''}>
+          <Icon name="layers" size={15} />
+          <span>{t('nav.sets')}</span>
         </Link>
-        <Link href="/dice" className={active('/dice') ? 'active' : ''}>
-          {t('nav.dice')}
+        <Link href="/dice" role="tab" aria-selected={active('/dice')} className={active('/dice') ? 'active' : ''}>
+          <Icon name="cube" size={15} />
+          <span>{t('nav.dice')}</span>
         </Link>
       </nav>
       <span className="spacer" />
-      <button className="btn ghost icon" onClick={openTip} title={t('tip.button')} aria-label={t('tip.button')}>
-        <Icon name="coinTip" size={26} />
-      </button>
-      <button className="btn ghost icon" onClick={toggleSound} title={t('nav.sound')} aria-label={t('nav.sound')}>
-        <Icon name={sound ? 'soundOn' : 'soundOff'} />
-      </button>
-      <LangSwitch />
-      <button className="btn ghost icon hide-sm" onClick={() => setAbout(true)} title={t('nav.about')} aria-label={t('nav.about')}>
-        <Icon name="info" />
-      </button>
-      {playId && (
-        <Link href={`/play/${playId}`} className="btn primary">
-          <Icon name="play" size={18} /> <span className="hide-sm">{t('nav.play')}</span>
-        </Link>
-      )}
+      <div className="app-header-actions">
+        <button className="btn ghost icon" onClick={openTip} title={t('tip.button')} aria-label={t('tip.button')}>
+          <Icon name="coinTip" size={24} />
+        </button>
+        <button className="btn ghost icon" onClick={toggleSound} title={t('nav.sound')} aria-label={t('nav.sound')}>
+          <Icon name={sound ? 'soundOn' : 'soundOff'} />
+        </button>
+        <LangSwitch />
+        <button className="btn ghost icon hide-sm" onClick={() => setAbout(true)} title={t('nav.about')} aria-label={t('nav.about')}>
+          <Icon name="info" />
+        </button>
+      </div>
       <About open={about} onClose={() => setAbout(false)} />
     </header>
   );
