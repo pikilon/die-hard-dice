@@ -14,9 +14,9 @@
     <meta property="og:site_name" content="Die Hard Dice" />
     <meta property="og:title" content="Die Hard Dice — Dados 3D personalizados" />
     <meta property="og:description" content="Crea, comparte y lanza sets de dados personalizados en 3D con física realista · Create, share and roll custom 3D dice sets" />
-    <meta property="og:url" content="https://pikilon.github.io/die-hard-dice/" />
-    <meta property="og:image" content="https://pikilon.github.io/die-hard-dice/og-image.jpg" />
-    <meta property="og:image:secure_url" content="https://pikilon.github.io/die-hard-dice/og-image.jpg" />
+    <meta property="og:url" content="https://die-hard-dice.pikilon.com/" />
+    <meta property="og:image" content="https://die-hard-dice.pikilon.com/og-image.jpg" />
+    <meta property="og:image:secure_url" content="https://die-hard-dice.pikilon.com/og-image.jpg" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -26,12 +26,12 @@
 
     <!-- Twitter / X Cards -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://pikilon.github.io/die-hard-dice/" />
+    <meta name="twitter:url" content="https://die-hard-dice.pikilon.com/" />
     <meta name="twitter:title" content="Die Hard Dice — Dados 3D personalizados" />
     <meta name="twitter:description" content="Crea, comparte y lanza sets de dados personalizados en 3D con física realista · Create, share and roll custom 3D dice sets" />
-    <meta name="twitter:image" content="https://pikilon.github.io/die-hard-dice/og-image.jpg" />
+    <meta name="twitter:image" content="https://die-hard-dice.pikilon.com/og-image.jpg" />
     <meta name="twitter:image:alt" content="Die Hard Dice — Simulador de dados 3D personalizados" />
-    <link rel="image_src" href="https://pikilon.github.io/die-hard-dice/og-image.jpg" />
+    <link rel="image_src" href="https://die-hard-dice.pikilon.com/og-image.jpg" />
 
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png" />
@@ -39,6 +39,29 @@
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <title>Die Hard Dice</title>
+    <script>
+      // Si un chunk de script falla al cargar (404 por versión anterior cacheada en despliegue),
+      // fuerza una recarga limpia para sincronizar con la nueva versión en vez de quedar en blanco.
+      window.addEventListener(
+        'error',
+        function (e) {
+          if (e.target && e.target.tagName === 'SCRIPT' && !sessionStorage.getItem('dhd_stale_reload')) {
+            sessionStorage.setItem('dhd_stale_reload', '1');
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function (regs) {
+                return Promise.all(regs.map(function (r) { return r.unregister(); }));
+              }).finally(function () {
+                location.reload();
+              });
+            } else {
+              location.reload();
+            }
+          }
+        },
+        true,
+      );
+      window.addEventListener('load', function () { sessionStorage.removeItem('dhd_stale_reload'); });
+    </script>
   </head>
   <body>
     <div id="root"></div>
